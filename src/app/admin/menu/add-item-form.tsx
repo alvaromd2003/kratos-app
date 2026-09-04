@@ -10,11 +10,14 @@ type ExistingItem = { id: string; name: string }
 export function AddItemForm({
   categories,
   existingItems,
+  enabledTags,
 }: {
   categories: Category[]
   existingItems: ExistingItem[]
+  enabledTags: string[]
 }) {
   const [state, action, pending] = useActionState(createMenuItem, undefined)
+  const visibleTags = DIETARY_TAGS.filter((tag) => enabledTags.includes(tag.value))
 
   return (
     <form
@@ -66,17 +69,19 @@ export function AddItemForm({
           </select>
         </div>
       </div>
-      <div className="flex flex-col gap-1">
-        <span className="text-sm">Alérgenos / dieta (opcional)</span>
-        <div className="flex flex-wrap gap-3">
-          {DIETARY_TAGS.map((tag) => (
-            <label key={tag.value} className="flex items-center gap-1 text-sm">
-              <input type="checkbox" name="dietary_tags" value={tag.value} />
-              {tag.label}
-            </label>
-          ))}
+      {visibleTags.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <span className="text-sm">Alérgenos / dieta (opcional)</span>
+          <div className="flex flex-wrap gap-3">
+            {visibleTags.map((tag) => (
+              <label key={tag.value} className="flex items-center gap-1 text-sm">
+                <input type="checkbox" name="dietary_tags" value={tag.value} />
+                {tag.label}
+              </label>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
       {existingItems.length > 0 && (
         <div className="flex flex-col gap-1">
           <label htmlFor="item-recommend">Recomendar junto con (opcional)</label>

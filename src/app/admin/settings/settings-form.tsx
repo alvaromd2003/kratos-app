@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react'
 import { updateRestaurantProfile } from '@/app/actions/restaurant'
+import { DIETARY_TAGS } from '@/lib/dietary-tags'
 
 const CURRENCIES = [
   { code: 'EUR', label: 'Euro (€)' },
@@ -13,9 +14,11 @@ const CURRENCIES = [
 export function SettingsForm({
   name,
   currency,
+  enabledDietaryTags,
 }: {
   name: string
   currency: string
+  enabledDietaryTags: string[]
 }) {
   const [state, action, pending] = useActionState(updateRestaurantProfile, undefined)
 
@@ -45,6 +48,25 @@ export function SettingsForm({
             </option>
           ))}
         </select>
+      </div>
+      <div className="flex flex-col gap-1">
+        <span className="text-sm">Etiquetas de alérgenos/dieta que usáis</span>
+        <div className="flex flex-wrap gap-3">
+          {DIETARY_TAGS.map((tag) => (
+            <label key={tag.value} className="flex items-center gap-1 text-sm">
+              <input
+                type="checkbox"
+                name="enabled_dietary_tags"
+                value={tag.value}
+                defaultChecked={enabledDietaryTags.includes(tag.value)}
+              />
+              {tag.label}
+            </label>
+          ))}
+        </div>
+        <span className="text-xs text-gray-500">
+          Solo las que marques aquí aparecerán al crear/editar platos y para que el cliente filtre.
+        </span>
       </div>
       {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
       <button

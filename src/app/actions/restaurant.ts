@@ -5,10 +5,12 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentRestaurant } from '@/lib/restaurant'
+import { DIETARY_TAGS } from '@/lib/dietary-tags'
 
 export type OnboardingFormState = { error?: string } | undefined
 
 const ALLOWED_CURRENCIES = ['EUR', 'GBP', 'USD', 'AED']
+const VALID_DIETARY_TAGS = new Set<string>(DIETARY_TAGS.map((t) => t.value))
 
 function slugify(name: string) {
   return name
@@ -68,6 +70,9 @@ export async function updateRestaurantProfile(
 
   const name = String(formData.get('name') ?? '').trim()
   const currency = String(formData.get('currency') ?? '').trim().toUpperCase()
+  const enabledDietaryTags = formData
+    .getAll('enabled_dietary_tags')
+    .filter((tag): tag is string => typeof tag === 'string' && VALID_DIETARY_TAGS.has(tag))
 
   if (!name) {
     return { error: 'Escribe el nombre de tu restaurante.' }
@@ -79,7 +84,7 @@ export async function updateRestaurantProfile(
   const supabase = await createClient()
   const { error } = await supabase
     .from('restaurants')
-    .update({ name, currency })
+    .update({ name, currency, enabled_dietary_tags: enabledDietaryTags })
     .eq('id', restaurant.id)
 
   if (error) {

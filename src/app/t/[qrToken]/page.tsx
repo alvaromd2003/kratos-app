@@ -20,7 +20,7 @@ export default async function TableOrderPage({
   const admin = createAdminClient()
   const { data: restaurant } = await admin
     .from('restaurants')
-    .select('name, currency')
+    .select('name, currency, enabled_dietary_tags')
     .eq('id', table.restaurant_id)
     .single()
 
@@ -94,6 +94,7 @@ export default async function TableOrderPage({
       tableLabel={table.label}
       restaurantName={restaurant.name}
       currency={restaurant.currency}
+      enabledTags={restaurant.enabled_dietary_tags}
       restaurantId={table.restaurant_id}
       tableSessionId={verified.session.id}
       participantId={verified.participant.id}

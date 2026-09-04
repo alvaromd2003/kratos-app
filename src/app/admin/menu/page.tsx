@@ -62,13 +62,18 @@ export default async function MenuPage() {
                 item={item}
                 categories={categoryList}
                 otherItems={itemList.filter((i) => i.id !== item.id)}
+                enabledTags={restaurant.enabled_dietary_tags}
                 isFirst={index === 0}
                 isLast={index === itemList.length - 1}
               />
             ))}
           </ul>
         )}
-        <AddItemForm categories={categoryList} existingItems={itemList} />
+        <AddItemForm
+          categories={categoryList}
+          existingItems={itemList}
+          enabledTags={restaurant.enabled_dietary_tags}
+        />
       </section>
     </div>
   )

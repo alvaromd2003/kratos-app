@@ -67,6 +67,7 @@ export function LiveTable({
   tableLabel,
   restaurantName,
   currency,
+  enabledTags,
   restaurantId,
   tableSessionId,
   participantId,
@@ -81,6 +82,7 @@ export function LiveTable({
   tableLabel: string
   restaurantName: string
   currency: string
+  enabledTags: string[]
   restaurantId: string
   tableSessionId: string
   participantId: string
@@ -328,7 +330,7 @@ export function LiveTable({
       )}
 
       <div className="flex flex-wrap gap-2">
-        {DIETARY_TAGS.map((tag) => (
+        {DIETARY_TAGS.filter((tag) => enabledTags.includes(tag.value)).map((tag) => (
           <button
             key={tag.value}
             type="button"
@@ -356,6 +358,7 @@ export function LiveTable({
               qrToken={qrToken}
               currency={currency}
               itemsById={itemsById}
+              enabledTags={enabledTags}
             />
           )
         })}
@@ -366,6 +369,7 @@ export function LiveTable({
             qrToken={qrToken}
             currency={currency}
             itemsById={itemsById}
+            enabledTags={enabledTags}
           />
         )}
         {visibleItems.length === 0 && (
@@ -413,12 +417,14 @@ function MenuSection({
   qrToken,
   currency,
   itemsById,
+  enabledTags,
 }: {
   title: string
   items: MenuItem[]
   qrToken: string
   currency: string
   itemsById: Map<string, MenuItem>
+  enabledTags: string[]
 }) {
   return (
     <div className="flex flex-col gap-3">
@@ -440,9 +446,12 @@ function MenuSection({
               <p className="text-sm font-medium">{item.name}</p>
               {item.description && <p className="text-xs text-gray-600">{item.description}</p>}
               <p className="text-xs text-gray-500">{formatPrice(item.price_cents, currency)}</p>
-              {item.dietary_tags.length > 0 && (
+              {item.dietary_tags.filter((t) => enabledTags.includes(t)).length > 0 && (
                 <p className="text-xs text-gray-500">
-                  {item.dietary_tags.map(dietaryTagLabel).join(' · ')}
+                  {item.dietary_tags
+                    .filter((t) => enabledTags.includes(t))
+                    .map(dietaryTagLabel)
+                    .join(' · ')}
                 </p>
               )}
             </div>

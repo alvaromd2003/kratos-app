@@ -27,12 +27,14 @@ export function ItemRow({
   item,
   categories,
   otherItems,
+  enabledTags,
   isFirst,
   isLast,
 }: {
   item: Item
   categories: Category[]
   otherItems: { id: string; name: string }[]
+  enabledTags: string[]
   isFirst: boolean
   isLast: boolean
 }) {
@@ -42,6 +44,7 @@ export function ItemRow({
   // Inputs keep whatever the user typed either way (they're uncontrolled),
   // so without this there's no visible sign a save actually happened.
   const showSaved = useActionSuccess(pending, Boolean(state?.error))
+  const visibleTags = DIETARY_TAGS.filter((tag) => enabledTags.includes(tag.value))
 
   return (
     <li className="flex flex-col gap-3 rounded border border-gray-200 p-3">
@@ -109,7 +112,7 @@ export function ItemRow({
           className="rounded border border-gray-300 px-2 py-1 text-sm"
         />
         <div className="flex flex-wrap gap-3">
-          {DIETARY_TAGS.map((tag) => (
+          {visibleTags.map((tag) => (
             <label key={tag.value} className="flex items-center gap-1 text-xs">
               <input
                 type="checkbox"
