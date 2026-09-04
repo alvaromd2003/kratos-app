@@ -1,8 +1,11 @@
 'use server'
 
+import { randomUUID } from 'crypto'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentRestaurant } from '@/lib/restaurant'
+
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024 // 5 MB
 
 export type MenuFormState = { error?: string } | undefined
 
@@ -52,7 +55,7 @@ export async function createMenuItem(
   const priceRaw = String(formData.get('price') ?? '').trim()
   const categoryId = String(formData.get('category_id') ?? '') || null
   const description = String(formData.get('description') ?? '').trim() || null
-  const imageUrl = String(formData.get('image_url') ?? '').trim() || null
+  const imageFile = formData.get('image')
 
   if (!name) {
     return { error: 'Escribe un nombre de plato.' }
@@ -65,6 +68,30 @@ export async function createMenuItem(
   const priceCents = Math.round(priceNumber * 100)
 
   const supabase = await createClient()
+
+  let imageUrl: string | null = null
+  if (imageFile instanceof File && imageFile.size > 0) {
+    if (imageFile.size > MAX_IMAGE_BYTES) {
+      return { error: 'La foto pesa demasiado (máximo 5MB).' }
+    }
+    if (!imageFile.type.startsWith('image/')) {
+      return { error: 'El archivo tiene que ser una imagen.' }
+    }
+
+    const extension = imageFile.name.split('.').pop()?.toLowerCase() || 'jpg'
+    const path = `${restaurant.id}/${randomUUID()}.${extension}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('menu-images')
+      .upload(path, imageFile, { contentType: imageFile.type })
+
+    if (uploadError) {
+      return { error: 'No se pudo subir la foto. Inténtalo de nuevo.' }
+    }
+
+    imageUrl = supabase.storage.from('menu-images').getPublicUrl(path).data.publicUrl
+  }
+
   const { error } = await supabase.from('menu_items').insert({
     restaurant_id: restaurant.id,
     category_id: categoryId,

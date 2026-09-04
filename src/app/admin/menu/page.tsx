@@ -60,16 +60,28 @@ export default async function MenuPage() {
                 key={item.id}
                 className="flex items-center justify-between gap-4 rounded border border-gray-200 p-3"
               >
-                <div>
-                  <p className="font-medium">
-                    {item.name} — {(item.price_cents / 100).toFixed(2)}€
-                    {!item.is_available && (
-                      <span className="ml-2 text-xs text-gray-400">(oculto)</span>
-                    )}
-                  </p>
-                  {item.description && (
-                    <p className="text-sm text-gray-500">{item.description}</p>
+                <div className="flex items-center gap-3">
+                  {item.image_url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={item.image_url}
+                      alt={item.name}
+                      width={56}
+                      height={56}
+                      className="h-14 w-14 rounded object-cover"
+                    />
                   )}
+                  <div>
+                    <p className="font-medium">
+                      {item.name} — {(item.price_cents / 100).toFixed(2)}€
+                      {!item.is_available && (
+                        <span className="ml-2 text-xs text-gray-400">(oculto)</span>
+                      )}
+                    </p>
+                    {item.description && (
+                      <p className="text-sm text-gray-500">{item.description}</p>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <form action={toggleMenuItemAvailability}>

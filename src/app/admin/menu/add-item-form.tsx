@@ -59,12 +59,12 @@ export function AddItemForm({ categories }: { categories: Category[] }) {
         </div>
       </div>
       <div className="flex flex-col gap-1">
-        <label htmlFor="item-image">URL de foto (opcional)</label>
+        <label htmlFor="item-image">Foto (opcional)</label>
         <input
           id="item-image"
-          name="image_url"
-          type="url"
-          placeholder="https://..."
+          name="image"
+          type="file"
+          accept="image/*"
           className="rounded border border-gray-300 px-3 py-2"
         />
       </div>
