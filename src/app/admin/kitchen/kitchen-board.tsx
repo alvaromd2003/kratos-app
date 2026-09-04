@@ -43,7 +43,7 @@ async function loadFullOrder(
 
   const { data: items } = await supabase
     .from('order_items')
-    .select('id, quantity, menu_item_id, participant_id')
+    .select('id, quantity, menu_item_id, participant_id, note')
     .eq('order_id', row.id)
 
   const itemList = items ?? []
@@ -89,6 +89,7 @@ async function loadFullOrder(
         priceCents: menuItem?.price_cents ?? 0,
         participantName: participantNameById.get(item.participant_id) ?? '—',
         station: station as 'kitchen' | 'bar',
+        note: item.note,
       }
     }),
   }
@@ -229,6 +230,9 @@ export function KitchenBoard({
                     <li key={item.id}>
                       {item.quantity}× {item.dishName}{' '}
                       <span className="text-gray-500">— {item.participantName}</span>
+                      {item.note && (
+                        <p className="text-xs font-medium text-red-600">⚠ {item.note}</p>
+                      )}
                     </li>
                   ))}
               </ul>

@@ -194,6 +194,23 @@ export async function changeItemQuantity(formData: FormData) {
     .eq('table_session_id', verified.tableSessionId)
 }
 
+export async function setItemNote(formData: FormData) {
+  const qrToken = String(formData.get('qr_token') ?? '')
+  const orderItemId = String(formData.get('order_item_id') ?? '')
+  const note = String(formData.get('note') ?? '').trim().slice(0, 140) || null
+
+  const verified = await getVerifiedParticipant(qrToken)
+  if (!verified) return
+
+  const admin = createAdminClient()
+  await admin
+    .from('order_items')
+    .update({ note })
+    .eq('id', orderItemId)
+    .eq('table_session_id', verified.tableSessionId)
+    .is('order_id', null) // can't touch a line that's already with the kitchen
+}
+
 export async function removeItemFromCart(formData: FormData) {
   const qrToken = String(formData.get('qr_token') ?? '')
   const orderItemId = String(formData.get('order_item_id') ?? '')

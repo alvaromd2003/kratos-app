@@ -1,5 +1,4 @@
-import { redirect } from 'next/navigation'
-import { getCurrentRestaurant } from '@/lib/restaurant'
+import { requireManagerRole } from '@/lib/restaurant'
 import { createClient } from '@/lib/supabase/server'
 import { getRestaurantOrders } from '@/lib/orders'
 import { formatPrice, formatDateTime } from '@/lib/format'
@@ -12,17 +11,24 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 export default async function HistoryPage() {
-  const { restaurant, role } = await getCurrentRestaurant()
-  if (role !== 'owner' && role !== 'admin') {
-    redirect('/admin/kitchen')
-  }
+  const { restaurant } = await requireManagerRole()
 
   const supabase = await createClient()
   const orders = await getRestaurantOrders(supabase, restaurant.id)
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-semibold">Historial de pedidos — {restaurant.name}</h1>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-xl font-semibold">Historial de pedidos — {restaurant.name}</h1>
+        {orders.length > 0 && (
+          <a
+            href="/admin/history/export"
+            className="rounded border border-gray-300 px-3 py-1.5 text-sm underline"
+          >
+            Exportar CSV
+          </a>
+        )}
+      </div>
 
       {orders.length === 0 ? (
         <p className="text-gray-600">Todavía no se ha enviado ningún pedido.</p>
@@ -50,6 +56,7 @@ export default async function HistoryPage() {
                     <li key={item.id}>
                       {item.quantity}× {item.dishName}{' '}
                       <span className="text-gray-500">— {item.participantName}</span>
+                      {item.note && <span className="text-gray-500"> ({item.note})</span>}
                     </li>
                   ))}
                 </ul>

@@ -57,7 +57,9 @@ export default async function TableOrderPage({
       .order('sort_order', { ascending: true }),
     admin
       .from('menu_items')
-      .select('id, category_id, name, description, price_cents, image_url, dietary_tags')
+      .select(
+        'id, category_id, name, description, price_cents, image_url, dietary_tags, recommended_item_id'
+      )
       .eq('restaurant_id', table.restaurant_id)
       .eq('is_available', true)
       .order('sort_order', { ascending: true }),
@@ -68,7 +70,7 @@ export default async function TableOrderPage({
       .order('created_at', { ascending: true }),
     admin
       .from('order_items')
-      .select('id, menu_item_id, participant_id, quantity, order_id')
+      .select('id, menu_item_id, participant_id, quantity, order_id, note')
       .eq('table_session_id', verified.session.id)
       .order('created_at', { ascending: true }),
     admin
@@ -78,12 +80,21 @@ export default async function TableOrderPage({
       .order('created_at', { ascending: true }),
   ])
 
+  // For "hay N pedidos por delante" — every other order this restaurant
+  // still has in the kitchen queue right now, regardless of table.
+  const { data: restaurantActiveOrders } = await admin
+    .from('orders')
+    .select('id, status, created_at')
+    .eq('restaurant_id', table.restaurant_id)
+    .in('status', ['pending', 'preparing'])
+
   return (
     <LiveTable
       qrToken={qrToken}
       tableLabel={table.label}
       restaurantName={restaurant.name}
       currency={restaurant.currency}
+      restaurantId={table.restaurant_id}
       tableSessionId={verified.session.id}
       participantId={verified.participant.id}
       categories={categories ?? []}
@@ -91,6 +102,7 @@ export default async function TableOrderPage({
       initialParticipants={participants ?? []}
       initialOrderItems={orderItems ?? []}
       initialOrders={orders ?? []}
+      initialRestaurantActiveOrders={restaurantActiveOrders ?? []}
     />
   )
 }

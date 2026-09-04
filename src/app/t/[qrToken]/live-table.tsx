@@ -20,6 +20,7 @@ type MenuItem = {
   price_cents: number
   image_url: string | null
   dietary_tags: string[]
+  recommended_item_id: string | null
 }
 type Participant = { id: string; name: string }
 type OrderItemRow = {
@@ -28,9 +29,11 @@ type OrderItemRow = {
   participant_id: string
   quantity: number
   order_id: string | null
+  note: string | null
 }
 type OrderStatus = 'pending' | 'preparing' | 'ready' | 'delivered'
 type OrderRow = { id: string; status: OrderStatus; created_at: string }
+type ActiveOrderRow = { id: string; status: OrderStatus; created_at: string }
 
 const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   pending: 'Pendiente',
@@ -64,6 +67,7 @@ export function LiveTable({
   tableLabel,
   restaurantName,
   currency,
+  restaurantId,
   tableSessionId,
   participantId,
   categories,
@@ -71,11 +75,13 @@ export function LiveTable({
   initialParticipants,
   initialOrderItems,
   initialOrders,
+  initialRestaurantActiveOrders,
 }: {
   qrToken: string
   tableLabel: string
   restaurantName: string
   currency: string
+  restaurantId: string
   tableSessionId: string
   participantId: string
   categories: Category[]
@@ -83,10 +89,14 @@ export function LiveTable({
   initialParticipants: Participant[]
   initialOrderItems: OrderItemRow[]
   initialOrders: OrderRow[]
+  initialRestaurantActiveOrders: ActiveOrderRow[]
 }) {
   const [participants, setParticipants] = useState(initialParticipants)
   const [orderItems, setOrderItems] = useState(initialOrderItems)
   const [orders, setOrders] = useState(initialOrders)
+  const [restaurantActiveOrders, setRestaurantActiveOrders] = useState(
+    initialRestaurantActiveOrders
+  )
   const [activeTags, setActiveTags] = useState<Set<string>>(new Set())
   const hasConnectedBefore = useRef(false)
 
@@ -94,21 +104,31 @@ export function LiveTable({
     const supabase = createClient()
 
     async function resync() {
-      const [{ data: freshOrderItems }, { data: freshParticipants }, { data: freshOrders }] =
-        await Promise.all([
-          supabase
-            .from('order_items')
-            .select('id, menu_item_id, participant_id, quantity, order_id')
-            .eq('table_session_id', tableSessionId),
-          supabase
-            .from('session_participants')
-            .select('id, name')
-            .eq('table_session_id', tableSessionId),
-          supabase.from('orders').select('id, status, created_at').eq('table_session_id', tableSessionId),
-        ])
+      const [
+        { data: freshOrderItems },
+        { data: freshParticipants },
+        { data: freshOrders },
+        { data: freshActive },
+      ] = await Promise.all([
+        supabase
+          .from('order_items')
+          .select('id, menu_item_id, participant_id, quantity, order_id, note')
+          .eq('table_session_id', tableSessionId),
+        supabase
+          .from('session_participants')
+          .select('id, name')
+          .eq('table_session_id', tableSessionId),
+        supabase.from('orders').select('id, status, created_at').eq('table_session_id', tableSessionId),
+        supabase
+          .from('orders')
+          .select('id, status, created_at')
+          .eq('restaurant_id', restaurantId)
+          .in('status', ['pending', 'preparing']),
+      ])
       if (freshOrderItems) setOrderItems(freshOrderItems)
       if (freshParticipants) setParticipants(freshParticipants)
       if (freshOrders) setOrders(freshOrders)
+      if (freshActive) setRestaurantActiveOrders(freshActive)
     }
 
     const channel = supabase
@@ -155,10 +175,43 @@ export function LiveTable({
         resync()
       })
 
+    // Separate channel: every other table's orders, just enough to know
+    // "how many are ahead of mine in the kitchen queue" — restaurant-wide,
+    // not scoped to this table.
+    const queueChannel = supabase
+      .channel(`restaurant-queue-${restaurantId}`)
+      .on<ActiveOrderRow>(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+          filter: `restaurant_id=eq.${restaurantId}`,
+        },
+        (payload) => {
+          if (payload.eventType === 'DELETE') {
+            const old = payload.old as Partial<ActiveOrderRow>
+            setRestaurantActiveOrders((current) => current.filter((o) => o.id !== old.id))
+            return
+          }
+          const row = payload.new as ActiveOrderRow
+          const isActive = row.status === 'pending' || row.status === 'preparing'
+          setRestaurantActiveOrders((current) => {
+            if (!isActive) return current.filter((o) => o.id !== row.id)
+            if (current.some((o) => o.id === row.id)) {
+              return current.map((o) => (o.id === row.id ? row : o))
+            }
+            return [...current, row]
+          })
+        }
+      )
+      .subscribe()
+
     return () => {
       supabase.removeChannel(channel)
+      supabase.removeChannel(queueChannel)
     }
-  }, [tableSessionId])
+  }, [tableSessionId, restaurantId])
 
   const itemsById = new Map(items.map((item) => [item.id, item]))
   const participantsById = new Map(participants.map((p) => [p.id, p]))
@@ -194,6 +247,12 @@ export function LiveTable({
 
   const sortedOrders = [...orders].sort((a, b) => a.created_at.localeCompare(b.created_at))
 
+  function queuePosition(order: OrderRow): number {
+    return restaurantActiveOrders.filter(
+      (o) => o.id !== order.id && o.created_at < order.created_at
+    ).length
+  }
+
   function toggleTag(tag: string) {
     setActiveTags((current) => {
       const next = new Set(current)
@@ -225,12 +284,19 @@ export function LiveTable({
           <ul className="flex flex-col gap-2 text-sm">
             {sortedOrders.map((order) => {
               const orderRows = orderItems.filter((row) => row.order_id === order.id)
+              const ahead = order.status === 'pending' ? queuePosition(order) : 0
               return (
                 <li key={order.id}>
                   <div className="flex items-center justify-between gap-2">
                     <p>
                       <span className="font-medium">{formatTime(order.created_at)}</span> —{' '}
                       {ORDER_STATUS_LABEL[order.status]}
+                      {order.status === 'pending' && (
+                        <span className="text-gray-500">
+                          {' '}
+                          ({ahead > 0 ? `${ahead} por delante` : 'el siguiente'})
+                        </span>
+                      )}
                     </p>
                     {order.status === 'pending' && (
                       <form
@@ -289,11 +355,18 @@ export function LiveTable({
               items={categoryItems}
               qrToken={qrToken}
               currency={currency}
+              itemsById={itemsById}
             />
           )
         })}
         {uncategorized.length > 0 && (
-          <MenuSection title="Otros" items={uncategorized} qrToken={qrToken} currency={currency} />
+          <MenuSection
+            title="Otros"
+            items={uncategorized}
+            qrToken={qrToken}
+            currency={currency}
+            itemsById={itemsById}
+          />
         )}
         {visibleItems.length === 0 && (
           <p className="text-sm text-gray-500">Ningún plato coincide con esos filtros.</p>
@@ -316,6 +389,7 @@ export function LiveTable({
                   orderItemId={row.id}
                   name={`${item.name} — ${participantLabel(row.participant_id)}`}
                   quantity={row.quantity}
+                  note={row.note}
                   lineTotal={formatPrice(item.price_cents * row.quantity, currency)}
                 />
               )
@@ -338,11 +412,13 @@ function MenuSection({
   items,
   qrToken,
   currency,
+  itemsById,
 }: {
   title: string
   items: MenuItem[]
   qrToken: string
   currency: string
+  itemsById: Map<string, MenuItem>
 }) {
   return (
     <div className="flex flex-col gap-3">
@@ -370,7 +446,14 @@ function MenuSection({
                 </p>
               )}
             </div>
-            <AddItemButton qrToken={qrToken} menuItemId={item.id} />
+            <AddItemButton
+              qrToken={qrToken}
+              menuItemId={item.id}
+              recommendedItem={
+                item.recommended_item_id ? (itemsById.get(item.recommended_item_id) ?? null) : null
+              }
+              currency={currency}
+            />
           </li>
         ))}
       </ul>

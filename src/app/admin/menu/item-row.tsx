@@ -20,16 +20,19 @@ type Item = {
   image_url: string | null
   is_available: boolean
   dietary_tags: string[]
+  recommended_item_id: string | null
 }
 
 export function ItemRow({
   item,
   categories,
+  otherItems,
   isFirst,
   isLast,
 }: {
   item: Item
   categories: Category[]
+  otherItems: { id: string; name: string }[]
   isFirst: boolean
   isLast: boolean
 }) {
@@ -118,6 +121,26 @@ export function ItemRow({
             </label>
           ))}
         </div>
+        {otherItems.length > 0 && (
+          <div className="flex flex-col gap-1">
+            <label htmlFor={`recommend-${item.id}`} className="text-xs text-gray-500">
+              Recomendar junto con (opcional)
+            </label>
+            <select
+              id={`recommend-${item.id}`}
+              name="recommended_item_id"
+              defaultValue={item.recommended_item_id ?? ''}
+              className="rounded border border-gray-300 px-2 py-1 text-sm"
+            >
+              <option value="">Ninguno</option>
+              {otherItems.map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <label className="text-xs text-gray-500">
           Cambiar foto (opcional)
           <input name="image" type="file" accept="image/*" className="mt-1 block text-xs" />

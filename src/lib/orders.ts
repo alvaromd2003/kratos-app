@@ -16,6 +16,7 @@ export type OrderDetail = {
     priceCents: number
     participantName: string
     station: Station
+    note: string | null
   }[]
 }
 
@@ -60,7 +61,7 @@ export async function getRestaurantOrders(
     supabase.from('table_sessions').select('id, table_id').in('id', sessionIds),
     supabase
       .from('order_items')
-      .select('id, order_id, quantity, menu_item_id, participant_id')
+      .select('id, order_id, quantity, menu_item_id, participant_id, note')
       .in('order_id', orderIds),
   ])
 
@@ -114,6 +115,7 @@ export async function getRestaurantOrders(
           priceCents: menuItem?.price_cents ?? 0,
           participantName: participantNameById.get(item.participant_id) ?? '—',
           station,
+          note: item.note,
         }
       }),
   }))

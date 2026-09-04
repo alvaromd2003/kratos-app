@@ -29,7 +29,7 @@ async function loadFullOrder(
 
   const { data: items } = await supabase
     .from('order_items')
-    .select('id, quantity, menu_item_id, participant_id')
+    .select('id, quantity, menu_item_id, participant_id, note')
     .eq('order_id', row.id)
 
   const itemList = items ?? []
@@ -62,6 +62,7 @@ async function loadFullOrder(
         priceCents: menuItem?.price_cents ?? 0,
         participantName: participantNameById.get(item.participant_id) ?? '—',
         station: 'kitchen' as const, // irrelevant here — Barra always shows every item
+        note: item.note,
       }
     }),
   }
@@ -175,6 +176,7 @@ export function ReadyOrders({
                   <li key={item.id}>
                     {item.quantity}× {item.dishName}{' '}
                     <span className="text-gray-500">— {item.participantName}</span>
+                    {item.note && <p className="text-xs font-medium text-red-600">⚠ {item.note}</p>}
                   </li>
                 ))}
               </ul>

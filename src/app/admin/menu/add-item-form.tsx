@@ -5,8 +5,15 @@ import { createMenuItem } from '@/app/actions/menu'
 import { DIETARY_TAGS } from '@/lib/dietary-tags'
 
 type Category = { id: string; name: string }
+type ExistingItem = { id: string; name: string }
 
-export function AddItemForm({ categories }: { categories: Category[] }) {
+export function AddItemForm({
+  categories,
+  existingItems,
+}: {
+  categories: Category[]
+  existingItems: ExistingItem[]
+}) {
   const [state, action, pending] = useActionState(createMenuItem, undefined)
 
   return (
@@ -70,6 +77,26 @@ export function AddItemForm({ categories }: { categories: Category[] }) {
           ))}
         </div>
       </div>
+      {existingItems.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <label htmlFor="item-recommend">Recomendar junto con (opcional)</label>
+          <select
+            id="item-recommend"
+            name="recommended_item_id"
+            className="rounded border border-gray-300 px-3 py-2"
+          >
+            <option value="">Ninguno</option>
+            {existingItems.map((i) => (
+              <option key={i.id} value={i.id}>
+                {i.name}
+              </option>
+            ))}
+          </select>
+          <span className="text-xs text-gray-500">
+            Al cliente le aparecerá &quot;¿Añades también X?&quot; después de pedir este plato.
+          </span>
+        </div>
+      )}
       <div className="flex flex-col gap-1">
         <label htmlFor="item-image">Foto (opcional)</label>
         <input

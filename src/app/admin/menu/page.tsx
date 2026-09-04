@@ -19,7 +19,7 @@ export default async function MenuPage() {
     supabase
       .from('menu_items')
       .select(
-        'id, category_id, name, description, price_cents, image_url, is_available, dietary_tags'
+        'id, category_id, name, description, price_cents, image_url, is_available, dietary_tags, recommended_item_id'
       )
       .eq('restaurant_id', restaurant.id)
       .order('sort_order', { ascending: true })
@@ -61,13 +61,14 @@ export default async function MenuPage() {
                 key={item.id}
                 item={item}
                 categories={categoryList}
+                otherItems={itemList.filter((i) => i.id !== item.id)}
                 isFirst={index === 0}
                 isLast={index === itemList.length - 1}
               />
             ))}
           </ul>
         )}
-        <AddItemForm categories={categoryList} />
+        <AddItemForm categories={categoryList} existingItems={itemList} />
       </section>
     </div>
   )

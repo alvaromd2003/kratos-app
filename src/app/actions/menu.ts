@@ -157,6 +157,7 @@ export async function createMenuItem(
   const description = String(formData.get('description') ?? '').trim() || null
   const imageFile = formData.get('image')
   const dietaryTags = readDietaryTags(formData)
+  const recommendedItemId = String(formData.get('recommended_item_id') ?? '') || null
 
   if (!name) {
     return { error: 'Escribe un nombre de plato.' }
@@ -203,6 +204,7 @@ export async function createMenuItem(
     image_url: imageUrl,
     sort_order: sortOrder,
     dietary_tags: dietaryTags,
+    recommended_item_id: recommendedItemId,
   })
 
   if (error) {
@@ -225,6 +227,8 @@ export async function updateMenuItem(
   const description = String(formData.get('description') ?? '').trim() || null
   const imageFile = formData.get('image')
   const dietaryTags = readDietaryTags(formData)
+  const recommendedItemIdRaw = String(formData.get('recommended_item_id') ?? '') || null
+  const recommendedItemId = recommendedItemIdRaw === id ? null : recommendedItemIdRaw
 
   if (!id) {
     return { error: 'Falta el identificador del plato.' }
@@ -247,6 +251,7 @@ export async function updateMenuItem(
     price_cents: number
     category_id: string | null
     dietary_tags: string[]
+    recommended_item_id: string | null
     image_url?: string
   } = {
     name,
@@ -254,6 +259,7 @@ export async function updateMenuItem(
     price_cents: priceCents,
     category_id: categoryId,
     dietary_tags: dietaryTags,
+    recommended_item_id: recommendedItemId,
   }
 
   let oldImagePath: string | null = null
