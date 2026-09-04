@@ -289,14 +289,26 @@ export async function sendOrderToKitchen(
     return { error: 'No se pudo enviar el pedido. Inténtalo de nuevo.' }
   }
 
-  const { error: updateError } = await admin
+  // Two people at the table can both tap "Enviar pedido" within the same
+  // instant — both read the same unsent items before either has claimed
+  // them. Whoever's UPDATE lands second claims nothing, so its order
+  // would otherwise sit on the kitchen board empty. .select() here reveals
+  // exactly that: if nothing was actually claimed, this was a duplicate
+  // send and the empty order gets cleaned up instead of shown to staff.
+  const { data: claimed, error: updateError } = await admin
     .from('order_items')
     .update({ order_id: order.id })
     .eq('table_session_id', verified.tableSessionId)
     .is('order_id', null)
+    .select('id')
 
   if (updateError) {
+    await admin.from('orders').delete().eq('id', order.id)
     return { error: 'No se pudo enviar el pedido. Inténtalo de nuevo.' }
+  }
+
+  if (!claimed || claimed.length === 0) {
+    await admin.from('orders').delete().eq('id', order.id)
   }
 }
 
