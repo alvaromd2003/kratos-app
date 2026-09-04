@@ -64,3 +64,30 @@ export async function deleteTable(formData: FormData) {
 
   revalidatePath('/admin/tables')
 }
+
+// Ends the group currently seated at this table so the next QR scan starts
+// a brand-new session instead of joining the outgoing group's.
+export async function closeTableSession(formData: FormData) {
+  const { restaurant, role } = await getCurrentRestaurant()
+  if (role !== 'owner' && role !== 'admin') return
+
+  const tableId = String(formData.get('table_id') ?? '')
+
+  const supabase = await createClient()
+
+  const { data: table } = await supabase
+    .from('tables')
+    .select('id')
+    .eq('id', tableId)
+    .eq('restaurant_id', restaurant.id)
+    .maybeSingle()
+  if (!table) return
+
+  await supabase
+    .from('table_sessions')
+    .update({ status: 'closed', closed_at: new Date().toISOString() })
+    .eq('table_id', table.id)
+    .eq('status', 'open')
+
+  revalidatePath('/admin/tables')
+}

@@ -16,11 +16,44 @@ export default async function TablesPage() {
 
   const tableList = tables ?? []
 
+  const { data: openSessions } = await supabase
+    .from('table_sessions')
+    .select('id, table_id')
+    .eq('restaurant_id', restaurant.id)
+    .eq('status', 'open')
+
+  const sessionList = openSessions ?? []
+  const sessionIds = sessionList.map((s) => s.id)
+
+  const { data: participants } =
+    sessionIds.length > 0
+      ? await supabase
+          .from('session_participants')
+          .select('table_session_id, name')
+          .in('table_session_id', sessionIds)
+      : { data: [] }
+
+  const participantNamesBySession = new Map<string, string[]>()
+  for (const p of participants ?? []) {
+    participantNamesBySession.set(p.table_session_id, [
+      ...(participantNamesBySession.get(p.table_session_id) ?? []),
+      p.name,
+    ])
+  }
+  const sessionByTableId = new Map(sessionList.map((s) => [s.table_id, s]))
+
   const tablesWithQr = await Promise.all(
     tableList.map(async (table) => {
       const url = `https://order.kratosystems.com/t/${table.qr_token}`
       const qrDataUrl = await QRCode.toDataURL(url, { margin: 1, width: 200 })
-      return { ...table, url, qrDataUrl }
+      const session = sessionByTableId.get(table.id)
+      return {
+        ...table,
+        url,
+        qrDataUrl,
+        participantNames: session ? (participantNamesBySession.get(session.id) ?? []) : [],
+        occupied: Boolean(session),
+      }
     })
   )
 
@@ -39,6 +72,8 @@ export default async function TablesPage() {
               label={table.label}
               url={table.url}
               qrDataUrl={table.qrDataUrl}
+              occupied={table.occupied}
+              participantNames={table.participantNames}
             />
           ))}
         </ul>

@@ -1,18 +1,22 @@
 'use client'
 
 import { useActionState } from 'react'
-import { updateTable, deleteTable } from '@/app/actions/tables'
+import { updateTable, deleteTable, closeTableSession } from '@/app/actions/tables'
 
 export function TableCard({
   id,
   label,
   url,
   qrDataUrl,
+  occupied,
+  participantNames,
 }: {
   id: string
   label: string
   url: string
   qrDataUrl: string
+  occupied: boolean
+  participantNames: string[]
 }) {
   const [state, action, pending] = useActionState(updateTable, undefined)
 
@@ -34,6 +38,23 @@ export function TableCard({
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={qrDataUrl} alt={`Código QR de ${label}`} width={200} height={200} />
       <p className="break-all text-xs text-gray-500">{url}</p>
+
+      {occupied ? (
+        <div className="flex flex-col items-center gap-1">
+          <p className="text-xs font-medium text-green-700">
+            Ocupada — {participantNames.join(', ')}
+          </p>
+          <form action={closeTableSession}>
+            <input type="hidden" name="table_id" value={id} />
+            <button type="submit" className="text-xs underline">
+              Cerrar mesa
+            </button>
+          </form>
+        </div>
+      ) : (
+        <p className="text-xs text-gray-400">Libre</p>
+      )}
+
       <form action={deleteTable}>
         <input type="hidden" name="id" value={id} />
         <button type="submit" className="text-xs text-red-600 underline">
