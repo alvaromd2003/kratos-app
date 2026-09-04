@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { logout } from '@/app/actions/auth'
@@ -18,13 +19,28 @@ export default async function AdminLayout({
 
   return (
     <div className="min-h-screen">
-      <header className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-        <span className="font-semibold">Kratos Admin</span>
-        <form action={logout}>
-          <button type="submit" className="text-sm underline">
-            Salir
-          </button>
-        </form>
+      <header className="border-b border-gray-200">
+        <div className="flex items-center justify-between px-6 py-4">
+          <Link href="/admin" className="font-semibold">
+            Kratos Admin
+          </Link>
+          <form action={logout}>
+            <button type="submit" className="text-sm underline">
+              Salir
+            </button>
+          </form>
+        </div>
+        <nav className="flex gap-4 px-6 pb-3 text-sm">
+          <Link href="/admin" className="underline">
+            Resumen
+          </Link>
+          <Link href="/admin/menu" className="underline">
+            Menú
+          </Link>
+          <Link href="/admin/tables" className="underline">
+            Mesas
+          </Link>
+        </nav>
       </header>
       <main className="p-6">{children}</main>
     </div>
