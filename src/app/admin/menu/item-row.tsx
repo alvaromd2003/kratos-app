@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import {
   updateMenuItem,
   deleteMenuItem,
@@ -31,6 +31,21 @@ export function ItemRow({
   isLast: boolean
 }) {
   const [state, action, pending] = useActionState(updateMenuItem, undefined)
+  const [deleteState, deleteAction] = useActionState(deleteMenuItem, undefined)
+
+  // Inputs keep whatever the user typed either way (they're uncontrolled),
+  // so without this there's no visible sign a save actually happened.
+  const [showSaved, setShowSaved] = useState(false)
+  const wasPending = useRef(false)
+  useEffect(() => {
+    if (wasPending.current && !pending && !state?.error) {
+      setShowSaved(true)
+      const timeout = setTimeout(() => setShowSaved(false), 2000)
+      wasPending.current = pending
+      return () => clearTimeout(timeout)
+    }
+    wasPending.current = pending
+  }, [pending, state])
 
   return (
     <li className="flex flex-col gap-3 rounded border border-gray-200 p-3">
@@ -110,23 +125,27 @@ export function ItemRow({
           >
             {pending ? 'Guardando…' : 'Guardar cambios'}
           </button>
+          {showSaved && <span className="text-xs text-green-600">Guardado ✓</span>}
           {!item.is_available && <span className="text-xs text-gray-400">(oculto)</span>}
         </div>
       </form>
-      <div className="flex items-center gap-3">
-        <form action={toggleMenuItemAvailability}>
-          <input type="hidden" name="id" value={item.id} />
-          <input type="hidden" name="is_available" value={String(item.is_available)} />
-          <button type="submit" className="text-xs underline">
-            {item.is_available ? 'Ocultar' : 'Mostrar'}
-          </button>
-        </form>
-        <form action={deleteMenuItem}>
-          <input type="hidden" name="id" value={item.id} />
-          <button type="submit" className="text-xs text-red-600 underline">
-            Eliminar
-          </button>
-        </form>
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-3">
+          <form action={toggleMenuItemAvailability}>
+            <input type="hidden" name="id" value={item.id} />
+            <input type="hidden" name="is_available" value={String(item.is_available)} />
+            <button type="submit" className="text-xs underline">
+              {item.is_available ? 'Ocultar' : 'Mostrar'}
+            </button>
+          </form>
+          <form action={deleteAction}>
+            <input type="hidden" name="id" value={item.id} />
+            <button type="submit" className="text-xs text-red-600 underline">
+              Eliminar
+            </button>
+          </form>
+        </div>
+        {deleteState?.error && <p className="text-xs text-red-600">{deleteState.error}</p>}
       </div>
     </li>
   )

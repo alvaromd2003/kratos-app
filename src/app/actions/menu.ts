@@ -302,7 +302,10 @@ export async function moveMenuItem(formData: FormData) {
   revalidatePath('/admin/menu')
 }
 
-export async function deleteMenuItem(formData: FormData) {
+export async function deleteMenuItem(
+  _prevState: MenuFormState,
+  formData: FormData
+): Promise<MenuFormState> {
   const { restaurant } = await getCurrentRestaurant()
   const id = String(formData.get('id') ?? '')
 
@@ -315,7 +318,21 @@ export async function deleteMenuItem(formData: FormData) {
     .eq('restaurant_id', restaurant.id)
     .maybeSingle()
 
-  await supabase.from('menu_items').delete().eq('id', id).eq('restaurant_id', restaurant.id)
+  const { error } = await supabase
+    .from('menu_items')
+    .delete()
+    .eq('id', id)
+    .eq('restaurant_id', restaurant.id)
+
+  if (error) {
+    if (error.code === '23503') {
+      return {
+        error:
+          'Este plato ya tiene pedidos registrados, así que no se puede eliminar del todo. Usa "Ocultar" para quitarlo del menú sin perder ese historial.',
+      }
+    }
+    return { error: 'No se pudo eliminar el plato.' }
+  }
 
   if (existing?.image_url) {
     const path = extractStoragePath(existing.image_url)
