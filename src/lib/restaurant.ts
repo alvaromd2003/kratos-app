@@ -42,3 +42,15 @@ export async function getCurrentRestaurant() {
 
   return { user, role: membership.role, restaurant }
 }
+
+// Same as getCurrentRestaurant, but also redirects kitchen_staff away —
+// use this at the top of any /admin page that isn't the kitchen board
+// itself. Hiding a nav link isn't access control on its own; someone could
+// still type the URL directly.
+export async function requireManagerRole() {
+  const result = await getCurrentRestaurant()
+  if (result.role !== 'owner' && result.role !== 'admin') {
+    redirect('/admin/kitchen')
+  }
+  return result
+}

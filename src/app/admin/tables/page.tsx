@@ -1,11 +1,11 @@
 import QRCode from 'qrcode'
-import { getCurrentRestaurant } from '@/lib/restaurant'
+import { requireManagerRole } from '@/lib/restaurant'
 import { createClient } from '@/lib/supabase/server'
 import { AddTableForm } from './add-table-form'
 import { TableCard } from './table-card'
 
 export default async function TablesPage() {
-  const { restaurant } = await getCurrentRestaurant()
+  const { restaurant } = await requireManagerRole()
   const supabase = await createClient()
 
   const { data: tables } = await supabase
@@ -74,6 +74,7 @@ export default async function TablesPage() {
               qrDataUrl={table.qrDataUrl}
               occupied={table.occupied}
               participantCount={table.participantCount}
+              active={table.active}
             />
           ))}
         </ul>

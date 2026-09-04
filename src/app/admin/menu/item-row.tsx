@@ -138,7 +138,14 @@ export function ItemRow({
               {item.is_available ? 'Ocultar' : 'Mostrar'}
             </button>
           </form>
-          <form action={deleteAction}>
+          <form
+            action={deleteAction}
+            onSubmit={(e) => {
+              if (!confirm(`¿Eliminar "${item.name}"? Esto no se puede deshacer.`)) {
+                e.preventDefault()
+              }
+            }}
+          >
             <input type="hidden" name="id" value={item.id} />
             <button type="submit" className="text-xs text-red-600 underline">
               Eliminar

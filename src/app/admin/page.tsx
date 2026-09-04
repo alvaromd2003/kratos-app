@@ -1,7 +1,7 @@
-import { getCurrentRestaurant } from '@/lib/restaurant'
+import { requireManagerRole } from '@/lib/restaurant'
 
 export default async function AdminHome() {
-  const { restaurant } = await getCurrentRestaurant()
+  const { restaurant } = await requireManagerRole()
 
   return (
     <div className="flex flex-col gap-4">

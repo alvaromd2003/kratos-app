@@ -1,4 +1,4 @@
-import { getCurrentRestaurant } from '@/lib/restaurant'
+import { requireManagerRole } from '@/lib/restaurant'
 import { createClient } from '@/lib/supabase/server'
 import { AddCategoryForm } from './add-category-form'
 import { AddItemForm } from './add-item-form'
@@ -6,7 +6,7 @@ import { CategoryRow } from './category-row'
 import { ItemRow } from './item-row'
 
 export default async function MenuPage() {
-  const { restaurant } = await getCurrentRestaurant()
+  const { restaurant } = await requireManagerRole()
   const supabase = await createClient()
 
   const [{ data: categories }, { data: items }] = await Promise.all([

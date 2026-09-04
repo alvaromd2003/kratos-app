@@ -1,8 +1,8 @@
-import { getCurrentRestaurant } from '@/lib/restaurant'
+import { requireManagerRole } from '@/lib/restaurant'
 import { SettingsForm } from './settings-form'
 
 export default async function SettingsPage() {
-  const { restaurant } = await getCurrentRestaurant()
+  const { restaurant } = await requireManagerRole()
 
   return (
     <div className="flex flex-col gap-4">

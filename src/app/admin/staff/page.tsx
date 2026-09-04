@@ -1,7 +1,7 @@
-import { getCurrentRestaurant } from '@/lib/restaurant'
+import { requireManagerRole } from '@/lib/restaurant'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { removeStaffMember } from '@/app/actions/staff'
+import { RemoveStaffButton } from './remove-staff-button'
 import { InviteForm } from './invite-form'
 
 const ROLE_LABELS: Record<string, string> = {
@@ -11,7 +11,7 @@ const ROLE_LABELS: Record<string, string> = {
 }
 
 export default async function StaffPage() {
-  const { user, restaurant, role } = await getCurrentRestaurant()
+  const { user, restaurant, role } = await requireManagerRole()
   const supabase = await createClient()
 
   const { data: members } = await supabase
@@ -51,12 +51,7 @@ export default async function StaffPage() {
               <p className="text-sm text-gray-500">{ROLE_LABELS[m.role] ?? m.role}</p>
             </div>
             {canManage && m.user_id !== user.id && (
-              <form action={removeStaffMember}>
-                <input type="hidden" name="id" value={m.id} />
-                <button type="submit" className="text-xs text-red-600 underline">
-                  Quitar
-                </button>
-              </form>
+              <RemoveStaffButton id={m.id} label={emailsById[m.user_id]} />
             )}
           </li>
         ))}

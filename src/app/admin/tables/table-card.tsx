@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState } from 'react'
-import { updateTable, deleteTable, closeTableSession } from '@/app/actions/tables'
+import { updateTable, deleteTable, closeTableSession, toggleTableActive } from '@/app/actions/tables'
 
 export function TableCard({
   id,
@@ -10,6 +10,7 @@ export function TableCard({
   qrDataUrl,
   occupied,
   participantCount,
+  active,
 }: {
   id: string
   label: string
@@ -17,8 +18,10 @@ export function TableCard({
   qrDataUrl: string
   occupied: boolean
   participantCount: number
+  active: boolean
 }) {
   const [state, action, pending] = useActionState(updateTable, undefined)
+  const [deleteState, deleteAction] = useActionState(deleteTable, undefined)
 
   return (
     <li className="flex w-56 flex-col items-center gap-2 rounded border border-gray-200 p-4 text-center">
@@ -39,12 +42,25 @@ export function TableCard({
       <img src={qrDataUrl} alt={`Código QR de ${label}`} width={200} height={200} />
       <p className="break-all text-xs text-gray-500">{url}</p>
 
+      {!active && (
+        <span className="rounded bg-gray-400 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
+          Desactivada
+        </span>
+      )}
+
       {occupied ? (
         <div className="flex flex-col items-center gap-2">
           <span className="rounded bg-red-600 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
             Ocupada ({participantCount} {participantCount === 1 ? 'persona' : 'personas'})
           </span>
-          <form action={closeTableSession}>
+          <form
+            action={closeTableSession}
+            onSubmit={(e) => {
+              if (!confirm(`¿Cerrar la mesa ${label}? Los clientes conectados tendrán que volver a escanear el código QR.`)) {
+                e.preventDefault()
+              }
+            }}
+          >
             <input type="hidden" name="table_id" value={id} />
             <button type="submit" className="text-xs underline">
               Cerrar mesa
@@ -52,17 +68,35 @@ export function TableCard({
           </form>
         </div>
       ) : (
-        <span className="rounded bg-green-600 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
-          Libre
-        </span>
+        active && (
+          <span className="rounded bg-green-600 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
+            Libre
+          </span>
+        )
       )}
 
-      <form action={deleteTable}>
+      <form action={toggleTableActive}>
+        <input type="hidden" name="id" value={id} />
+        <input type="hidden" name="active" value={String(active)} />
+        <button type="submit" className="text-xs underline">
+          {active ? 'Desactivar' : 'Reactivar'}
+        </button>
+      </form>
+
+      <form
+        action={deleteAction}
+        onSubmit={(e) => {
+          if (!confirm(`¿Eliminar la mesa ${label}? Esto no se puede deshacer.`)) {
+            e.preventDefault()
+          }
+        }}
+      >
         <input type="hidden" name="id" value={id} />
         <button type="submit" className="text-xs text-red-600 underline">
           Eliminar mesa
         </button>
       </form>
+      {deleteState?.error && <p className="text-xs text-red-600">{deleteState.error}</p>}
     </li>
   )
 }
