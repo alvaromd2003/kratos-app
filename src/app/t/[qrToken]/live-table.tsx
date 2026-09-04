@@ -112,13 +112,17 @@ export function LiveTable({
   const uncategorized = itemsByCategory.get(null) ?? []
 
   // Items already sent to the kitchen leave the editable cart — the diner
-  // can still start a new round (drinks, dessert…) underneath.
+  // can still start a new round (drinks, dessert…) underneath. The running
+  // total, though, always covers everything ordered this sitting, sent or
+  // not — a diner should never lose track of what the table has spent.
   const cartItems = orderItems.filter((row) => row.order_id === null)
 
-  const total = cartItems.reduce((sum, row) => {
+  const lineTotal = (row: OrderItemRow) => {
     const item = itemsById.get(row.menu_item_id)
-    return sum + (item ? item.price_cents * row.quantity : 0)
-  }, 0)
+    return item ? item.price_cents * row.quantity : 0
+  }
+  const cartTotal = cartItems.reduce((sum, row) => sum + lineTotal(row), 0)
+  const tableTotal = orderItems.reduce((sum, row) => sum + lineTotal(row), 0)
 
   const participantLabel = (id: string) => {
     if (id === participantId) return 'Tú'
@@ -131,6 +135,9 @@ export function LiveTable({
         <h1 className="text-xl font-semibold">{restaurantName}</h1>
         <p className="text-sm text-gray-600">
           Mesa {tableLabel} · {participants.map((p) => participantLabel(p.id)).join(', ')}
+        </p>
+        <p className="text-sm font-medium">
+          Total de la mesa: {formatPrice(tableTotal, currency)}
         </p>
       </div>
 
@@ -176,7 +183,9 @@ export function LiveTable({
           </ul>
         )}
         <div className="flex items-center justify-between gap-3">
-          <p className="text-sm font-semibold">Total: {formatPrice(total, currency)}</p>
+          <p className="text-sm font-semibold">
+            Total del carrito: {formatPrice(cartTotal, currency)}
+          </p>
           {cartItems.length > 0 && <SendOrderButton qrToken={qrToken} />}
         </div>
       </section>
