@@ -29,16 +29,16 @@ export default async function TablesPage() {
     sessionIds.length > 0
       ? await supabase
           .from('session_participants')
-          .select('table_session_id, name')
+          .select('table_session_id')
           .in('table_session_id', sessionIds)
       : { data: [] }
 
-  const participantNamesBySession = new Map<string, string[]>()
+  const participantCountBySession = new Map<string, number>()
   for (const p of participants ?? []) {
-    participantNamesBySession.set(p.table_session_id, [
-      ...(participantNamesBySession.get(p.table_session_id) ?? []),
-      p.name,
-    ])
+    participantCountBySession.set(
+      p.table_session_id,
+      (participantCountBySession.get(p.table_session_id) ?? 0) + 1
+    )
   }
   const sessionByTableId = new Map(sessionList.map((s) => [s.table_id, s]))
 
@@ -51,7 +51,7 @@ export default async function TablesPage() {
         ...table,
         url,
         qrDataUrl,
-        participantNames: session ? (participantNamesBySession.get(session.id) ?? []) : [],
+        participantCount: session ? (participantCountBySession.get(session.id) ?? 0) : 0,
         occupied: Boolean(session),
       }
     })
@@ -73,7 +73,7 @@ export default async function TablesPage() {
               url={table.url}
               qrDataUrl={table.qrDataUrl}
               occupied={table.occupied}
-              participantNames={table.participantNames}
+              participantCount={table.participantCount}
             />
           ))}
         </ul>

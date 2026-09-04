@@ -9,14 +9,14 @@ export function TableCard({
   url,
   qrDataUrl,
   occupied,
-  participantNames,
+  participantCount,
 }: {
   id: string
   label: string
   url: string
   qrDataUrl: string
   occupied: boolean
-  participantNames: string[]
+  participantCount: number
 }) {
   const [state, action, pending] = useActionState(updateTable, undefined)
 
@@ -40,10 +40,10 @@ export function TableCard({
       <p className="break-all text-xs text-gray-500">{url}</p>
 
       {occupied ? (
-        <div className="flex flex-col items-center gap-1">
-          <p className="text-xs font-medium text-green-700">
-            Ocupada — {participantNames.join(', ')}
-          </p>
+        <div className="flex flex-col items-center gap-2">
+          <span className="rounded bg-red-600 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
+            Ocupada ({participantCount} {participantCount === 1 ? 'persona' : 'personas'})
+          </span>
           <form action={closeTableSession}>
             <input type="hidden" name="table_id" value={id} />
             <button type="submit" className="text-xs underline">
@@ -52,7 +52,9 @@ export function TableCard({
           </form>
         </div>
       ) : (
-        <p className="text-xs text-gray-400">Libre</p>
+        <span className="rounded bg-green-600 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
+          Libre
+        </span>
       )}
 
       <form action={deleteTable}>
