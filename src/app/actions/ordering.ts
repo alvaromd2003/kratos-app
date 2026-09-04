@@ -132,13 +132,14 @@ export async function addItemToCart(
   }
 
   // Adding the same dish again just bumps the quantity on the existing
-  // line instead of creating a duplicate row.
+  // (still unsent) line instead of creating a duplicate row.
   const { data: existing } = await admin
     .from('order_items')
     .select('id, quantity')
     .eq('table_session_id', verified.tableSessionId)
     .eq('participant_id', verified.participantId)
     .eq('menu_item_id', menuItemId)
+    .is('order_id', null)
     .maybeSingle()
 
   const { error } = existing
@@ -172,6 +173,7 @@ export async function changeItemQuantity(formData: FormData) {
     .select('quantity')
     .eq('id', orderItemId)
     .eq('table_session_id', verified.tableSessionId)
+    .is('order_id', null) // can't touch a line that's already with the kitchen
     .maybeSingle()
   if (!row) return
 
@@ -205,4 +207,50 @@ export async function removeItemFromCart(formData: FormData) {
     .delete()
     .eq('id', orderItemId)
     .eq('table_session_id', verified.tableSessionId)
+    .is('order_id', null)
+}
+
+export async function sendOrderToKitchen(
+  _prevState: OrderingFormState,
+  formData: FormData
+): Promise<OrderingFormState> {
+  const qrToken = String(formData.get('qr_token') ?? '')
+
+  const table = await getActiveTableByQrToken(qrToken)
+  const verified = table ? await getVerifiedParticipant(qrToken) : null
+  if (!table || !verified) {
+    return { error: 'Tu sesión en la mesa caducó. Vuelve a escanear el código QR.' }
+  }
+
+  const admin = createAdminClient()
+
+  const { data: pendingItems } = await admin
+    .from('order_items')
+    .select('id')
+    .eq('table_session_id', verified.tableSessionId)
+    .is('order_id', null)
+
+  if (!pendingItems || pendingItems.length === 0) {
+    return { error: 'Añade algo al carrito antes de enviar el pedido.' }
+  }
+
+  const { data: order, error: orderError } = await admin
+    .from('orders')
+    .insert({ restaurant_id: table.restaurant_id, table_session_id: verified.tableSessionId })
+    .select('id')
+    .single()
+
+  if (orderError || !order) {
+    return { error: 'No se pudo enviar el pedido. Inténtalo de nuevo.' }
+  }
+
+  const { error: updateError } = await admin
+    .from('order_items')
+    .update({ order_id: order.id })
+    .eq('table_session_id', verified.tableSessionId)
+    .is('order_id', null)
+
+  if (updateError) {
+    return { error: 'No se pudo enviar el pedido. Inténtalo de nuevo.' }
+  }
 }

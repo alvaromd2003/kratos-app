@@ -40,6 +40,9 @@ export default async function AdminLayout({
           <Link href="/admin/tables" className="underline">
             Mesas
           </Link>
+          <Link href="/admin/kitchen" className="underline">
+            Cocina
+          </Link>
           <Link href="/admin/staff" className="underline">
             Personal
           </Link>

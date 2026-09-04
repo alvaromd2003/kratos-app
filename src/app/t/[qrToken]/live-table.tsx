@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { formatPrice } from '@/lib/format'
 import { AddItemButton } from './add-item-button'
 import { CartItemRow } from './cart-item-row'
+import { SendOrderButton } from './send-order-button'
 
 type Category = { id: string; name: string }
 type MenuItem = {
@@ -17,7 +18,13 @@ type MenuItem = {
   image_url: string | null
 }
 type Participant = { id: string; name: string }
-type OrderItemRow = { id: string; menu_item_id: string; participant_id: string; quantity: number }
+type OrderItemRow = {
+  id: string
+  menu_item_id: string
+  participant_id: string
+  quantity: number
+  order_id: string | null
+}
 
 function applyChange<T extends { id: string }>(
   current: T[],
@@ -104,7 +111,11 @@ export function LiveTable({
   }
   const uncategorized = itemsByCategory.get(null) ?? []
 
-  const total = orderItems.reduce((sum, row) => {
+  // Items already sent to the kitchen leave the editable cart — the diner
+  // can still start a new round (drinks, dessert…) underneath.
+  const cartItems = orderItems.filter((row) => row.order_id === null)
+
+  const total = cartItems.reduce((sum, row) => {
     const item = itemsById.get(row.menu_item_id)
     return sum + (item ? item.price_cents * row.quantity : 0)
   }, 0)
@@ -144,11 +155,11 @@ export function LiveTable({
 
       <section className="fixed inset-x-0 bottom-0 flex max-h-64 flex-col gap-3 border-t border-gray-200 bg-white px-4 py-4 text-gray-900 shadow-[0_-4px_12px_rgba(0,0,0,0.08)]">
         <h2 className="font-medium">Carrito de la mesa</h2>
-        {orderItems.length === 0 ? (
+        {cartItems.length === 0 ? (
           <p className="text-sm text-gray-500">Todavía no hay nada en el carrito.</p>
         ) : (
           <ul className="flex flex-col gap-2 overflow-y-auto">
-            {orderItems.map((row) => {
+            {cartItems.map((row) => {
               const item = itemsById.get(row.menu_item_id)
               if (!item) return null
               return (
@@ -164,7 +175,10 @@ export function LiveTable({
             })}
           </ul>
         )}
-        <p className="text-right text-sm font-semibold">Total: {formatPrice(total, currency)}</p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm font-semibold">Total: {formatPrice(total, currency)}</p>
+          {cartItems.length > 0 && <SendOrderButton qrToken={qrToken} />}
+        </div>
       </section>
     </main>
   )

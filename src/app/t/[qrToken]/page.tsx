@@ -63,7 +63,7 @@ export default async function TableOrderPage({
         .order('created_at', { ascending: true }),
       admin
         .from('order_items')
-        .select('id, menu_item_id, participant_id, quantity')
+        .select('id, menu_item_id, participant_id, quantity, order_id')
         .eq('table_session_id', verified.session.id)
         .order('created_at', { ascending: true }),
     ])
