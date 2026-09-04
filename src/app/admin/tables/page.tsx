@@ -1,8 +1,8 @@
 import QRCode from 'qrcode'
 import { getCurrentRestaurant } from '@/lib/restaurant'
 import { createClient } from '@/lib/supabase/server'
-import { deleteTable } from '@/app/actions/tables'
 import { AddTableForm } from './add-table-form'
+import { TableCard } from './table-card'
 
 export default async function TablesPage() {
   const { restaurant } = await getCurrentRestaurant()
@@ -33,21 +33,13 @@ export default async function TablesPage() {
       {tablesWithQr.length > 0 && (
         <ul className="flex flex-wrap gap-6">
           {tablesWithQr.map((table) => (
-            <li
+            <TableCard
               key={table.id}
-              className="flex w-56 flex-col items-center gap-2 rounded border border-gray-200 p-4 text-center"
-            >
-              <p className="font-medium">{table.label}</p>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={table.qrDataUrl} alt={`Código QR de ${table.label}`} width={200} height={200} />
-              <p className="break-all text-xs text-gray-500">{table.url}</p>
-              <form action={deleteTable}>
-                <input type="hidden" name="id" value={table.id} />
-                <button type="submit" className="text-xs text-red-600 underline">
-                  Eliminar mesa
-                </button>
-              </form>
-            </li>
+              id={table.id}
+              label={table.label}
+              url={table.url}
+              qrDataUrl={table.qrDataUrl}
+            />
           ))}
         </ul>
       )}

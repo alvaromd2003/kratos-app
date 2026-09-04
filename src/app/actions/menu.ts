@@ -31,6 +31,32 @@ export async function createCategory(
   revalidatePath('/admin/menu')
 }
 
+export async function updateCategory(
+  _prevState: MenuFormState,
+  formData: FormData
+): Promise<MenuFormState> {
+  const { restaurant } = await getCurrentRestaurant()
+  const id = String(formData.get('id') ?? '')
+  const name = String(formData.get('name') ?? '').trim()
+
+  if (!name) {
+    return { error: 'Escribe un nombre de categoría.' }
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('menu_categories')
+    .update({ name })
+    .eq('id', id)
+    .eq('restaurant_id', restaurant.id)
+
+  if (error) {
+    return { error: 'No se pudo actualizar la categoría.' }
+  }
+
+  revalidatePath('/admin/menu')
+}
+
 export async function deleteCategory(formData: FormData) {
   const { restaurant } = await getCurrentRestaurant()
   const id = String(formData.get('id') ?? '')
@@ -103,6 +129,82 @@ export async function createMenuItem(
 
   if (error) {
     return { error: 'No se pudo crear el plato.' }
+  }
+
+  revalidatePath('/admin/menu')
+}
+
+export async function updateMenuItem(
+  _prevState: MenuFormState,
+  formData: FormData
+): Promise<MenuFormState> {
+  const { restaurant } = await getCurrentRestaurant()
+
+  const id = String(formData.get('id') ?? '')
+  const name = String(formData.get('name') ?? '').trim()
+  const priceRaw = String(formData.get('price') ?? '').trim()
+  const categoryId = String(formData.get('category_id') ?? '') || null
+  const description = String(formData.get('description') ?? '').trim() || null
+  const imageFile = formData.get('image')
+
+  if (!id) {
+    return { error: 'Falta el identificador del plato.' }
+  }
+  if (!name) {
+    return { error: 'Escribe un nombre de plato.' }
+  }
+
+  const priceNumber = Number(priceRaw.replace(',', '.'))
+  if (!priceRaw || Number.isNaN(priceNumber) || priceNumber < 0) {
+    return { error: 'Introduce un precio válido, por ejemplo 9.50.' }
+  }
+  const priceCents = Math.round(priceNumber * 100)
+
+  const supabase = await createClient()
+
+  const updates: {
+    name: string
+    description: string | null
+    price_cents: number
+    category_id: string | null
+    image_url?: string
+  } = {
+    name,
+    description,
+    price_cents: priceCents,
+    category_id: categoryId,
+  }
+
+  if (imageFile instanceof File && imageFile.size > 0) {
+    if (imageFile.size > MAX_IMAGE_BYTES) {
+      return { error: 'La foto pesa demasiado (máximo 5MB).' }
+    }
+    if (!imageFile.type.startsWith('image/')) {
+      return { error: 'El archivo tiene que ser una imagen.' }
+    }
+
+    const extension = imageFile.name.split('.').pop()?.toLowerCase() || 'jpg'
+    const path = `${restaurant.id}/${randomUUID()}.${extension}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('menu-images')
+      .upload(path, imageFile, { contentType: imageFile.type })
+
+    if (uploadError) {
+      return { error: 'No se pudo subir la foto. Inténtalo de nuevo.' }
+    }
+
+    updates.image_url = supabase.storage.from('menu-images').getPublicUrl(path).data.publicUrl
+  }
+
+  const { error } = await supabase
+    .from('menu_items')
+    .update(updates)
+    .eq('id', id)
+    .eq('restaurant_id', restaurant.id)
+
+  if (error) {
+    return { error: 'No se pudo actualizar el plato.' }
   }
 
   revalidatePath('/admin/menu')

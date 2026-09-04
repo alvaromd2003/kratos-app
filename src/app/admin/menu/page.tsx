@@ -1,8 +1,9 @@
 import { getCurrentRestaurant } from '@/lib/restaurant'
 import { createClient } from '@/lib/supabase/server'
-import { deleteCategory, deleteMenuItem, toggleMenuItemAvailability } from '@/app/actions/menu'
 import { AddCategoryForm } from './add-category-form'
 import { AddItemForm } from './add-item-form'
+import { CategoryRow } from './category-row'
+import { ItemRow } from './item-row'
 
 export default async function MenuPage() {
   const { restaurant } = await getCurrentRestaurant()
@@ -33,18 +34,7 @@ export default async function MenuPage() {
         {categoryList.length > 0 && (
           <ul className="flex flex-wrap gap-2">
             {categoryList.map((c) => (
-              <li
-                key={c.id}
-                className="flex items-center gap-2 rounded border border-gray-300 px-3 py-1"
-              >
-                <span>{c.name}</span>
-                <form action={deleteCategory}>
-                  <input type="hidden" name="id" value={c.id} />
-                  <button type="submit" className="text-xs text-red-600 underline">
-                    Eliminar
-                  </button>
-                </form>
-              </li>
+              <CategoryRow key={c.id} id={c.id} name={c.name} />
             ))}
           </ul>
         )}
@@ -56,53 +46,7 @@ export default async function MenuPage() {
         {itemList.length > 0 && (
           <ul className="flex flex-col gap-2">
             {itemList.map((item) => (
-              <li
-                key={item.id}
-                className="flex items-center justify-between gap-4 rounded border border-gray-200 p-3"
-              >
-                <div className="flex items-center gap-3">
-                  {item.image_url && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={item.image_url}
-                      alt={item.name}
-                      width={56}
-                      height={56}
-                      className="h-14 w-14 rounded object-cover"
-                    />
-                  )}
-                  <div>
-                    <p className="font-medium">
-                      {item.name} — {(item.price_cents / 100).toFixed(2)}€
-                      {!item.is_available && (
-                        <span className="ml-2 text-xs text-gray-400">(oculto)</span>
-                      )}
-                    </p>
-                    {item.description && (
-                      <p className="text-sm text-gray-500">{item.description}</p>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <form action={toggleMenuItemAvailability}>
-                    <input type="hidden" name="id" value={item.id} />
-                    <input
-                      type="hidden"
-                      name="is_available"
-                      value={String(item.is_available)}
-                    />
-                    <button type="submit" className="text-xs underline">
-                      {item.is_available ? 'Ocultar' : 'Mostrar'}
-                    </button>
-                  </form>
-                  <form action={deleteMenuItem}>
-                    <input type="hidden" name="id" value={item.id} />
-                    <button type="submit" className="text-xs text-red-600 underline">
-                      Eliminar
-                    </button>
-                  </form>
-                </div>
-              </li>
+              <ItemRow key={item.id} item={item} categories={categoryList} />
             ))}
           </ul>
         )}
