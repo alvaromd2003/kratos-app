@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { closeTableSession } from '@/app/actions/tables'
+import { useWakeLock } from '@/lib/use-wake-lock'
 
 type Table = { id: string; label: string; occupied: boolean }
 type SessionRow = { table_id: string; status: 'open' | 'closed' }
@@ -31,6 +32,8 @@ export function TableStatus({
 }) {
   const [tables, setTables] = useState(initialTables)
   const hasConnectedBefore = useRef(false)
+
+  useWakeLock()
 
   useEffect(() => {
     const supabase = createClient()

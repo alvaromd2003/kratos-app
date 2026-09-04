@@ -8,6 +8,7 @@ import { updateOrderStatus, cancelOrderAsStaff } from '@/app/actions/kitchen'
 import type { OrderDetail } from '@/lib/orders'
 import { playAlertSound } from '@/lib/alert-sound'
 import { setBadgeCount, clearBadgeCount } from '@/lib/tab-badge'
+import { useWakeLock } from '@/lib/use-wake-lock'
 
 type OrderStatus = OrderDetail['status']
 type OrderRow = { id: string; table_session_id: string; status: OrderStatus; created_at: string }
@@ -124,6 +125,8 @@ export function KitchenBoard({
   const [orders, setOrders] = useState(initialOrders)
   const [deliveredToday, setDeliveredToday] = useState(initialDeliveredToday)
   const hasConnectedBefore = useRef(false)
+
+  useWakeLock()
 
   useEffect(() => {
     setBadgeCount('kitchen-orders', orders.length)
