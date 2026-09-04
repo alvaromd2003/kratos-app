@@ -19,6 +19,20 @@ export function AddCategoryForm() {
           className="rounded border border-gray-300 px-3 py-2"
         />
       </div>
+      <div className="flex flex-col gap-1">
+        <label htmlFor="cat-station" className="text-sm">
+          Va a
+        </label>
+        <select
+          id="cat-station"
+          name="station"
+          defaultValue="kitchen"
+          className="rounded border border-gray-300 px-3 py-2"
+        >
+          <option value="kitchen">Cocina</option>
+          <option value="bar">Barra</option>
+        </select>
+      </div>
       <button
         disabled={pending}
         type="submit"

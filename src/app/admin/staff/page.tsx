@@ -8,6 +8,7 @@ const ROLE_LABELS: Record<string, string> = {
   owner: 'Propietario',
   admin: 'Administrador',
   kitchen_staff: 'Cocina',
+  waiter: 'Camarero',
 }
 
 export default async function StaffPage() {

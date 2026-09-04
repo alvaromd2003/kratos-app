@@ -25,13 +25,17 @@ export default async function AdminLayout({
     .eq('user_id', user.id)
     .limit(1)
     .maybeSingle()
-  const isKitchenOnly = membership?.role === 'kitchen_staff'
+  const role = membership?.role
+
+  // Each operational role gets exactly one screen — the one matching what
+  // that job actually does. Owner/admin see everything.
+  const homeHref = role === 'kitchen_staff' ? '/admin/kitchen' : role === 'waiter' ? '/admin/floor' : '/admin'
 
   return (
     <div className="min-h-screen">
       <header className="border-b border-gray-200">
         <div className="flex items-center justify-between px-6 py-4">
-          <Link href={isKitchenOnly ? '/admin/kitchen' : '/admin'} className="font-semibold">
+          <Link href={homeHref} className="font-semibold">
             Kratos Admin
           </Link>
           <form action={logout}>
@@ -41,9 +45,13 @@ export default async function AdminLayout({
           </form>
         </div>
         <nav className="flex gap-4 px-6 pb-3 text-sm">
-          {isKitchenOnly ? (
+          {role === 'kitchen_staff' ? (
             <Link href="/admin/kitchen" className="underline">
               Cocina
+            </Link>
+          ) : role === 'waiter' ? (
+            <Link href="/admin/floor" className="underline">
+              Barra
             </Link>
           ) : (
             <>
@@ -58,6 +66,9 @@ export default async function AdminLayout({
               </Link>
               <Link href="/admin/kitchen" className="underline">
                 Cocina
+              </Link>
+              <Link href="/admin/floor" className="underline">
+                Barra
               </Link>
               <Link href="/admin/history" className="underline">
                 Historial

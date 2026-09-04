@@ -7,7 +7,7 @@ import { getCurrentRestaurant } from '@/lib/restaurant'
 
 export type StaffFormState = { error?: string } | undefined
 
-const INVITABLE_ROLES = ['admin', 'kitchen_staff'] as const
+const INVITABLE_ROLES = ['admin', 'kitchen_staff', 'waiter'] as const
 
 export async function inviteStaffMember(
   _prevState: StaffFormState,

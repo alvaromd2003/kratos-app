@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { resolveHelpRequest } from '@/app/actions/kitchen'
 import { formatTime } from '@/lib/format'
@@ -18,6 +18,26 @@ type HelpRequestRow = {
   created_at: string
 }
 
+async function fetchOpenRequests(
+  supabase: ReturnType<typeof createClient>,
+  restaurantId: string,
+  tableLabelBySessionId: Record<string, string>
+): Promise<HelpRequest[]> {
+  const { data } = await supabase
+    .from('help_requests')
+    .select('id, table_session_id, created_at')
+    .eq('restaurant_id', restaurantId)
+    .eq('status', 'open')
+    .order('created_at', { ascending: true })
+
+  return (data ?? []).map((h) => ({
+    id: h.id,
+    tableSessionId: h.table_session_id,
+    tableLabel: tableLabelBySessionId[h.table_session_id] ?? '—',
+    createdAt: h.created_at,
+  }))
+}
+
 export function HelpAlerts({
   restaurantId,
   initialRequests,
@@ -28,6 +48,7 @@ export function HelpAlerts({
   tableLabelBySessionId: Record<string, string>
 }) {
   const [requests, setRequests] = useState(initialRequests)
+  const hasConnectedBefore = useRef(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -73,7 +94,14 @@ export function HelpAlerts({
           }
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        if (status !== 'SUBSCRIBED') return
+        if (!hasConnectedBefore.current) {
+          hasConnectedBefore.current = true
+          return
+        }
+        fetchOpenRequests(supabase, restaurantId, tableLabelBySessionId).then(setRequests)
+      })
 
     return () => {
       supabase.removeChannel(channel)

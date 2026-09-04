@@ -226,7 +226,7 @@ export async function sendOrderToKitchen(
 
   const { data: pendingItems } = await admin
     .from('order_items')
-    .select('id')
+    .select('id, menu_item_id')
     .eq('table_session_id', verified.tableSessionId)
     .is('order_id', null)
 
@@ -234,9 +234,37 @@ export async function sendOrderToKitchen(
     return { error: 'Añade algo al carrito antes de enviar el pedido.' }
   }
 
+  // A round that's drinks-only has nothing for the kitchen to do — it
+  // skips straight to "ready", so it lands directly on Barra's board
+  // instead of sitting on Cocina's until someone notices there's no food
+  // in it.
+  const menuItemIds = [...new Set(pendingItems.map((i) => i.menu_item_id))]
+  const { data: menuItems } = await admin
+    .from('menu_items')
+    .select('id, category_id')
+    .in('id', menuItemIds)
+  const categoryIds = [
+    ...new Set((menuItems ?? []).map((m) => m.category_id).filter((id): id is string => !!id)),
+  ]
+  const { data: categories } =
+    categoryIds.length > 0
+      ? await admin.from('menu_categories').select('id, station').in('id', categoryIds)
+      : { data: [] }
+  const stationByCategoryId = new Map((categories ?? []).map((c) => [c.id, c.station]))
+  const categoryByMenuItemId = new Map((menuItems ?? []).map((m) => [m.id, m.category_id]))
+  const hasKitchenItem = pendingItems.some((item) => {
+    const categoryId = categoryByMenuItemId.get(item.menu_item_id)
+    const station = categoryId ? (stationByCategoryId.get(categoryId) ?? 'kitchen') : 'kitchen'
+    return station === 'kitchen'
+  })
+
   const { data: order, error: orderError } = await admin
     .from('orders')
-    .insert({ restaurant_id: table.restaurant_id, table_session_id: verified.tableSessionId })
+    .insert({
+      restaurant_id: table.restaurant_id,
+      table_session_id: verified.tableSessionId,
+      status: hasKitchenItem ? 'pending' : 'ready',
+    })
     .select('id')
     .single()
 
@@ -253,6 +281,29 @@ export async function sendOrderToKitchen(
   if (updateError) {
     return { error: 'No se pudo enviar el pedido. Inténtalo de nuevo.' }
   }
+}
+
+// Only while the order is still "pending" (kitchen hasn't started it) —
+// puts the items back in the open cart rather than just discarding them.
+export async function cancelOrder(formData: FormData) {
+  const qrToken = String(formData.get('qr_token') ?? '')
+  const orderId = String(formData.get('order_id') ?? '')
+
+  const verified = await getVerifiedParticipant(qrToken)
+  if (!verified) return
+
+  const admin = createAdminClient()
+
+  const { data: order } = await admin
+    .from('orders')
+    .select('id, status')
+    .eq('id', orderId)
+    .eq('table_session_id', verified.tableSessionId)
+    .maybeSingle()
+  if (!order || order.status !== 'pending') return
+
+  await admin.from('order_items').update({ order_id: null }).eq('order_id', orderId)
+  await admin.from('orders').delete().eq('id', orderId)
 }
 
 export async function requestHelp(

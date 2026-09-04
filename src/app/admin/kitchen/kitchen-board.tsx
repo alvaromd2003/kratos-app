@@ -1,20 +1,18 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import { formatPrice, formatTime } from '@/lib/format'
-import { updateOrderStatus } from '@/app/actions/kitchen'
+import { updateOrderStatus, cancelOrderAsStaff } from '@/app/actions/kitchen'
 import type { OrderDetail } from '@/lib/orders'
 
 type OrderStatus = OrderDetail['status']
 type OrderRow = { id: string; table_session_id: string; status: OrderStatus; created_at: string }
 
-const NEXT_STATUS: Record<OrderStatus, OrderStatus | null> = {
+const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
   pending: 'preparing',
   preparing: 'ready',
-  ready: 'delivered',
-  delivered: null,
 }
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
@@ -52,14 +50,24 @@ async function loadFullOrder(
 
   const [{ data: menuItems }, { data: participants }] = await Promise.all([
     menuItemIds.length > 0
-      ? supabase.from('menu_items').select('id, name, price_cents').in('id', menuItemIds)
+      ? supabase.from('menu_items').select('id, name, price_cents, category_id').in('id', menuItemIds)
       : Promise.resolve({ data: [] }),
     participantIds.length > 0
       ? supabase.from('session_participants').select('id, name').in('id', participantIds)
       : Promise.resolve({ data: [] }),
   ])
 
-  const menuItemById = new Map((menuItems ?? []).map((m) => [m.id, m]))
+  const menuItemList = menuItems ?? []
+  const categoryIds = [
+    ...new Set(menuItemList.map((m) => m.category_id).filter((id): id is string => !!id)),
+  ]
+  const { data: categories } =
+    categoryIds.length > 0
+      ? await supabase.from('menu_categories').select('id, station').in('id', categoryIds)
+      : { data: [] }
+  const stationByCategoryId = new Map((categories ?? []).map((c) => [c.id, c.station]))
+
+  const menuItemById = new Map(menuItemList.map((m) => [m.id, m]))
   const participantNameById = new Map((participants ?? []).map((p) => [p.id, p.name]))
 
   return {
@@ -69,15 +77,34 @@ async function loadFullOrder(
     tableLabel: table?.label ?? '—',
     items: itemList.map((item) => {
       const menuItem = menuItemById.get(item.menu_item_id)
+      const station = menuItem?.category_id
+        ? (stationByCategoryId.get(menuItem.category_id) ?? 'kitchen')
+        : 'kitchen'
       return {
         id: item.id,
         quantity: item.quantity,
         dishName: menuItem?.name ?? '—',
         priceCents: menuItem?.price_cents ?? 0,
         participantName: participantNameById.get(item.participant_id) ?? '—',
+        station: station as 'kitchen' | 'bar',
       }
     }),
   }
+}
+
+async function fetchPendingOrders(
+  supabase: ReturnType<typeof createClient>,
+  restaurantId: string
+): Promise<OrderDetail[]> {
+  const { data: rows } = await supabase
+    .from('orders')
+    .select('id, table_session_id, status, created_at')
+    .eq('restaurant_id', restaurantId)
+    .in('status', ['pending', 'preparing'])
+    .order('created_at', { ascending: true })
+
+  const full = await Promise.all((rows ?? []).map((row) => loadFullOrder(supabase, row as OrderRow)))
+  return full.filter((o): o is OrderDetail => o !== null)
 }
 
 export function KitchenBoard({
@@ -93,6 +120,7 @@ export function KitchenBoard({
 }) {
   const [orders, setOrders] = useState(initialOrders)
   const [deliveredToday, setDeliveredToday] = useState(initialDeliveredToday)
+  const hasConnectedBefore = useRef(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -126,8 +154,12 @@ export function KitchenBoard({
         },
         async (payload) => {
           const row = payload.new as OrderRow
-          if (row.status === 'delivered') {
+          // Once it's ready (or somehow already delivered), it's not the
+          // kitchen's concern anymore — that's Barra's board now.
+          if (row.status === 'ready' || row.status === 'delivered') {
             setOrders((current) => current.filter((o) => o.id !== row.id))
+          }
+          if (row.status === 'delivered') {
             const full = await loadFullOrder(supabase, row)
             if (full) {
               setDeliveredToday((current) =>
@@ -136,12 +168,31 @@ export function KitchenBoard({
             }
             return
           }
+          if (row.status === 'ready') return
           setOrders((current) =>
             current.map((o) => (o.id === row.id ? { ...o, status: row.status } : o))
           )
         }
       )
-      .subscribe()
+      .on<{ id: string }>(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'orders' },
+        (payload) => {
+          const old = payload.old as { id?: string }
+          if (!old.id) return
+          setOrders((current) => current.filter((o) => o.id !== old.id))
+        }
+      )
+      .subscribe((status) => {
+        if (status !== 'SUBSCRIBED') return
+        if (!hasConnectedBefore.current) {
+          hasConnectedBefore.current = true
+          return
+        }
+        // Reconnected after a drop — postgres_changes doesn't replay what
+        // was missed, so pull a fresh snapshot to avoid a stale board.
+        fetchPendingOrders(supabase, restaurantId).then(setOrders)
+      })
 
     return () => {
       supabase.removeChannel(channel)
@@ -161,22 +212,41 @@ export function KitchenBoard({
                 <span className="text-xs text-gray-500">{STATUS_LABEL[order.status]}</span>
               </div>
               <ul className="flex flex-col gap-1 text-sm">
-                {order.items.map((item) => (
-                  <li key={item.id}>
-                    {item.quantity}× {item.dishName}{' '}
-                    <span className="text-gray-500">— {item.participantName}</span>
-                  </li>
-                ))}
+                {order.items
+                  .filter((item) => item.station === 'kitchen')
+                  .map((item) => (
+                    <li key={item.id}>
+                      {item.quantity}× {item.dishName}{' '}
+                      <span className="text-gray-500">— {item.participantName}</span>
+                    </li>
+                  ))}
               </ul>
-              {NEXT_STATUS[order.status] && (
-                <form action={updateOrderStatus}>
-                  <input type="hidden" name="id" value={order.id} />
-                  <input type="hidden" name="status" value={NEXT_STATUS[order.status]!} />
-                  <button type="submit" className="rounded bg-black px-3 py-1 text-xs text-white">
-                    Marcar como {STATUS_LABEL[NEXT_STATUS[order.status]!].toLowerCase()}
-                  </button>
-                </form>
-              )}
+              <div className="flex items-center gap-3">
+                {NEXT_STATUS[order.status] && (
+                  <form action={updateOrderStatus}>
+                    <input type="hidden" name="id" value={order.id} />
+                    <input type="hidden" name="status" value={NEXT_STATUS[order.status]!} />
+                    <button type="submit" className="rounded bg-black px-3 py-1 text-xs text-white">
+                      Marcar como {STATUS_LABEL[NEXT_STATUS[order.status]!].toLowerCase()}
+                    </button>
+                  </form>
+                )}
+                {order.status === 'pending' && (
+                  <form
+                    action={cancelOrderAsStaff}
+                    onSubmit={(e) => {
+                      if (!confirm(`¿Cancelar el pedido de la mesa ${order.tableLabel}? Los platos volverán al carrito del cliente.`)) {
+                        e.preventDefault()
+                      }
+                    }}
+                  >
+                    <input type="hidden" name="id" value={order.id} />
+                    <button type="submit" className="text-xs text-red-600 underline">
+                      Cancelar
+                    </button>
+                  </form>
+                )}
+              </div>
             </li>
           ))}
         </ul>

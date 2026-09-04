@@ -31,6 +31,7 @@ export function InviteForm() {
           className="rounded border border-gray-300 px-3 py-2"
         >
           <option value="kitchen_staff">Cocina</option>
+          <option value="waiter">Camarero</option>
           <option value="admin">Administrador</option>
         </select>
       </div>

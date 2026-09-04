@@ -2,6 +2,7 @@ import 'server-only'
 import type { createClient } from '@/lib/supabase/server'
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
+type Station = 'kitchen' | 'bar'
 
 export type OrderDetail = {
   id: string
@@ -14,16 +15,23 @@ export type OrderDetail = {
     dishName: string
     priceCents: number
     participantName: string
+    station: Station
   }[]
 }
 
-// Shared by the kitchen board and the history page — both need "orders for
-// this restaurant, with their table's label and each item's dish/price/who
-// ordered it" — just with different status filters and ordering.
+// Shared by the kitchen board, the bar/floor board, and the history page —
+// all need "orders for this restaurant, with their table's label and each
+// item's dish/price/who ordered/which station preps it" — just with
+// different status filters and ordering.
 export async function getRestaurantOrders(
   supabase: SupabaseServerClient,
   restaurantId: string,
-  options?: { excludeStatus?: OrderDetail['status']; ascending?: boolean; since?: string }
+  options?: {
+    excludeStatus?: OrderDetail['status']
+    statuses?: OrderDetail['status'][]
+    ascending?: boolean
+    since?: string
+  }
 ): Promise<OrderDetail[]> {
   let query = supabase
     .from('orders')
@@ -33,6 +41,9 @@ export async function getRestaurantOrders(
 
   if (options?.excludeStatus) {
     query = query.neq('status', options.excludeStatus)
+  }
+  if (options?.statuses) {
+    query = query.in('status', options.statuses)
   }
   if (options?.since) {
     query = query.gte('created_at', options.since)
@@ -64,16 +75,24 @@ export async function getRestaurantOrders(
       ? supabase.from('tables').select('id, label').in('id', tableIds)
       : Promise.resolve({ data: [] }),
     menuItemIds.length > 0
-      ? supabase.from('menu_items').select('id, name, price_cents').in('id', menuItemIds)
+      ? supabase.from('menu_items').select('id, name, price_cents, category_id').in('id', menuItemIds)
       : Promise.resolve({ data: [] }),
     participantIds.length > 0
       ? supabase.from('session_participants').select('id, name').in('id', participantIds)
       : Promise.resolve({ data: [] }),
   ])
 
+  const menuItemList = menuItems ?? []
+  const categoryIds = [...new Set(menuItemList.map((m) => m.category_id).filter((id): id is string => !!id))]
+  const { data: categories } =
+    categoryIds.length > 0
+      ? await supabase.from('menu_categories').select('id, station').in('id', categoryIds)
+      : { data: [] }
+
+  const stationByCategoryId = new Map((categories ?? []).map((c) => [c.id, c.station as Station]))
   const tableLabelById = new Map((tables ?? []).map((t) => [t.id, t.label]))
   const tableIdBySession = new Map(sessionList.map((s) => [s.id, s.table_id]))
-  const menuItemById = new Map((menuItems ?? []).map((m) => [m.id, m]))
+  const menuItemById = new Map(menuItemList.map((m) => [m.id, m]))
   const participantNameById = new Map((participants ?? []).map((p) => [p.id, p.name]))
 
   return orderList.map((order) => ({
@@ -85,12 +104,16 @@ export async function getRestaurantOrders(
       .filter((item) => item.order_id === order.id)
       .map((item) => {
         const menuItem = menuItemById.get(item.menu_item_id)
+        const station = menuItem?.category_id
+          ? (stationByCategoryId.get(menuItem.category_id) ?? 'kitchen')
+          : 'kitchen'
         return {
           id: item.id,
           quantity: item.quantity,
           dishName: menuItem?.name ?? '—',
           priceCents: menuItem?.price_cents ?? 0,
           participantName: participantNameById.get(item.participant_id) ?? '—',
+          station,
         }
       }),
   }))

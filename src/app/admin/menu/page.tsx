@@ -12,7 +12,7 @@ export default async function MenuPage() {
   const [{ data: categories }, { data: items }] = await Promise.all([
     supabase
       .from('menu_categories')
-      .select('id, name')
+      .select('id, name, station')
       .eq('restaurant_id', restaurant.id)
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true }),
@@ -42,6 +42,7 @@ export default async function MenuPage() {
                 key={c.id}
                 id={c.id}
                 name={c.name}
+                station={c.station}
                 isFirst={index === 0}
                 isLast={index === categoryList.length - 1}
               />

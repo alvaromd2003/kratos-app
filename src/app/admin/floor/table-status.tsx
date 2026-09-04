@@ -1,11 +1,26 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { closeTableSession } from '@/app/actions/tables'
 
 type Table = { id: string; label: string; occupied: boolean }
 type SessionRow = { table_id: string; status: 'open' | 'closed' }
+
+async function fetchOccupancy(
+  supabase: ReturnType<typeof createClient>,
+  restaurantId: string,
+  tables: Table[]
+): Promise<Table[]> {
+  const { data: openSessions } = await supabase
+    .from('table_sessions')
+    .select('table_id')
+    .eq('restaurant_id', restaurantId)
+    .eq('status', 'open')
+
+  const occupiedIds = new Set((openSessions ?? []).map((s) => s.table_id))
+  return tables.map((t) => ({ ...t, occupied: occupiedIds.has(t.id) }))
+}
 
 export function TableStatus({
   restaurantId,
@@ -15,6 +30,7 @@ export function TableStatus({
   initialTables: Table[]
 }) {
   const [tables, setTables] = useState(initialTables)
+  const hasConnectedBefore = useRef(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -52,7 +68,17 @@ export function TableStatus({
           )
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        if (status !== 'SUBSCRIBED') return
+        if (!hasConnectedBefore.current) {
+          hasConnectedBefore.current = true
+          return
+        }
+        setTables((current) => {
+          fetchOccupancy(supabase, restaurantId, current).then(setTables)
+          return current
+        })
+      })
 
     return () => {
       supabase.removeChannel(channel)

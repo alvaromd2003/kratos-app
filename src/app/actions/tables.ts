@@ -110,7 +110,7 @@ export async function toggleTableActive(formData: FormData) {
 
 // Ends the group currently seated at this table so the next QR scan starts
 // a brand-new session instead of joining the outgoing group's. Any staff
-// member can do this — in practice it's the floor/kitchen staff who know
+// member can do this — in practice it's whoever's on the floor who knows
 // when a group has actually left, not just the owner.
 export async function closeTableSession(formData: FormData) {
   const { restaurant } = await getCurrentRestaurant()
@@ -133,5 +133,5 @@ export async function closeTableSession(formData: FormData) {
     .eq('status', 'open')
 
   revalidatePath('/admin/tables')
-  revalidatePath('/admin/kitchen')
+  revalidatePath('/admin/floor')
 }

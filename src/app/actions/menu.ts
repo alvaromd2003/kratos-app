@@ -75,6 +75,7 @@ export async function createCategory(
 ): Promise<MenuFormState> {
   const { restaurant } = await getCurrentRestaurant()
   const name = String(formData.get('name') ?? '').trim()
+  const station = formData.get('station') === 'bar' ? 'bar' : 'kitchen'
   if (!name) {
     return { error: 'Escribe un nombre de categoría.' }
   }
@@ -83,7 +84,7 @@ export async function createCategory(
   const sortOrder = await getNextSortOrder(supabase, 'menu_categories', restaurant.id)
   const { error } = await supabase
     .from('menu_categories')
-    .insert({ restaurant_id: restaurant.id, name, sort_order: sortOrder })
+    .insert({ restaurant_id: restaurant.id, name, sort_order: sortOrder, station })
 
   if (error) {
     return { error: 'No se pudo crear la categoría.' }
@@ -99,6 +100,7 @@ export async function updateCategory(
   const { restaurant } = await getCurrentRestaurant()
   const id = String(formData.get('id') ?? '')
   const name = String(formData.get('name') ?? '').trim()
+  const station = formData.get('station') === 'bar' ? 'bar' : 'kitchen'
 
   if (!name) {
     return { error: 'Escribe un nombre de categoría.' }
@@ -107,7 +109,7 @@ export async function updateCategory(
   const supabase = await createClient()
   const { error } = await supabase
     .from('menu_categories')
-    .update({ name })
+    .update({ name, station })
     .eq('id', id)
     .eq('restaurant_id', restaurant.id)
 

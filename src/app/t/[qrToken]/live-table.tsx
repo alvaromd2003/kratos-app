@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import { formatPrice, formatTime } from '@/lib/format'
 import { DIETARY_TAGS, dietaryTagLabel } from '@/lib/dietary-tags'
+import { cancelOrder } from '@/app/actions/ordering'
 import { AddItemButton } from './add-item-button'
 import { CartItemRow } from './cart-item-row'
 import { SendOrderButton } from './send-order-button'
@@ -87,9 +88,29 @@ export function LiveTable({
   const [orderItems, setOrderItems] = useState(initialOrderItems)
   const [orders, setOrders] = useState(initialOrders)
   const [activeTags, setActiveTags] = useState<Set<string>>(new Set())
+  const hasConnectedBefore = useRef(false)
 
   useEffect(() => {
     const supabase = createClient()
+
+    async function resync() {
+      const [{ data: freshOrderItems }, { data: freshParticipants }, { data: freshOrders }] =
+        await Promise.all([
+          supabase
+            .from('order_items')
+            .select('id, menu_item_id, participant_id, quantity, order_id')
+            .eq('table_session_id', tableSessionId),
+          supabase
+            .from('session_participants')
+            .select('id, name')
+            .eq('table_session_id', tableSessionId),
+          supabase.from('orders').select('id, status, created_at').eq('table_session_id', tableSessionId),
+        ])
+      if (freshOrderItems) setOrderItems(freshOrderItems)
+      if (freshParticipants) setParticipants(freshParticipants)
+      if (freshOrders) setOrders(freshOrders)
+    }
+
     const channel = supabase
       .channel(`table-session-${tableSessionId}`)
       .on<OrderItemRow>(
@@ -122,7 +143,17 @@ export function LiveTable({
         },
         (payload) => setOrders((current) => applyChange(current, payload))
       )
-      .subscribe()
+      .subscribe((status) => {
+        if (status !== 'SUBSCRIBED') return
+        if (!hasConnectedBefore.current) {
+          hasConnectedBefore.current = true
+          return
+        }
+        // Reconnected after a drop (spotty wifi is common in a dining
+        // room) — postgres_changes doesn't replay what was missed, so
+        // pull a fresh snapshot instead of silently going stale.
+        resync()
+      })
 
     return () => {
       supabase.removeChannel(channel)
@@ -196,10 +227,28 @@ export function LiveTable({
               const orderRows = orderItems.filter((row) => row.order_id === order.id)
               return (
                 <li key={order.id}>
-                  <p>
-                    <span className="font-medium">{formatTime(order.created_at)}</span> —{' '}
-                    {ORDER_STATUS_LABEL[order.status]}
-                  </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p>
+                      <span className="font-medium">{formatTime(order.created_at)}</span> —{' '}
+                      {ORDER_STATUS_LABEL[order.status]}
+                    </p>
+                    {order.status === 'pending' && (
+                      <form
+                        action={cancelOrder}
+                        onSubmit={(e) => {
+                          if (!confirm('¿Cancelar este pedido? Los platos volverán al carrito.')) {
+                            e.preventDefault()
+                          }
+                        }}
+                      >
+                        <input type="hidden" name="qr_token" value={qrToken} />
+                        <input type="hidden" name="order_id" value={order.id} />
+                        <button type="submit" className="text-xs text-red-600 underline">
+                          Cancelar
+                        </button>
+                      </form>
+                    )}
+                  </div>
                   <p className="text-xs text-gray-500">
                     {orderRows
                       .map((row) => `${row.quantity}× ${itemsById.get(row.menu_item_id)?.name ?? '—'}`)

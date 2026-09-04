@@ -6,11 +6,13 @@ import { updateCategory, deleteCategory, moveCategory } from '@/app/actions/menu
 export function CategoryRow({
   id,
   name,
+  station,
   isFirst,
   isLast,
 }: {
   id: string
   name: string
+  station: string
   isFirst: boolean
   isLast: boolean
 }) {
@@ -42,6 +44,14 @@ export function CategoryRow({
           required
           className="w-32 rounded border border-gray-300 px-2 py-1 text-sm"
         />
+        <select
+          name="station"
+          defaultValue={station}
+          className="rounded border border-gray-300 px-2 py-1 text-sm"
+        >
+          <option value="kitchen">Cocina</option>
+          <option value="bar">Barra</option>
+        </select>
         <button disabled={pending} type="submit" className="text-xs underline">
           {pending ? 'Guardando…' : 'Guardar'}
         </button>
