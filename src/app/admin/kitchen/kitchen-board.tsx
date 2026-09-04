@@ -137,6 +137,9 @@ export function KitchenBoard({
         },
         async (payload: RealtimePostgresChangesPayload<OrderRow>) => {
           const row = payload.new as OrderRow
+          // A drinks-only round is created as "ready" straight away (no
+          // kitchen items at all) — that one's not Cocina's to show.
+          if (row.status !== 'pending' && row.status !== 'preparing') return
           const full = await loadFullOrder(supabase, row)
           if (!full) return
           setOrders((current) =>
