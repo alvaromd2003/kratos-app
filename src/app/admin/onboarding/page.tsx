@@ -12,12 +12,19 @@ export default async function OnboardingPage() {
     redirect('/login')
   }
 
-  const { data: membership } = await supabase
+  const { data: membership, error } = await supabase
     .from('restaurant_users')
     .select('restaurant_id')
     .eq('user_id', user.id)
     .limit(1)
     .maybeSingle()
+
+  // A real query failure must not look like "no restaurant yet" — that
+  // would show the create-restaurant form to someone who already has one,
+  // risking a duplicate.
+  if (error) {
+    throw new Error(`No se pudo comprobar tu restaurante: ${error.message}`)
+  }
 
   if (membership) {
     redirect('/admin')
