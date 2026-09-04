@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { resolveHelpRequest } from '@/app/actions/kitchen'
 import { formatTime } from '@/lib/format'
+import { playAlertSound } from '@/lib/alert-sound'
+import { setBadgeCount, clearBadgeCount } from '@/lib/tab-badge'
 
 type HelpRequest = {
   id: string
@@ -51,6 +53,11 @@ export function HelpAlerts({
   const hasConnectedBefore = useRef(false)
 
   useEffect(() => {
+    setBadgeCount('help-requests', requests.length)
+    return () => clearBadgeCount('help-requests')
+  }, [requests.length])
+
+  useEffect(() => {
     const supabase = createClient()
     const channel = supabase
       .channel(`help-requests-${restaurantId}`)
@@ -64,6 +71,7 @@ export function HelpAlerts({
         },
         (payload) => {
           const row = payload.new as HelpRequestRow
+          playAlertSound()
           setRequests((current) =>
             current.some((r) => r.id === row.id)
               ? current

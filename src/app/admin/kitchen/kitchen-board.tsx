@@ -6,6 +6,8 @@ import { createClient } from '@/lib/supabase/client'
 import { formatPrice, formatTime } from '@/lib/format'
 import { updateOrderStatus, cancelOrderAsStaff } from '@/app/actions/kitchen'
 import type { OrderDetail } from '@/lib/orders'
+import { playAlertSound } from '@/lib/alert-sound'
+import { setBadgeCount, clearBadgeCount } from '@/lib/tab-badge'
 
 type OrderStatus = OrderDetail['status']
 type OrderRow = { id: string; table_session_id: string; status: OrderStatus; created_at: string }
@@ -123,6 +125,11 @@ export function KitchenBoard({
   const hasConnectedBefore = useRef(false)
 
   useEffect(() => {
+    setBadgeCount('kitchen-orders', orders.length)
+    return () => clearBadgeCount('kitchen-orders')
+  }, [orders.length])
+
+  useEffect(() => {
     const supabase = createClient()
 
     const channel = supabase
@@ -142,6 +149,7 @@ export function KitchenBoard({
           if (row.status !== 'pending' && row.status !== 'preparing') return
           const full = await loadFullOrder(supabase, row)
           if (!full) return
+          playAlertSound()
           setOrders((current) =>
             current.some((o) => o.id === full.id) ? current : [...current, full]
           )

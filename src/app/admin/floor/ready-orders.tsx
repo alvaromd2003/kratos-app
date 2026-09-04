@@ -5,6 +5,8 @@ import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import { updateOrderStatus } from '@/app/actions/kitchen'
 import type { OrderDetail } from '@/lib/orders'
+import { playAlertSound } from '@/lib/alert-sound'
+import { setBadgeCount, clearBadgeCount } from '@/lib/tab-badge'
 
 type OrderRow = { id: string; table_session_id: string; status: OrderDetail['status']; created_at: string }
 
@@ -91,6 +93,11 @@ export function ReadyOrders({
   const hasConnectedBefore = useRef(false)
 
   useEffect(() => {
+    setBadgeCount('ready-orders', orders.length)
+    return () => clearBadgeCount('ready-orders')
+  }, [orders.length])
+
+  useEffect(() => {
     const supabase = createClient()
 
     const channel = supabase
@@ -108,6 +115,7 @@ export function ReadyOrders({
           if (row.status !== 'ready') return
           const full = await loadFullOrder(supabase, row)
           if (!full) return
+          playAlertSound()
           setOrders((current) =>
             current.some((o) => o.id === full.id) ? current : [...current, full]
           )
@@ -132,6 +140,7 @@ export function ReadyOrders({
           // not an INSERT, so it needs adding here rather than above.
           const full = await loadFullOrder(supabase, row)
           if (!full) return
+          playAlertSound()
           setOrders((current) =>
             current.some((o) => o.id === full.id) ? current : [...current, full]
           )
