@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { formatPrice, formatTime } from '@/lib/format'
 import { updateOrderStatus, cancelOrderAsStaff, rejectCancelOrder } from '@/app/actions/kitchen'
 import type { OrderDetail } from '@/lib/orders'
-import { playAlertSound } from '@/lib/alert-sound'
+import { playAlertSound, playWarningSound } from '@/lib/alert-sound'
 import { setBadgeCount, clearBadgeCount } from '@/lib/tab-badge'
 import { useWakeLock } from '@/lib/use-wake-lock'
 
@@ -204,7 +204,7 @@ export function KitchenBoard({
           setOrders((current) => {
             const existing = current.find((o) => o.id === row.id)
             if (existing && !existing.cancellationRequestedAt && row.cancellation_requested_at) {
-              playAlertSound()
+              playWarningSound()
             }
             return current
           })
