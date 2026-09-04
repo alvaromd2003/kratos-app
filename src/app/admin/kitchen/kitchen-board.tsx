@@ -96,16 +96,21 @@ async function loadFullOrder(
   }
 }
 
+// Returns null on a failed fetch (instead of []) so a resync that fails
+// can leave the board as-is rather than wiping it to "nothing pending" —
+// which would be worse than just staying stale for a few seconds.
 async function fetchPendingOrders(
   supabase: ReturnType<typeof createClient>,
   restaurantId: string
-): Promise<OrderDetail[]> {
-  const { data: rows } = await supabase
+): Promise<OrderDetail[] | null> {
+  const { data: rows, error } = await supabase
     .from('orders')
     .select('id, table_session_id, status, created_at')
     .eq('restaurant_id', restaurantId)
     .in('status', ['pending', 'preparing'])
     .order('created_at', { ascending: true })
+
+  if (error) return null
 
   const full = await Promise.all((rows ?? []).map((row) => loadFullOrder(supabase, row as OrderRow)))
   return full.filter((o): o is OrderDetail => o !== null)
@@ -205,8 +210,12 @@ export function KitchenBoard({
           return
         }
         // Reconnected after a drop — postgres_changes doesn't replay what
-        // was missed, so pull a fresh snapshot to avoid a stale board.
-        fetchPendingOrders(supabase, restaurantId).then(setOrders)
+        // was missed, so pull a fresh snapshot to avoid a stale board. If
+        // that fetch itself fails, keep showing what we had rather than
+        // wiping the board to "nothing pending".
+        fetchPendingOrders(supabase, restaurantId).then((fresh) => {
+          if (fresh) setOrders(fresh)
+        })
       })
 
     return () => {

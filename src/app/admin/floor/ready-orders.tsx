@@ -68,16 +68,21 @@ async function loadFullOrder(
   }
 }
 
+// Returns null on a failed fetch (instead of []) so a resync that fails
+// leaves the board as-is rather than wiping it to "nothing ready" — worse
+// than just staying stale for a few seconds.
 async function fetchReadyOrders(
   supabase: ReturnType<typeof createClient>,
   restaurantId: string
-): Promise<OrderDetail[]> {
-  const { data: rows } = await supabase
+): Promise<OrderDetail[] | null> {
+  const { data: rows, error } = await supabase
     .from('orders')
     .select('id, table_session_id, status, created_at')
     .eq('restaurant_id', restaurantId)
     .eq('status', 'ready')
     .order('created_at', { ascending: true })
+
+  if (error) return null
 
   const full = await Promise.all((rows ?? []).map((row) => loadFullOrder(supabase, row as OrderRow)))
   return full.filter((o): o is OrderDetail => o !== null)
@@ -153,7 +158,9 @@ export function ReadyOrders({
           hasConnectedBefore.current = true
           return
         }
-        fetchReadyOrders(supabase, restaurantId).then(setOrders)
+        fetchReadyOrders(supabase, restaurantId).then((fresh) => {
+          if (fresh) setOrders(fresh)
+        })
       })
 
     return () => {
