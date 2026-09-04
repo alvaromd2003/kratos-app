@@ -142,7 +142,7 @@ export function LiveTable({
         )}
       </section>
 
-      <section className="fixed inset-x-0 bottom-0 flex max-h-64 flex-col gap-3 border-t border-gray-200 bg-white px-4 py-4 shadow-[0_-4px_12px_rgba(0,0,0,0.08)]">
+      <section className="fixed inset-x-0 bottom-0 flex max-h-64 flex-col gap-3 border-t border-gray-200 bg-white px-4 py-4 text-gray-900 shadow-[0_-4px_12px_rgba(0,0,0,0.08)]">
         <h2 className="font-medium">Carrito de la mesa</h2>
         {orderItems.length === 0 ? (
           <p className="text-sm text-gray-500">Todavía no hay nada en el carrito.</p>
