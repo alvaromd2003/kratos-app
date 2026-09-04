@@ -18,12 +18,17 @@ export default async function TableOrderPage({
   }
 
   const admin = createAdminClient()
-  const { data: restaurant } = await admin
+  const { data: restaurant, error: restaurantError } = await admin
     .from('restaurants')
     .select('name, currency, enabled_dietary_tags')
     .eq('id', table.restaurant_id)
     .single()
 
+  // Same reasoning as getActiveTableByQrToken: a real query failure must
+  // not show the diner a 404 as if the restaurant didn't exist.
+  if (restaurantError) {
+    throw new Error(`No se pudo cargar el restaurante: ${restaurantError.message}`)
+  }
   if (!restaurant) {
     notFound()
   }
