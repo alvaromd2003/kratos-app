@@ -52,6 +52,9 @@ async function loadFullOrder(
     id: row.id,
     status: row.status,
     createdAt: row.created_at,
+    // Cancellation requests only ever apply to "pending" orders — by the
+    // time one is "ready" this doesn't come up.
+    cancellationRequestedAt: null,
     tableLabel: table?.label ?? '—',
     items: itemList.map((item) => {
       const menuItem = menuItemById.get(item.menu_item_id)

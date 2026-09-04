@@ -8,6 +8,7 @@ export type OrderDetail = {
   id: string
   status: 'pending' | 'preparing' | 'ready' | 'delivered'
   createdAt: string
+  cancellationRequestedAt: string | null
   tableLabel: string
   items: {
     id: string
@@ -36,7 +37,7 @@ export async function getRestaurantOrders(
 ): Promise<OrderDetail[]> {
   let query = supabase
     .from('orders')
-    .select('id, table_session_id, status, created_at')
+    .select('id, table_session_id, status, created_at, cancellation_requested_at')
     .eq('restaurant_id', restaurantId)
     .order('created_at', { ascending: options?.ascending ?? false })
 
@@ -100,6 +101,7 @@ export async function getRestaurantOrders(
     id: order.id,
     status: order.status,
     createdAt: order.created_at,
+    cancellationRequestedAt: order.cancellation_requested_at,
     tableLabel: tableLabelById.get(tableIdBySession.get(order.table_session_id) ?? '') ?? '—',
     items: itemList
       .filter((item) => item.order_id === order.id)

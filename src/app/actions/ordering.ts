@@ -300,9 +300,10 @@ export async function sendOrderToKitchen(
   }
 }
 
-// Only while the order is still "pending" (kitchen hasn't started it) —
-// puts the items back in the open cart rather than just discarding them.
-export async function cancelOrder(formData: FormData) {
+// A diner can't cancel outright — kitchen might already be on it even
+// though the status still says "pending". This just flags the request;
+// see confirmCancelOrder / rejectCancelOrder in actions/kitchen.ts.
+export async function requestCancelOrder(formData: FormData) {
   const qrToken = String(formData.get('qr_token') ?? '')
   const orderId = String(formData.get('order_id') ?? '')
 
@@ -310,17 +311,12 @@ export async function cancelOrder(formData: FormData) {
   if (!verified) return
 
   const admin = createAdminClient()
-
-  const { data: order } = await admin
+  await admin
     .from('orders')
-    .select('id, status')
+    .update({ cancellation_requested_at: new Date().toISOString() })
     .eq('id', orderId)
     .eq('table_session_id', verified.tableSessionId)
-    .maybeSingle()
-  if (!order || order.status !== 'pending') return
-
-  await admin.from('order_items').update({ order_id: null }).eq('order_id', orderId)
-  await admin.from('orders').delete().eq('id', orderId)
+    .eq('status', 'pending')
 }
 
 export async function requestHelp(

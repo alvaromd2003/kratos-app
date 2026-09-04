@@ -80,7 +80,7 @@ export default async function TableOrderPage({
       .order('created_at', { ascending: true }),
     admin
       .from('orders')
-      .select('id, status, created_at')
+      .select('id, status, created_at, cancellation_requested_at')
       .eq('table_session_id', verified.session.id)
       .order('created_at', { ascending: true }),
   ])

@@ -5,7 +5,7 @@ import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import { formatPrice, formatTime } from '@/lib/format'
 import { DIETARY_TAGS, dietaryTagLabel } from '@/lib/dietary-tags'
-import { cancelOrder } from '@/app/actions/ordering'
+import { requestCancelOrder } from '@/app/actions/ordering'
 import { AddItemButton } from './add-item-button'
 import { CartItemRow } from './cart-item-row'
 import { SendOrderButton } from './send-order-button'
@@ -32,7 +32,12 @@ type OrderItemRow = {
   note: string | null
 }
 type OrderStatus = 'pending' | 'preparing' | 'ready' | 'delivered'
-type OrderRow = { id: string; status: OrderStatus; created_at: string }
+type OrderRow = {
+  id: string
+  status: OrderStatus
+  created_at: string
+  cancellation_requested_at: string | null
+}
 type ActiveOrderRow = { id: string; status: OrderStatus; created_at: string }
 
 const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
@@ -120,7 +125,10 @@ export function LiveTable({
           .from('session_participants')
           .select('id, name')
           .eq('table_session_id', tableSessionId),
-        supabase.from('orders').select('id, status, created_at').eq('table_session_id', tableSessionId),
+        supabase
+          .from('orders')
+          .select('id, status, created_at, cancellation_requested_at')
+          .eq('table_session_id', tableSessionId),
         supabase
           .from('orders')
           .select('id, status, created_at')
@@ -300,22 +308,31 @@ export function LiveTable({
                         </span>
                       )}
                     </p>
-                    {order.status === 'pending' && (
-                      <form
-                        action={cancelOrder}
-                        onSubmit={(e) => {
-                          if (!confirm('¿Cancelar este pedido? Los platos volverán al carrito.')) {
-                            e.preventDefault()
-                          }
-                        }}
-                      >
-                        <input type="hidden" name="qr_token" value={qrToken} />
-                        <input type="hidden" name="order_id" value={order.id} />
-                        <button type="submit" className="text-xs text-red-600 underline">
-                          Cancelar
-                        </button>
-                      </form>
-                    )}
+                    {order.status === 'pending' &&
+                      (order.cancellation_requested_at ? (
+                        <span className="text-xs text-gray-500">
+                          Cancelación solicitada, esperando confirmación
+                        </span>
+                      ) : (
+                        <form
+                          action={requestCancelOrder}
+                          onSubmit={(e) => {
+                            if (
+                              !confirm(
+                                '¿Pedir a cocina que cancele este pedido? Si ya lo han empezado a preparar, pueden no aceptarlo.'
+                              )
+                            ) {
+                              e.preventDefault()
+                            }
+                          }}
+                        >
+                          <input type="hidden" name="qr_token" value={qrToken} />
+                          <input type="hidden" name="order_id" value={order.id} />
+                          <button type="submit" className="text-xs text-red-600 underline">
+                            Cancelar
+                          </button>
+                        </form>
+                      ))}
                   </div>
                   <p className="text-xs text-gray-500">
                     {orderRows

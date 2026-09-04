@@ -4,14 +4,20 @@ import { useEffect, useRef, useState } from 'react'
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import { formatPrice, formatTime } from '@/lib/format'
-import { updateOrderStatus, cancelOrderAsStaff } from '@/app/actions/kitchen'
+import { updateOrderStatus, cancelOrderAsStaff, rejectCancelOrder } from '@/app/actions/kitchen'
 import type { OrderDetail } from '@/lib/orders'
 import { playAlertSound } from '@/lib/alert-sound'
 import { setBadgeCount, clearBadgeCount } from '@/lib/tab-badge'
 import { useWakeLock } from '@/lib/use-wake-lock'
 
 type OrderStatus = OrderDetail['status']
-type OrderRow = { id: string; table_session_id: string; status: OrderStatus; created_at: string }
+type OrderRow = {
+  id: string
+  table_session_id: string
+  status: OrderStatus
+  created_at: string
+  cancellation_requested_at: string | null
+}
 
 const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
   pending: 'preparing',
@@ -77,6 +83,7 @@ async function loadFullOrder(
     id: row.id,
     status: row.status,
     createdAt: row.created_at,
+    cancellationRequestedAt: row.cancellation_requested_at,
     tableLabel: table?.label ?? '—',
     items: itemList.map((item) => {
       const menuItem = menuItemById.get(item.menu_item_id)
@@ -105,7 +112,7 @@ async function fetchPendingOrders(
 ): Promise<OrderDetail[] | null> {
   const { data: rows, error } = await supabase
     .from('orders')
-    .select('id, table_session_id, status, created_at')
+    .select('id, table_session_id, status, created_at, cancellation_requested_at')
     .eq('restaurant_id', restaurantId)
     .in('status', ['pending', 'preparing'])
     .order('created_at', { ascending: true })
@@ -189,8 +196,25 @@ export function KitchenBoard({
             return
           }
           if (row.status === 'ready') return
+
+          // A brand-new cancellation request needs attention like a new
+          // order does — compared against what's on screen right now,
+          // since Realtime UPDATE payloads don't reliably carry the old
+          // row's values.
+          setOrders((current) => {
+            const existing = current.find((o) => o.id === row.id)
+            if (existing && !existing.cancellationRequestedAt && row.cancellation_requested_at) {
+              playAlertSound()
+            }
+            return current
+          })
+
           setOrders((current) =>
-            current.map((o) => (o.id === row.id ? { ...o, status: row.status } : o))
+            current.map((o) =>
+              o.id === row.id
+                ? { ...o, status: row.status, cancellationRequestedAt: row.cancellation_requested_at }
+                : o
+            )
           )
         }
       )
@@ -230,7 +254,12 @@ export function KitchenBoard({
       ) : (
         <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {orders.map((order) => (
-            <li key={order.id} className="flex flex-col gap-3 rounded border border-gray-200 p-4">
+            <li
+              key={order.id}
+              className={`flex flex-col gap-3 rounded border p-4 ${
+                order.cancellationRequestedAt ? 'border-2 border-red-600 bg-red-50' : 'border-gray-200'
+              }`}
+            >
               <div className="flex items-center justify-between">
                 <h2 className="font-semibold">Mesa {order.tableLabel}</h2>
                 <span className="text-xs text-gray-500">{STATUS_LABEL[order.status]}</span>
@@ -248,32 +277,57 @@ export function KitchenBoard({
                     </li>
                   ))}
               </ul>
-              <div className="flex items-center gap-3">
-                {NEXT_STATUS[order.status] && (
-                  <form action={updateOrderStatus}>
-                    <input type="hidden" name="id" value={order.id} />
-                    <input type="hidden" name="status" value={NEXT_STATUS[order.status]!} />
-                    <button type="submit" className="rounded bg-black px-3 py-1 text-xs text-white">
-                      Marcar como {STATUS_LABEL[NEXT_STATUS[order.status]!].toLowerCase()}
-                    </button>
-                  </form>
-                )}
-                {order.status === 'pending' && (
-                  <form
-                    action={cancelOrderAsStaff}
-                    onSubmit={(e) => {
-                      if (!confirm(`¿Cancelar el pedido de la mesa ${order.tableLabel}? Los platos volverán al carrito del cliente.`)) {
-                        e.preventDefault()
-                      }
-                    }}
-                  >
-                    <input type="hidden" name="id" value={order.id} />
-                    <button type="submit" className="text-xs text-red-600 underline">
-                      Cancelar
-                    </button>
-                  </form>
-                )}
-              </div>
+              {order.cancellationRequestedAt ? (
+                <div className="flex flex-col gap-2">
+                  <p className="text-sm font-bold text-red-700">
+                    ⚠ El cliente pide cancelar este pedido
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <form action={cancelOrderAsStaff}>
+                      <input type="hidden" name="id" value={order.id} />
+                      <button
+                        type="submit"
+                        className="rounded bg-red-600 px-3 py-1 text-xs font-medium text-white"
+                      >
+                        Confirmar cancelación
+                      </button>
+                    </form>
+                    <form action={rejectCancelOrder}>
+                      <input type="hidden" name="id" value={order.id} />
+                      <button type="submit" className="text-xs underline">
+                        Rechazar (seguir preparándolo)
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  {NEXT_STATUS[order.status] && (
+                    <form action={updateOrderStatus}>
+                      <input type="hidden" name="id" value={order.id} />
+                      <input type="hidden" name="status" value={NEXT_STATUS[order.status]!} />
+                      <button type="submit" className="rounded bg-black px-3 py-1 text-xs text-white">
+                        Marcar como {STATUS_LABEL[NEXT_STATUS[order.status]!].toLowerCase()}
+                      </button>
+                    </form>
+                  )}
+                  {order.status === 'pending' && (
+                    <form
+                      action={cancelOrderAsStaff}
+                      onSubmit={(e) => {
+                        if (!confirm(`¿Cancelar el pedido de la mesa ${order.tableLabel}? Los platos volverán al carrito del cliente.`)) {
+                          e.preventDefault()
+                        }
+                      }}
+                    >
+                      <input type="hidden" name="id" value={order.id} />
+                      <button type="submit" className="text-xs text-red-600 underline">
+                        Cancelar
+                      </button>
+                    </form>
+                  )}
+                </div>
+              )}
             </li>
           ))}
         </ul>

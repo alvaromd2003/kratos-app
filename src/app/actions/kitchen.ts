@@ -70,3 +70,21 @@ export async function cancelOrderAsStaff(formData: FormData) {
 
   revalidatePath('/admin/kitchen')
 }
+
+// The diner asked to cancel; kitchen decides no (they've already started,
+// or it's too far along) — clears the flag, order carries on as normal.
+export async function rejectCancelOrder(formData: FormData) {
+  const { restaurant, role } = await getCurrentRestaurant()
+  if (role !== 'owner' && role !== 'admin' && role !== 'kitchen_staff') return
+
+  const id = String(formData.get('id') ?? '')
+
+  const supabase = await createClient()
+  await supabase
+    .from('orders')
+    .update({ cancellation_requested_at: null })
+    .eq('id', id)
+    .eq('restaurant_id', restaurant.id)
+
+  revalidatePath('/admin/kitchen')
+}
