@@ -3,12 +3,20 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function getActiveTableByQrToken(qrToken: string) {
   const admin = createAdminClient()
-  const { data } = await admin
+  const { data, error } = await admin
     .from('tables')
     .select('id, restaurant_id, label, active')
     .eq('qr_token', qrToken)
     .eq('active', true)
     .maybeSingle()
+
+  // A real query failure must not look like "this table doesn't exist" —
+  // that shows the diner a 404 (as if the QR code itself were broken)
+  // instead of a retryable error.
+  if (error) {
+    throw new Error(`No se pudo comprobar la mesa: ${error.message}`)
+  }
+
   return data
 }
 
