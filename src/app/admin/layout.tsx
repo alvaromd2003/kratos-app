@@ -59,6 +59,9 @@ export default async function AdminLayout({
               <Link href="/admin/kitchen" className="underline">
                 Cocina
               </Link>
+              <Link href="/admin/history" className="underline">
+                Historial
+              </Link>
               <Link href="/admin/staff" className="underline">
                 Personal
               </Link>
