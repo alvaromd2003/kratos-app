@@ -1,13 +1,39 @@
 'use client'
 
 import { useActionState } from 'react'
-import { updateCategory, deleteCategory } from '@/app/actions/menu'
+import { updateCategory, deleteCategory, moveCategory } from '@/app/actions/menu'
 
-export function CategoryRow({ id, name }: { id: string; name: string }) {
+export function CategoryRow({
+  id,
+  name,
+  isFirst,
+  isLast,
+}: {
+  id: string
+  name: string
+  isFirst: boolean
+  isLast: boolean
+}) {
   const [state, action, pending] = useActionState(updateCategory, undefined)
 
   return (
     <li className="flex flex-col gap-1 rounded border border-gray-300 px-3 py-2">
+      <div className="flex items-center gap-1">
+        <form action={moveCategory}>
+          <input type="hidden" name="id" value={id} />
+          <input type="hidden" name="direction" value="up" />
+          <button type="submit" disabled={isFirst} className="text-xs disabled:opacity-30">
+            ▲
+          </button>
+        </form>
+        <form action={moveCategory}>
+          <input type="hidden" name="id" value={id} />
+          <input type="hidden" name="direction" value="down" />
+          <button type="submit" disabled={isLast} className="text-xs disabled:opacity-30">
+            ▼
+          </button>
+        </form>
+      </div>
       <form action={action} className="flex items-center gap-2">
         <input type="hidden" name="id" value={id} />
         <input

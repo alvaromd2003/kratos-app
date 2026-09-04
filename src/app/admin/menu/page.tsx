@@ -14,12 +14,14 @@ export default async function MenuPage() {
       .from('menu_categories')
       .select('id, name')
       .eq('restaurant_id', restaurant.id)
-      .order('sort_order'),
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true }),
     supabase
       .from('menu_items')
       .select('id, category_id, name, description, price_cents, image_url, is_available')
       .eq('restaurant_id', restaurant.id)
-      .order('sort_order'),
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true }),
   ])
 
   const categoryList = categories ?? []
@@ -33,8 +35,14 @@ export default async function MenuPage() {
         <h2 className="font-medium">Categorías</h2>
         {categoryList.length > 0 && (
           <ul className="flex flex-wrap gap-2">
-            {categoryList.map((c) => (
-              <CategoryRow key={c.id} id={c.id} name={c.name} />
+            {categoryList.map((c, index) => (
+              <CategoryRow
+                key={c.id}
+                id={c.id}
+                name={c.name}
+                isFirst={index === 0}
+                isLast={index === categoryList.length - 1}
+              />
             ))}
           </ul>
         )}
@@ -45,8 +53,14 @@ export default async function MenuPage() {
         <h2 className="font-medium">Platos</h2>
         {itemList.length > 0 && (
           <ul className="flex flex-col gap-2">
-            {itemList.map((item) => (
-              <ItemRow key={item.id} item={item} categories={categoryList} />
+            {itemList.map((item, index) => (
+              <ItemRow
+                key={item.id}
+                item={item}
+                categories={categoryList}
+                isFirst={index === 0}
+                isLast={index === itemList.length - 1}
+              />
             ))}
           </ul>
         )}

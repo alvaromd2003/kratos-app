@@ -2,7 +2,7 @@ import 'server-only'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 
-type RestaurantRow = { id: string; name: string; slug: string }
+type RestaurantRow = { id: string; name: string; slug: string; currency: string }
 type MembershipRow = {
   restaurant_id: string
   role: 'owner' | 'admin' | 'kitchen_staff'
@@ -29,7 +29,7 @@ export async function getCurrentRestaurant() {
 
   const { data: membership } = await supabase
     .from('restaurant_users')
-    .select('restaurant_id, role, restaurants(id, name, slug)')
+    .select('restaurant_id, role, restaurants(id, name, slug, currency)')
     .eq('user_id', user.id)
     .limit(1)
     .maybeSingle<MembershipRow>()

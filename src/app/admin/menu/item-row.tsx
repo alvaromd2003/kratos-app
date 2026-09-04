@@ -5,6 +5,7 @@ import {
   updateMenuItem,
   deleteMenuItem,
   toggleMenuItemAvailability,
+  moveMenuItem,
 } from '@/app/actions/menu'
 
 type Category = { id: string; name: string }
@@ -21,14 +22,34 @@ type Item = {
 export function ItemRow({
   item,
   categories,
+  isFirst,
+  isLast,
 }: {
   item: Item
   categories: Category[]
+  isFirst: boolean
+  isLast: boolean
 }) {
   const [state, action, pending] = useActionState(updateMenuItem, undefined)
 
   return (
     <li className="flex flex-col gap-3 rounded border border-gray-200 p-3">
+      <div className="flex items-center gap-1">
+        <form action={moveMenuItem}>
+          <input type="hidden" name="id" value={item.id} />
+          <input type="hidden" name="direction" value="up" />
+          <button type="submit" disabled={isFirst} className="text-xs disabled:opacity-30">
+            ▲
+          </button>
+        </form>
+        <form action={moveMenuItem}>
+          <input type="hidden" name="id" value={item.id} />
+          <input type="hidden" name="direction" value="down" />
+          <button type="submit" disabled={isLast} className="text-xs disabled:opacity-30">
+            ▼
+          </button>
+        </form>
+      </div>
       <form action={action} className="flex flex-col gap-2">
         <input type="hidden" name="id" value={item.id} />
         <div className="flex items-center gap-3">

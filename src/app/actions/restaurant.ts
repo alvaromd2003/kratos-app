@@ -2,9 +2,13 @@
 
 import { randomUUID } from 'crypto'
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { getCurrentRestaurant } from '@/lib/restaurant'
 
 export type OnboardingFormState = { error?: string } | undefined
+
+const ALLOWED_CURRENCIES = ['EUR', 'GBP', 'USD', 'AED']
 
 function slugify(name: string) {
   return name
@@ -54,4 +58,34 @@ export async function createRestaurant(
   }
 
   redirect('/admin')
+}
+
+export async function updateRestaurantProfile(
+  _prevState: OnboardingFormState,
+  formData: FormData
+): Promise<OnboardingFormState> {
+  const { restaurant } = await getCurrentRestaurant()
+
+  const name = String(formData.get('name') ?? '').trim()
+  const currency = String(formData.get('currency') ?? '').trim().toUpperCase()
+
+  if (!name) {
+    return { error: 'Escribe el nombre de tu restaurante.' }
+  }
+  if (!ALLOWED_CURRENCIES.includes(currency)) {
+    return { error: 'Elige una moneda válida.' }
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('restaurants')
+    .update({ name, currency })
+    .eq('id', restaurant.id)
+
+  if (error) {
+    return { error: 'No se pudo actualizar el restaurante.' }
+  }
+
+  revalidatePath('/admin/settings')
+  revalidatePath('/admin')
 }

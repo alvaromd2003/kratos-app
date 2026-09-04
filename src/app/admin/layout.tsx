@@ -40,6 +40,12 @@ export default async function AdminLayout({
           <Link href="/admin/tables" className="underline">
             Mesas
           </Link>
+          <Link href="/admin/staff" className="underline">
+            Personal
+          </Link>
+          <Link href="/admin/settings" className="underline">
+            Ajustes
+          </Link>
         </nav>
       </header>
       <main className="p-6">{children}</main>

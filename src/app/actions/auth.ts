@@ -46,6 +46,25 @@ export async function login(
   redirect('/admin')
 }
 
+export async function requestPasswordReset(
+  _prevState: AuthFormState,
+  formData: FormData
+): Promise<AuthFormState> {
+  const email = String(formData.get('email') ?? '').trim()
+  if (!email) {
+    return { error: 'Introduce tu email.' }
+  }
+
+  const supabase = await createClient()
+  await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: 'https://order.kratosystems.com/reset-password',
+  })
+
+  // Always show the same message, whether or not the email exists —
+  // otherwise this becomes a way to check which emails are registered.
+  redirect('/forgot-password/check-email')
+}
+
 export async function logout() {
   const supabase = await createClient()
   await supabase.auth.signOut()

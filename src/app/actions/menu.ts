@@ -9,6 +9,57 @@ const MAX_IMAGE_BYTES = 5 * 1024 * 1024 // 5 MB
 
 export type MenuFormState = { error?: string } | undefined
 
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
+
+async function getNextSortOrder(
+  supabase: SupabaseServerClient,
+  table: 'menu_categories' | 'menu_items',
+  restaurantId: string
+) {
+  const { data } = await supabase
+    .from(table)
+    .select('sort_order')
+    .eq('restaurant_id', restaurantId)
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  return (data?.sort_order ?? -1) + 1
+}
+
+function extractStoragePath(publicUrl: string): string | null {
+  const marker = '/menu-images/'
+  const index = publicUrl.indexOf(marker)
+  if (index === -1) return null
+  return publicUrl.slice(index + marker.length)
+}
+
+async function reorder(
+  supabase: SupabaseServerClient,
+  table: 'menu_categories' | 'menu_items',
+  restaurantId: string,
+  id: string,
+  direction: 'up' | 'down'
+) {
+  const { data: rows } = await supabase
+    .from(table)
+    .select('id, sort_order')
+    .eq('restaurant_id', restaurantId)
+    .order('sort_order', { ascending: true })
+
+  if (!rows) return
+
+  const index = rows.findIndex((row) => row.id === id)
+  const swapIndex = direction === 'up' ? index - 1 : index + 1
+  if (index === -1 || swapIndex < 0 || swapIndex >= rows.length) return
+
+  const current = rows[index]
+  const swap = rows[swapIndex]
+
+  await supabase.from(table).update({ sort_order: swap.sort_order }).eq('id', current.id)
+  await supabase.from(table).update({ sort_order: current.sort_order }).eq('id', swap.id)
+}
+
 export async function createCategory(
   _prevState: MenuFormState,
   formData: FormData
@@ -20,9 +71,10 @@ export async function createCategory(
   }
 
   const supabase = await createClient()
+  const sortOrder = await getNextSortOrder(supabase, 'menu_categories', restaurant.id)
   const { error } = await supabase
     .from('menu_categories')
-    .insert({ restaurant_id: restaurant.id, name })
+    .insert({ restaurant_id: restaurant.id, name, sort_order: sortOrder })
 
   if (error) {
     return { error: 'No se pudo crear la categoría.' }
@@ -53,6 +105,17 @@ export async function updateCategory(
   if (error) {
     return { error: 'No se pudo actualizar la categoría.' }
   }
+
+  revalidatePath('/admin/menu')
+}
+
+export async function moveCategory(formData: FormData) {
+  const { restaurant } = await getCurrentRestaurant()
+  const id = String(formData.get('id') ?? '')
+  const direction = String(formData.get('direction') ?? '') as 'up' | 'down'
+
+  const supabase = await createClient()
+  await reorder(supabase, 'menu_categories', restaurant.id, id, direction)
 
   revalidatePath('/admin/menu')
 }
@@ -118,6 +181,7 @@ export async function createMenuItem(
     imageUrl = supabase.storage.from('menu-images').getPublicUrl(path).data.publicUrl
   }
 
+  const sortOrder = await getNextSortOrder(supabase, 'menu_items', restaurant.id)
   const { error } = await supabase.from('menu_items').insert({
     restaurant_id: restaurant.id,
     category_id: categoryId,
@@ -125,6 +189,7 @@ export async function createMenuItem(
     description,
     price_cents: priceCents,
     image_url: imageUrl,
+    sort_order: sortOrder,
   })
 
   if (error) {
@@ -175,12 +240,24 @@ export async function updateMenuItem(
     category_id: categoryId,
   }
 
+  let oldImagePath: string | null = null
+
   if (imageFile instanceof File && imageFile.size > 0) {
     if (imageFile.size > MAX_IMAGE_BYTES) {
       return { error: 'La foto pesa demasiado (máximo 5MB).' }
     }
     if (!imageFile.type.startsWith('image/')) {
       return { error: 'El archivo tiene que ser una imagen.' }
+    }
+
+    const { data: existing } = await supabase
+      .from('menu_items')
+      .select('image_url')
+      .eq('id', id)
+      .eq('restaurant_id', restaurant.id)
+      .maybeSingle()
+    if (existing?.image_url) {
+      oldImagePath = extractStoragePath(existing.image_url)
     }
 
     const extension = imageFile.name.split('.').pop()?.toLowerCase() || 'jpg'
@@ -207,6 +284,21 @@ export async function updateMenuItem(
     return { error: 'No se pudo actualizar el plato.' }
   }
 
+  if (oldImagePath) {
+    await supabase.storage.from('menu-images').remove([oldImagePath])
+  }
+
+  revalidatePath('/admin/menu')
+}
+
+export async function moveMenuItem(formData: FormData) {
+  const { restaurant } = await getCurrentRestaurant()
+  const id = String(formData.get('id') ?? '')
+  const direction = String(formData.get('direction') ?? '') as 'up' | 'down'
+
+  const supabase = await createClient()
+  await reorder(supabase, 'menu_items', restaurant.id, id, direction)
+
   revalidatePath('/admin/menu')
 }
 
@@ -215,11 +307,22 @@ export async function deleteMenuItem(formData: FormData) {
   const id = String(formData.get('id') ?? '')
 
   const supabase = await createClient()
-  await supabase
+
+  const { data: existing } = await supabase
     .from('menu_items')
-    .delete()
+    .select('image_url')
     .eq('id', id)
     .eq('restaurant_id', restaurant.id)
+    .maybeSingle()
+
+  await supabase.from('menu_items').delete().eq('id', id).eq('restaurant_id', restaurant.id)
+
+  if (existing?.image_url) {
+    const path = extractStoragePath(existing.image_url)
+    if (path) {
+      await supabase.storage.from('menu-images').remove([path])
+    }
+  }
 
   revalidatePath('/admin/menu')
 }
