@@ -109,11 +109,11 @@ export async function toggleTableActive(formData: FormData) {
 }
 
 // Ends the group currently seated at this table so the next QR scan starts
-// a brand-new session instead of joining the outgoing group's.
+// a brand-new session instead of joining the outgoing group's. Any staff
+// member can do this — in practice it's the floor/kitchen staff who know
+// when a group has actually left, not just the owner.
 export async function closeTableSession(formData: FormData) {
-  const { restaurant, role } = await getCurrentRestaurant()
-  if (role !== 'owner' && role !== 'admin') return
-
+  const { restaurant } = await getCurrentRestaurant()
   const tableId = String(formData.get('table_id') ?? '')
 
   const supabase = await createClient()
@@ -133,4 +133,5 @@ export async function closeTableSession(formData: FormData) {
     .eq('status', 'open')
 
   revalidatePath('/admin/tables')
+  revalidatePath('/admin/kitchen')
 }
