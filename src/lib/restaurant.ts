@@ -33,12 +33,21 @@ export async function getCurrentRestaurant() {
     redirect('/login')
   }
 
-  const { data: membership } = await supabase
+  const { data: membership, error } = await supabase
     .from('restaurant_users')
     .select('restaurant_id, role, restaurants(id, name, slug, currency, enabled_dietary_tags)')
     .eq('user_id', user.id)
     .limit(1)
     .maybeSingle<MembershipRow>()
+
+  // A real query failure (e.g. a column the DB migration hasn't added yet)
+  // must NOT be treated as "no restaurant" — /admin/onboarding runs its own
+  // simpler query, finds the membership fine, and bounces back to /admin,
+  // which fails the same way again: an infinite redirect loop instead of a
+  // visible error.
+  if (error) {
+    throw new Error(`No se pudo cargar el restaurante: ${error.message}`)
+  }
 
   const restaurant = membership ? toRestaurant(membership.restaurants) : null
 
