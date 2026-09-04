@@ -4,6 +4,15 @@ import { randomUUID } from 'crypto'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentRestaurant } from '@/lib/restaurant'
+import { DIETARY_TAGS } from '@/lib/dietary-tags'
+
+const VALID_DIETARY_TAGS = new Set<string>(DIETARY_TAGS.map((t) => t.value))
+
+function readDietaryTags(formData: FormData): string[] {
+  return formData
+    .getAll('dietary_tags')
+    .filter((tag): tag is string => typeof tag === 'string' && VALID_DIETARY_TAGS.has(tag))
+}
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024 // 5 MB
 
@@ -145,6 +154,7 @@ export async function createMenuItem(
   const categoryId = String(formData.get('category_id') ?? '') || null
   const description = String(formData.get('description') ?? '').trim() || null
   const imageFile = formData.get('image')
+  const dietaryTags = readDietaryTags(formData)
 
   if (!name) {
     return { error: 'Escribe un nombre de plato.' }
@@ -190,6 +200,7 @@ export async function createMenuItem(
     price_cents: priceCents,
     image_url: imageUrl,
     sort_order: sortOrder,
+    dietary_tags: dietaryTags,
   })
 
   if (error) {
@@ -211,6 +222,7 @@ export async function updateMenuItem(
   const categoryId = String(formData.get('category_id') ?? '') || null
   const description = String(formData.get('description') ?? '').trim() || null
   const imageFile = formData.get('image')
+  const dietaryTags = readDietaryTags(formData)
 
   if (!id) {
     return { error: 'Falta el identificador del plato.' }
@@ -232,12 +244,14 @@ export async function updateMenuItem(
     description: string | null
     price_cents: number
     category_id: string | null
+    dietary_tags: string[]
     image_url?: string
   } = {
     name,
     description,
     price_cents: priceCents,
     category_id: categoryId,
+    dietary_tags: dietaryTags,
   }
 
   let oldImagePath: string | null = null

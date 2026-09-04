@@ -1,12 +1,14 @@
 'use client'
 
-import { useActionState, useEffect, useRef, useState } from 'react'
+import { useActionState } from 'react'
 import {
   updateMenuItem,
   deleteMenuItem,
   toggleMenuItemAvailability,
   moveMenuItem,
 } from '@/app/actions/menu'
+import { useActionSuccess } from '@/lib/use-action-success'
+import { DIETARY_TAGS } from '@/lib/dietary-tags'
 
 type Category = { id: string; name: string }
 type Item = {
@@ -17,6 +19,7 @@ type Item = {
   price_cents: number
   image_url: string | null
   is_available: boolean
+  dietary_tags: string[]
 }
 
 export function ItemRow({
@@ -35,17 +38,7 @@ export function ItemRow({
 
   // Inputs keep whatever the user typed either way (they're uncontrolled),
   // so without this there's no visible sign a save actually happened.
-  const [showSaved, setShowSaved] = useState(false)
-  const wasPending = useRef(false)
-  useEffect(() => {
-    if (wasPending.current && !pending && !state?.error) {
-      setShowSaved(true)
-      const timeout = setTimeout(() => setShowSaved(false), 2000)
-      wasPending.current = pending
-      return () => clearTimeout(timeout)
-    }
-    wasPending.current = pending
-  }, [pending, state])
+  const showSaved = useActionSuccess(pending, Boolean(state?.error))
 
   return (
     <li className="flex flex-col gap-3 rounded border border-gray-200 p-3">
@@ -112,6 +105,19 @@ export function ItemRow({
           placeholder="Descripción (opcional)"
           className="rounded border border-gray-300 px-2 py-1 text-sm"
         />
+        <div className="flex flex-wrap gap-3">
+          {DIETARY_TAGS.map((tag) => (
+            <label key={tag.value} className="flex items-center gap-1 text-xs">
+              <input
+                type="checkbox"
+                name="dietary_tags"
+                value={tag.value}
+                defaultChecked={item.dietary_tags.includes(tag.value)}
+              />
+              {tag.label}
+            </label>
+          ))}
+        </div>
         <label className="text-xs text-gray-500">
           Cambiar foto (opcional)
           <input name="image" type="file" accept="image/*" className="mt-1 block text-xs" />

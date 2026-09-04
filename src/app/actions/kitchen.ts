@@ -19,3 +19,17 @@ export async function updateOrderStatus(formData: FormData) {
 
   revalidatePath('/admin/kitchen')
 }
+
+export async function resolveHelpRequest(formData: FormData) {
+  const { restaurant } = await getCurrentRestaurant()
+  const id = String(formData.get('id') ?? '')
+
+  const supabase = await createClient()
+  await supabase
+    .from('help_requests')
+    .update({ status: 'resolved', resolved_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('restaurant_id', restaurant.id)
+
+  revalidatePath('/admin/kitchen')
+}

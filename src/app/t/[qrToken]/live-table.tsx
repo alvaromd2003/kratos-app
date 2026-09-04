@@ -1,12 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
-import { formatPrice } from '@/lib/format'
+import { formatPrice, formatTime } from '@/lib/format'
+import { DIETARY_TAGS, dietaryTagLabel } from '@/lib/dietary-tags'
 import { AddItemButton } from './add-item-button'
 import { CartItemRow } from './cart-item-row'
 import { SendOrderButton } from './send-order-button'
+import { HelpButton } from './help-button'
 
 type Category = { id: string; name: string }
 type MenuItem = {
@@ -16,6 +18,7 @@ type MenuItem = {
   description: string | null
   price_cents: number
   image_url: string | null
+  dietary_tags: string[]
 }
 type Participant = { id: string; name: string }
 type OrderItemRow = {
@@ -24,6 +27,15 @@ type OrderItemRow = {
   participant_id: string
   quantity: number
   order_id: string | null
+}
+type OrderStatus = 'pending' | 'preparing' | 'ready' | 'delivered'
+type OrderRow = { id: string; status: OrderStatus; created_at: string }
+
+const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
+  pending: 'Pendiente',
+  preparing: 'En preparación',
+  ready: 'Lista para servir',
+  delivered: 'Entregado',
 }
 
 function applyChange<T extends { id: string }>(
@@ -57,6 +69,7 @@ export function LiveTable({
   items,
   initialParticipants,
   initialOrderItems,
+  initialOrders,
 }: {
   qrToken: string
   tableLabel: string
@@ -68,9 +81,12 @@ export function LiveTable({
   items: MenuItem[]
   initialParticipants: Participant[]
   initialOrderItems: OrderItemRow[]
+  initialOrders: OrderRow[]
 }) {
   const [participants, setParticipants] = useState(initialParticipants)
   const [orderItems, setOrderItems] = useState(initialOrderItems)
+  const [orders, setOrders] = useState(initialOrders)
+  const [activeTags, setActiveTags] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const supabase = createClient()
@@ -96,6 +112,16 @@ export function LiveTable({
         },
         (payload) => setParticipants((current) => applyChange(current, payload))
       )
+      .on<OrderRow>(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+          filter: `table_session_id=eq.${tableSessionId}`,
+        },
+        (payload) => setOrders((current) => applyChange(current, payload))
+      )
       .subscribe()
 
     return () => {
@@ -105,8 +131,14 @@ export function LiveTable({
 
   const itemsById = new Map(items.map((item) => [item.id, item]))
   const participantsById = new Map(participants.map((p) => [p.id, p]))
+
+  const visibleItems = useMemo(() => {
+    if (activeTags.size === 0) return items
+    return items.filter((item) => [...activeTags].every((tag) => item.dietary_tags.includes(tag)))
+  }, [items, activeTags])
+
   const itemsByCategory = new Map<string | null, MenuItem[]>()
-  for (const item of items) {
+  for (const item of visibleItems) {
     itemsByCategory.set(item.category_id, [...(itemsByCategory.get(item.category_id) ?? []), item])
   }
   const uncategorized = itemsByCategory.get(null) ?? []
@@ -129,9 +161,23 @@ export function LiveTable({
     return participantsById.get(id)?.name ?? '—'
   }
 
+  const sortedOrders = [...orders].sort((a, b) => a.created_at.localeCompare(b.created_at))
+
+  function toggleTag(tag: string) {
+    setActiveTags((current) => {
+      const next = new Set(current)
+      if (next.has(tag)) {
+        next.delete(tag)
+      } else {
+        next.add(tag)
+      }
+      return next
+    })
+  }
+
   return (
     <main className="mx-auto flex max-w-md flex-col gap-8 px-4 py-6 pb-56">
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-2">
         <h1 className="text-xl font-semibold">{restaurantName}</h1>
         <p className="text-sm text-gray-600">
           Mesa {tableLabel} · {participants.map((p) => participantLabel(p.id)).join(', ')}
@@ -139,6 +185,48 @@ export function LiveTable({
         <p className="text-sm font-medium">
           Total de la mesa: {formatPrice(tableTotal, currency)}
         </p>
+        <HelpButton qrToken={qrToken} />
+      </div>
+
+      {sortedOrders.length > 0 && (
+        <section className="flex flex-col gap-3 rounded border border-gray-200 p-3">
+          <h2 className="font-medium">Tus pedidos</h2>
+          <ul className="flex flex-col gap-2 text-sm">
+            {sortedOrders.map((order) => {
+              const orderRows = orderItems.filter((row) => row.order_id === order.id)
+              return (
+                <li key={order.id}>
+                  <p>
+                    <span className="font-medium">{formatTime(order.created_at)}</span> —{' '}
+                    {ORDER_STATUS_LABEL[order.status]}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {orderRows
+                      .map((row) => `${row.quantity}× ${itemsById.get(row.menu_item_id)?.name ?? '—'}`)
+                      .join(', ')}
+                  </p>
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        {DIETARY_TAGS.map((tag) => (
+          <button
+            key={tag.value}
+            type="button"
+            onClick={() => toggleTag(tag.value)}
+            className={`rounded-full border px-3 py-1 text-xs ${
+              activeTags.has(tag.value)
+                ? 'border-black bg-black text-white'
+                : 'border-gray-300 text-gray-700'
+            }`}
+          >
+            {tag.label}
+          </button>
+        ))}
       </div>
 
       <section className="flex flex-col gap-6">
@@ -157,6 +245,9 @@ export function LiveTable({
         })}
         {uncategorized.length > 0 && (
           <MenuSection title="Otros" items={uncategorized} qrToken={qrToken} currency={currency} />
+        )}
+        {visibleItems.length === 0 && (
+          <p className="text-sm text-gray-500">Ningún plato coincide con esos filtros.</p>
         )}
       </section>
 
@@ -224,6 +315,11 @@ function MenuSection({
               <p className="text-sm font-medium">{item.name}</p>
               {item.description && <p className="text-xs text-gray-600">{item.description}</p>}
               <p className="text-xs text-gray-500">{formatPrice(item.price_cents, currency)}</p>
+              {item.dietary_tags.length > 0 && (
+                <p className="text-xs text-gray-500">
+                  {item.dietary_tags.map(dietaryTagLabel).join(' · ')}
+                </p>
+              )}
             </div>
             <AddItemButton qrToken={qrToken} menuItemId={item.id} />
           </li>

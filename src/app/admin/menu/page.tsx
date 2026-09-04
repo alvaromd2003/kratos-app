@@ -18,7 +18,9 @@ export default async function MenuPage() {
       .order('created_at', { ascending: true }),
     supabase
       .from('menu_items')
-      .select('id, category_id, name, description, price_cents, image_url, is_available')
+      .select(
+        'id, category_id, name, description, price_cents, image_url, is_available, dietary_tags'
+      )
       .eq('restaurant_id', restaurant.id)
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true }),

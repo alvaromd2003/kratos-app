@@ -43,30 +43,40 @@ export default async function TableOrderPage({
     )
   }
 
-  const [{ data: categories }, { data: items }, { data: participants }, { data: orderItems }] =
-    await Promise.all([
-      admin
-        .from('menu_categories')
-        .select('id, name')
-        .eq('restaurant_id', table.restaurant_id)
-        .order('sort_order', { ascending: true }),
-      admin
-        .from('menu_items')
-        .select('id, category_id, name, description, price_cents, image_url')
-        .eq('restaurant_id', table.restaurant_id)
-        .eq('is_available', true)
-        .order('sort_order', { ascending: true }),
-      admin
-        .from('session_participants')
-        .select('id, name')
-        .eq('table_session_id', verified.session.id)
-        .order('created_at', { ascending: true }),
-      admin
-        .from('order_items')
-        .select('id, menu_item_id, participant_id, quantity, order_id')
-        .eq('table_session_id', verified.session.id)
-        .order('created_at', { ascending: true }),
-    ])
+  const [
+    { data: categories },
+    { data: items },
+    { data: participants },
+    { data: orderItems },
+    { data: orders },
+  ] = await Promise.all([
+    admin
+      .from('menu_categories')
+      .select('id, name')
+      .eq('restaurant_id', table.restaurant_id)
+      .order('sort_order', { ascending: true }),
+    admin
+      .from('menu_items')
+      .select('id, category_id, name, description, price_cents, image_url, dietary_tags')
+      .eq('restaurant_id', table.restaurant_id)
+      .eq('is_available', true)
+      .order('sort_order', { ascending: true }),
+    admin
+      .from('session_participants')
+      .select('id, name')
+      .eq('table_session_id', verified.session.id)
+      .order('created_at', { ascending: true }),
+    admin
+      .from('order_items')
+      .select('id, menu_item_id, participant_id, quantity, order_id')
+      .eq('table_session_id', verified.session.id)
+      .order('created_at', { ascending: true }),
+    admin
+      .from('orders')
+      .select('id, status, created_at')
+      .eq('table_session_id', verified.session.id)
+      .order('created_at', { ascending: true }),
+  ])
 
   return (
     <LiveTable
@@ -80,6 +90,7 @@ export default async function TableOrderPage({
       items={items ?? []}
       initialParticipants={participants ?? []}
       initialOrderItems={orderItems ?? []}
+      initialOrders={orders ?? []}
     />
   )
 }

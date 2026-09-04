@@ -254,3 +254,36 @@ export async function sendOrderToKitchen(
     return { error: 'No se pudo enviar el pedido. Inténtalo de nuevo.' }
   }
 }
+
+export async function requestHelp(
+  _prevState: OrderingFormState,
+  formData: FormData
+): Promise<OrderingFormState> {
+  const qrToken = String(formData.get('qr_token') ?? '')
+
+  const table = await getActiveTableByQrToken(qrToken)
+  const verified = table ? await getVerifiedParticipant(qrToken) : null
+  if (!table || !verified) {
+    return { error: 'Tu sesión en la mesa caducó. Vuelve a escanear el código QR.' }
+  }
+
+  const admin = createAdminClient()
+
+  // Don't stack duplicate alerts if someone taps the button twice.
+  const { data: existing } = await admin
+    .from('help_requests')
+    .select('id')
+    .eq('table_session_id', verified.tableSessionId)
+    .eq('status', 'open')
+    .maybeSingle()
+  if (existing) return
+
+  const { error } = await admin.from('help_requests').insert({
+    restaurant_id: table.restaurant_id,
+    table_session_id: verified.tableSessionId,
+  })
+
+  if (error) {
+    return { error: 'No se pudo avisar. Inténtalo de nuevo.' }
+  }
+}

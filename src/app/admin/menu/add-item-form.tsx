@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react'
 import { createMenuItem } from '@/app/actions/menu'
+import { DIETARY_TAGS } from '@/lib/dietary-tags'
 
 type Category = { id: string; name: string }
 
@@ -56,6 +57,17 @@ export function AddItemForm({ categories }: { categories: Category[] }) {
               </option>
             ))}
           </select>
+        </div>
+      </div>
+      <div className="flex flex-col gap-1">
+        <span className="text-sm">Alérgenos / dieta (opcional)</span>
+        <div className="flex flex-wrap gap-3">
+          {DIETARY_TAGS.map((tag) => (
+            <label key={tag.value} className="flex items-center gap-1 text-sm">
+              <input type="checkbox" name="dietary_tags" value={tag.value} />
+              {tag.label}
+            </label>
+          ))}
         </div>
       </div>
       <div className="flex flex-col gap-1">

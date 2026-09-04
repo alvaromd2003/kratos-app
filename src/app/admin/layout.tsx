@@ -62,6 +62,9 @@ export default async function AdminLayout({
               <Link href="/admin/history" className="underline">
                 Historial
               </Link>
+              <Link href="/admin/stats" className="underline">
+                Estadísticas
+              </Link>
               <Link href="/admin/staff" className="underline">
                 Personal
               </Link>
