@@ -10,6 +10,7 @@ import { AddItemButton } from './add-item-button'
 import { CartItemRow } from './cart-item-row'
 import { SendOrderButton } from './send-order-button'
 import { HelpButton } from './help-button'
+import { PaymentPanel } from './payment-panel'
 
 type Category = { id: string; name: string }
 type MenuItem = {
@@ -39,6 +40,14 @@ type OrderRow = {
   cancellation_requested_at: string | null
 }
 type ActiveOrderRow = { id: string; status: OrderStatus; created_at: string }
+type PaymentMode = 'individual' | 'split' | 'collective'
+type PaymentShareRow = {
+  id: string
+  participant_id: string
+  mode: PaymentMode
+  amount_cents: number
+  status: 'pending' | 'succeeded' | 'failed'
+}
 
 const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   pending: 'Pendiente',
@@ -82,6 +91,9 @@ export function LiveTable({
   initialOrderItems,
   initialOrders,
   initialRestaurantActiveOrders,
+  stripeOnboardingComplete,
+  initialPaymentShares,
+  paymentResult,
 }: {
   qrToken: string
   tableLabel: string
@@ -97,6 +109,9 @@ export function LiveTable({
   initialOrderItems: OrderItemRow[]
   initialOrders: OrderRow[]
   initialRestaurantActiveOrders: ActiveOrderRow[]
+  stripeOnboardingComplete: boolean
+  initialPaymentShares: PaymentShareRow[]
+  paymentResult: 'success' | 'cancelled' | null
 }) {
   const [participants, setParticipants] = useState(initialParticipants)
   const [orderItems, setOrderItems] = useState(initialOrderItems)
@@ -104,6 +119,7 @@ export function LiveTable({
   const [restaurantActiveOrders, setRestaurantActiveOrders] = useState(
     initialRestaurantActiveOrders
   )
+  const [paymentShares, setPaymentShares] = useState(initialPaymentShares)
   const [activeTags, setActiveTags] = useState<Set<string>>(new Set())
   const hasConnectedBefore = useRef(false)
 
@@ -116,6 +132,7 @@ export function LiveTable({
         { data: freshParticipants },
         { data: freshOrders },
         { data: freshActive },
+        { data: freshPaymentShares },
       ] = await Promise.all([
         supabase
           .from('order_items')
@@ -134,11 +151,16 @@ export function LiveTable({
           .select('id, status, created_at')
           .eq('restaurant_id', restaurantId)
           .in('status', ['pending', 'preparing']),
+        supabase
+          .from('payment_shares')
+          .select('id, participant_id, mode, amount_cents, status')
+          .eq('table_session_id', tableSessionId),
       ])
       if (freshOrderItems) setOrderItems(freshOrderItems)
       if (freshParticipants) setParticipants(freshParticipants)
       if (freshOrders) setOrders(freshOrders)
       if (freshActive) setRestaurantActiveOrders(freshActive)
+      if (freshPaymentShares) setPaymentShares(freshPaymentShares)
     }
 
     const channel = supabase
@@ -172,6 +194,16 @@ export function LiveTable({
           filter: `table_session_id=eq.${tableSessionId}`,
         },
         (payload) => setOrders((current) => applyChange(current, payload))
+      )
+      .on<PaymentShareRow>(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'payment_shares',
+          filter: `table_session_id=eq.${tableSessionId}`,
+        },
+        (payload) => setPaymentShares((current) => applyChange(current, payload))
       )
       .subscribe((status) => {
         if (status !== 'SUBSCRIBED') return
@@ -250,6 +282,20 @@ export function LiveTable({
   const cartTotal = cartItems.reduce((sum, row) => sum + lineTotal(row), 0)
   const tableTotal = orderItems.reduce((sum, row) => sum + lineTotal(row), 0)
 
+  // Every successful payment, whichever of the 3 modes paid it, reduces
+  // this same shared balance — see src/lib/payments.ts for the mirrored
+  // server-side version used when actually creating a charge.
+  const succeededShares = paymentShares.filter((s) => s.status === 'succeeded')
+  const paidCents = succeededShares.reduce((sum, s) => sum + s.amount_cents, 0)
+  const remainingCents = Math.max(0, tableTotal - paidCents)
+  const mySubtotal = orderItems
+    .filter((row) => row.participant_id === participantId)
+    .reduce((sum, row) => sum + lineTotal(row), 0)
+  const myPaidIndividual = succeededShares
+    .filter((s) => s.participant_id === participantId && s.mode === 'individual')
+    .reduce((sum, s) => sum + s.amount_cents, 0)
+  const individualDueCents = Math.max(0, Math.min(remainingCents, mySubtotal - myPaidIndividual))
+
   const participantLabel = (id: string) => {
     if (id === participantId) return 'Tú'
     return participantsById.get(id)?.name ?? '—'
@@ -287,6 +333,17 @@ export function LiveTable({
         </p>
         <HelpButton qrToken={qrToken} />
       </div>
+
+      {stripeOnboardingComplete && (
+        <PaymentPanel
+          qrToken={qrToken}
+          currency={currency}
+          remainingCents={remainingCents}
+          individualDueCents={individualDueCents}
+          defaultShareCount={participants.length}
+          paymentResult={paymentResult}
+        />
+      )}
 
       {sortedOrders.length > 0 && (
         <section className="flex flex-col gap-3 rounded border border-gray-200 p-3">

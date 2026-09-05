@@ -3,29 +3,13 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getActiveTableByQrToken, getOpenSessionParticipant } from '@/lib/ordering'
+import {
+  dinerCookieName,
+  getActiveTableByQrToken,
+  getVerifiedParticipant,
+} from '@/lib/ordering'
 
 export type OrderingFormState = { error?: string } | undefined
-
-function dinerCookieName(qrToken: string) {
-  return `td_${qrToken}`
-}
-
-async function getVerifiedParticipant(qrToken: string) {
-  const store = await cookies()
-  const raw = store.get(dinerCookieName(qrToken))?.value
-  if (!raw) return null
-  const [participantId, tableSessionId] = raw.split(':')
-  if (!participantId || !tableSessionId) return null
-
-  const table = await getActiveTableByQrToken(qrToken)
-  if (!table) return null
-
-  const verified = await getOpenSessionParticipant(table.id, tableSessionId, participantId)
-  if (!verified) return null
-
-  return { participantId: verified.participant.id, tableSessionId: verified.session.id }
-}
 
 export async function joinTable(
   _prevState: OrderingFormState,

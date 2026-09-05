@@ -1,5 +1,10 @@
 import 'server-only'
+import { cookies } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase/admin'
+
+export function dinerCookieName(qrToken: string) {
+  return `td_${qrToken}`
+}
 
 export async function getActiveTableByQrToken(qrToken: string) {
   const admin = createAdminClient()
@@ -48,4 +53,23 @@ export async function getOpenSessionParticipant(
   if (!participant) return null
 
   return { session, participant }
+}
+
+// The one place every diner-facing write re-derives and re-verifies who's
+// asking — never trust the cookie's ids without checking them against the
+// DB (see getOpenSessionParticipant above).
+export async function getVerifiedParticipant(qrToken: string) {
+  const store = await cookies()
+  const raw = store.get(dinerCookieName(qrToken))?.value
+  if (!raw) return null
+  const [participantId, tableSessionId] = raw.split(':')
+  if (!participantId || !tableSessionId) return null
+
+  const table = await getActiveTableByQrToken(qrToken)
+  if (!table) return null
+
+  const verified = await getOpenSessionParticipant(table.id, tableSessionId, participantId)
+  if (!verified) return null
+
+  return { participantId: verified.participant.id, tableSessionId: verified.session.id }
 }

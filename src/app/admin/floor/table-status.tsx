@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { closeTableSession } from '@/app/actions/tables'
 import { useWakeLock } from '@/lib/use-wake-lock'
+import { formatPrice } from '@/lib/format'
 
-type Table = { id: string; label: string; occupied: boolean }
+type Table = { id: string; label: string; occupied: boolean; pendingCents: number }
 type SessionRow = { table_id: string; status: 'open' | 'closed' }
 
 async function fetchOccupancy(
@@ -26,9 +27,11 @@ async function fetchOccupancy(
 export function TableStatus({
   restaurantId,
   initialTables,
+  currency,
 }: {
   restaurantId: string
   initialTables: Table[]
+  currency: string
 }) {
   const [tables, setTables] = useState(initialTables)
   const hasConnectedBefore = useRef(false)
@@ -51,7 +54,9 @@ export function TableStatus({
         (payload) => {
           const row = payload.new as SessionRow
           setTables((current) =>
-            current.map((t) => (t.id === row.table_id ? { ...t, occupied: true } : t))
+            current.map((t) =>
+              t.id === row.table_id ? { ...t, occupied: true, pendingCents: 0 } : t
+            )
           )
         }
       )
@@ -105,14 +110,19 @@ export function TableStatus({
                 <span className="rounded bg-red-600 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
                   Ocupada
                 </span>
+                {table.pendingCents > 0 && (
+                  <span className="text-xs text-amber-700">
+                    Pendiente: {formatPrice(table.pendingCents, currency)}
+                  </span>
+                )}
                 <form
                   action={closeTableSession}
                   onSubmit={(e) => {
-                    if (
-                      !confirm(
-                        `¿Cerrar la mesa ${table.label}? Los clientes conectados tendrán que volver a escanear el código QR.`
-                      )
-                    ) {
+                    const warning =
+                      table.pendingCents > 0
+                        ? `Quedan ${formatPrice(table.pendingCents, currency)} sin cobrar por la app en la mesa ${table.label} (puede que ya se haya cobrado en efectivo o con datáfono). ¿Cerrar de todas formas?`
+                        : `¿Cerrar la mesa ${table.label}? Los clientes conectados tendrán que volver a escanear el código QR.`
+                    if (!confirm(warning)) {
                       e.preventDefault()
                     }
                   }}

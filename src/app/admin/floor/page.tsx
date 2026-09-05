@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { getCurrentRestaurant } from '@/lib/restaurant'
 import { createClient } from '@/lib/supabase/server'
 import { getRestaurantOrders } from '@/lib/orders'
+import { getTableBillSummary } from '@/lib/payments'
 import { TableStatus } from './table-status'
 import { HelpAlerts } from './help-alerts'
 import { ReadyOrders } from './ready-orders'
@@ -35,12 +36,24 @@ export default async function FloorPage() {
     sessionList.map((s) => [s.id, tableLabelById.get(s.table_id) ?? '—'])
   )
 
-  const occupiedTableIds = new Set(sessionList.map((s) => s.table_id))
-  const initialTables = (tables ?? []).map((t) => ({
-    id: t.id,
-    label: t.label,
-    occupied: occupiedTableIds.has(t.id),
-  }))
+  const sessionIdByTableId = new Map(sessionList.map((s) => [s.table_id, s.id]))
+  const pendingCentsBySessionId = new Map(
+    await Promise.all(
+      sessionList.map(async (s) => {
+        const summary = await getTableBillSummary(supabase, s.id)
+        return [s.id, summary.remainingCents] as const
+      })
+    )
+  )
+  const initialTables = (tables ?? []).map((t) => {
+    const sessionId = sessionIdByTableId.get(t.id)
+    return {
+      id: t.id,
+      label: t.label,
+      occupied: sessionId !== undefined,
+      pendingCents: sessionId !== undefined ? (pendingCentsBySessionId.get(sessionId) ?? 0) : 0,
+    }
+  })
 
   const { data: helpRequests } = await supabase
     .from('help_requests')
@@ -68,7 +81,11 @@ export default async function FloorPage() {
 
       <ReadyOrders restaurantId={restaurant.id} initialOrders={readyOrders} />
 
-      <TableStatus restaurantId={restaurant.id} initialTables={initialTables} />
+      <TableStatus
+        restaurantId={restaurant.id}
+        initialTables={initialTables}
+        currency={restaurant.currency}
+      />
     </div>
   )
 }

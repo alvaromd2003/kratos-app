@@ -7,10 +7,14 @@ import { LiveTable } from './live-table'
 
 export default async function TableOrderPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ qrToken: string }>
+  searchParams: Promise<{ payment?: string }>
 }) {
   const { qrToken } = await params
+  const { payment } = await searchParams
+  const paymentResult = payment === 'success' || payment === 'cancelled' ? payment : null
 
   const table = await getActiveTableByQrToken(qrToken)
   if (!table) {
@@ -20,7 +24,7 @@ export default async function TableOrderPage({
   const admin = createAdminClient()
   const { data: restaurant, error: restaurantError } = await admin
     .from('restaurants')
-    .select('name, currency, enabled_dietary_tags')
+    .select('name, currency, enabled_dietary_tags, stripe_onboarding_complete')
     .eq('id', table.restaurant_id)
     .single()
 
@@ -54,6 +58,7 @@ export default async function TableOrderPage({
     { data: participants },
     { data: orderItems },
     { data: orders },
+    { data: paymentShares },
   ] = await Promise.all([
     admin
       .from('menu_categories')
@@ -83,6 +88,10 @@ export default async function TableOrderPage({
       .select('id, status, created_at, cancellation_requested_at')
       .eq('table_session_id', verified.session.id)
       .order('created_at', { ascending: true }),
+    admin
+      .from('payment_shares')
+      .select('id, participant_id, mode, amount_cents, status')
+      .eq('table_session_id', verified.session.id),
   ])
 
   // For "hay N pedidos por delante" — every other order this restaurant
@@ -109,6 +118,9 @@ export default async function TableOrderPage({
       initialOrderItems={orderItems ?? []}
       initialOrders={orders ?? []}
       initialRestaurantActiveOrders={restaurantActiveOrders ?? []}
+      stripeOnboardingComplete={restaurant.stripe_onboarding_complete}
+      initialPaymentShares={paymentShares ?? []}
+      paymentResult={paymentResult}
     />
   )
 }
