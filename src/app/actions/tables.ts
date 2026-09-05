@@ -96,12 +96,23 @@ export async function deleteTable(
 export async function toggleTableActive(formData: FormData) {
   const { restaurant } = await getCurrentRestaurant()
   const id = String(formData.get('id') ?? '')
-  const wasActive = formData.get('active') === 'true'
 
   const supabase = await createClient()
+
+  // Reads the current value itself instead of trusting a hidden input
+  // (stale if another staff member already toggled it elsewhere) — that
+  // could otherwise flip it right back.
+  const { data: current } = await supabase
+    .from('tables')
+    .select('active')
+    .eq('id', id)
+    .eq('restaurant_id', restaurant.id)
+    .maybeSingle()
+  if (!current) return
+
   await supabase
     .from('tables')
-    .update({ active: !wasActive })
+    .update({ active: !current.active })
     .eq('id', id)
     .eq('restaurant_id', restaurant.id)
 

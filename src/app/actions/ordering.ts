@@ -132,27 +132,14 @@ export async function addItemToCart(
   }
 
   // Adding the same dish again just bumps the quantity on the existing
-  // (still unsent) line instead of creating a duplicate row.
-  const { data: existing } = await admin
-    .from('order_items')
-    .select('id, quantity')
-    .eq('table_session_id', verified.tableSessionId)
-    .eq('participant_id', verified.participantId)
-    .eq('menu_item_id', menuItemId)
-    .is('order_id', null)
-    .maybeSingle()
-
-  const { error } = existing
-    ? await admin
-        .from('order_items')
-        .update({ quantity: existing.quantity + 1 })
-        .eq('id', existing.id)
-    : await admin.from('order_items').insert({
-        table_session_id: verified.tableSessionId,
-        menu_item_id: menuItemId,
-        participant_id: verified.participantId,
-        quantity: 1,
-      })
+  // (still unsent) line instead of creating a duplicate row. Done as one
+  // atomic upsert (not a separate read-then-write) so two rapid taps, or
+  // two diners tapping the same dish at once, can't lose an increment.
+  const { error } = await admin.rpc('add_item_to_cart', {
+    p_table_session_id: verified.tableSessionId,
+    p_participant_id: verified.participantId,
+    p_menu_item_id: menuItemId,
+  })
 
   if (error) {
     return { error: 'No se pudo añadir el plato. Inténtalo de nuevo.' }
@@ -168,30 +155,15 @@ export async function changeItemQuantity(formData: FormData) {
   if (!verified) return
 
   const admin = createAdminClient()
-  const { data: row } = await admin
-    .from('order_items')
-    .select('quantity')
-    .eq('id', orderItemId)
-    .eq('table_session_id', verified.tableSessionId)
-    .is('order_id', null) // can't touch a line that's already with the kitchen
-    .maybeSingle()
-  if (!row) return
 
-  const nextQuantity = row.quantity + delta
-  if (nextQuantity <= 0) {
-    await admin
-      .from('order_items')
-      .delete()
-      .eq('id', orderItemId)
-      .eq('table_session_id', verified.tableSessionId)
-    return
-  }
-
-  await admin
-    .from('order_items')
-    .update({ quantity: nextQuantity })
-    .eq('id', orderItemId)
-    .eq('table_session_id', verified.tableSessionId)
+  // Atomic (quantity = quantity + delta, then delete if <=0) instead of a
+  // separate read-then-write — otherwise two rapid taps of +/- can read
+  // the same starting quantity and one adjustment silently gets lost.
+  await admin.rpc('change_cart_item_quantity', {
+    p_order_item_id: orderItemId,
+    p_table_session_id: verified.tableSessionId,
+    p_delta: delta,
+  })
 }
 
 export async function setItemNote(formData: FormData) {

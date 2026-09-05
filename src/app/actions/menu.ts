@@ -369,12 +369,23 @@ export async function deleteMenuItem(
 export async function toggleMenuItemAvailability(formData: FormData) {
   const { restaurant } = await getCurrentRestaurant()
   const id = String(formData.get('id') ?? '')
-  const wasAvailable = formData.get('is_available') === 'true'
 
   const supabase = await createClient()
+
+  // Reads the current value itself instead of trusting a hidden input
+  // (which can be stale if another staff member already toggled it from
+  // a different device) — otherwise this can flip it right back.
+  const { data: current } = await supabase
+    .from('menu_items')
+    .select('is_available')
+    .eq('id', id)
+    .eq('restaurant_id', restaurant.id)
+    .maybeSingle()
+  if (!current) return
+
   await supabase
     .from('menu_items')
-    .update({ is_available: !wasAvailable })
+    .update({ is_available: !current.is_available })
     .eq('id', id)
     .eq('restaurant_id', restaurant.id)
 
