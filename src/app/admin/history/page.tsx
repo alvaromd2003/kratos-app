@@ -10,17 +10,31 @@ const STATUS_LABEL: Record<string, string> = {
   delivered: 'Entregada',
 }
 
-export default async function HistoryPage() {
+const PAGE_SIZE = 50
+
+export default async function HistoryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ before?: string }>
+}) {
   const { restaurant } = await requireManagerRole()
+  const { before } = await searchParams
 
   const supabase = await createClient()
-  const orders = await getRestaurantOrders(supabase, restaurant.id)
+  // Fetch one extra to know whether there's a next page without a
+  // separate count query.
+  const fetched = await getRestaurantOrders(supabase, restaurant.id, {
+    before,
+    limit: PAGE_SIZE + 1,
+  })
+  const orders = fetched.slice(0, PAGE_SIZE)
+  const nextCursor = fetched.length > PAGE_SIZE ? orders[orders.length - 1].createdAt : null
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-xl font-semibold">Historial de pedidos — {restaurant.name}</h1>
-        {orders.length > 0 && (
+        {(orders.length > 0 || before) && (
           <a
             href="/admin/history/export"
             className="rounded border border-gray-300 px-3 py-1.5 text-sm underline"
@@ -31,7 +45,9 @@ export default async function HistoryPage() {
       </div>
 
       {orders.length === 0 ? (
-        <p className="text-gray-600">Todavía no se ha enviado ningún pedido.</p>
+        <p className="text-gray-600">
+          {before ? 'No hay más pedidos.' : 'Todavía no se ha enviado ningún pedido.'}
+        </p>
       ) : (
         <ul className="flex flex-col gap-4">
           {orders.map((order) => {
@@ -64,6 +80,15 @@ export default async function HistoryPage() {
             )
           })}
         </ul>
+      )}
+
+      {nextCursor && (
+        <a
+          href={`/admin/history?before=${encodeURIComponent(nextCursor)}`}
+          className="self-start rounded border border-gray-300 px-4 py-2 text-sm underline"
+        >
+          Cargar más
+        </a>
       )}
     </div>
   )

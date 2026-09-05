@@ -33,6 +33,9 @@ export async function getRestaurantOrders(
     statuses?: OrderDetail['status'][]
     ascending?: boolean
     since?: string
+    /** Keyset pagination cursor: only orders strictly before this timestamp. */
+    before?: string
+    limit?: number
   }
 ): Promise<OrderDetail[]> {
   let query = supabase
@@ -49,6 +52,12 @@ export async function getRestaurantOrders(
   }
   if (options?.since) {
     query = query.gte('created_at', options.since)
+  }
+  if (options?.before) {
+    query = query.lt('created_at', options.before)
+  }
+  if (options?.limit) {
+    query = query.limit(options.limit)
   }
 
   const { data: orders } = await query

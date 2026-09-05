@@ -2,6 +2,14 @@ import { requireManagerRole } from '@/lib/restaurant'
 import { createClient } from '@/lib/supabase/server'
 import { getRestaurantOrders } from '@/lib/orders'
 import { formatPrice } from '@/lib/format'
+import { daysAgoIso } from '@/lib/timezone'
+
+const RANGES = [
+  { value: '7', label: '7 días', days: 7 },
+  { value: '30', label: '30 días', days: 30 },
+  { value: '90', label: '90 días', days: 90 },
+  { value: 'all', label: 'Todo', days: null },
+] as const
 
 function madridHour(isoDate: string): number {
   return Number(
@@ -11,17 +19,44 @@ function madridHour(isoDate: string): number {
   ) % 24
 }
 
-export default async function StatsPage() {
+export default async function StatsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string }>
+}) {
   const { restaurant } = await requireManagerRole()
-  const supabase = await createClient()
+  const { range: rangeParam } = await searchParams
 
-  const orders = await getRestaurantOrders(supabase, restaurant.id)
+  const range = RANGES.find((r) => r.value === rangeParam) ?? RANGES[1]
+  const since = range.days ? daysAgoIso(range.days) : undefined
+
+  const supabase = await createClient()
+  const orders = await getRestaurantOrders(supabase, restaurant.id, { since })
+
+  const rangeSelector = (
+    <div className="flex gap-2">
+      {RANGES.map((r) => (
+        <a
+          key={r.value}
+          href={`/admin/stats?range=${r.value}`}
+          className={`rounded-full border px-3 py-1 text-xs ${
+            r.value === range.value ? 'border-black bg-black text-white' : 'border-gray-300 text-gray-700'
+          }`}
+        >
+          {r.label}
+        </a>
+      ))}
+    </div>
+  )
 
   if (orders.length === 0) {
     return (
       <div className="flex flex-col gap-4">
-        <h1 className="text-xl font-semibold">Estadísticas — {restaurant.name}</h1>
-        <p className="text-gray-600">Todavía no hay pedidos suficientes para mostrar nada aquí.</p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-xl font-semibold">Estadísticas — {restaurant.name}</h1>
+          {rangeSelector}
+        </div>
+        <p className="text-gray-600">No hay pedidos en este rango de fechas.</p>
       </div>
     )
   }
@@ -62,7 +97,10 @@ export default async function StatsPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <h1 className="text-xl font-semibold">Estadísticas — {restaurant.name}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold">Estadísticas — {restaurant.name}</h1>
+        {rangeSelector}
+      </div>
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="rounded border border-gray-200 p-4">

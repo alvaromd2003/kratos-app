@@ -26,3 +26,7 @@ export function startOfTodayIso(timeZone = 'Europe/Madrid'): string {
 
   return new Date(guessUtcMidnight.getTime() - offsetHours * 3600 * 1000).toISOString()
 }
+
+export function daysAgoIso(days: number): string {
+  return new Date(Date.now() - days * 86400000).toISOString()
+}
