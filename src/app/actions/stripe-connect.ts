@@ -26,8 +26,9 @@ export async function startStripeOnboarding(): Promise<StripeConnectFormState> {
         type: 'express',
         email: user.email ?? undefined,
       })
-    } catch {
-      return { error: 'No se pudo crear la cuenta de Stripe. Inténtalo de nuevo.' }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Error desconocido'
+      return { error: `No se pudo crear la cuenta de Stripe: ${message}` }
     }
     accountId = account.id
 
@@ -49,8 +50,9 @@ export async function startStripeOnboarding(): Promise<StripeConnectFormState> {
       refresh_url: `${origin}/admin/settings?stripe=refresh`,
       return_url: `${origin}/admin/settings?stripe=return`,
     })
-  } catch {
-    return { error: 'No se pudo iniciar la conexión con Stripe. Inténtalo de nuevo.' }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Error desconocido'
+    return { error: `No se pudo iniciar la conexión con Stripe: ${message}` }
   }
 
   revalidatePath('/admin/settings')
