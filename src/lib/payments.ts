@@ -86,6 +86,32 @@ export function splitAmountDue(summary: TableBillSummary, shareCount: number): n
   return Math.ceil(summary.remainingCents / shareCount)
 }
 
+// order_items already settled by a SUCCEEDED itemized ('items' mode)
+// payment — excluded from the picker so nobody pays for the same dish
+// twice. Deliberately keyed off 'succeeded' only, never 'pending': that
+// way an abandoned Stripe Checkout can never lock a dish out of being
+// picked again (see migration 0022's comment for the tradeoff).
+export async function getClaimedOrderItemIds(
+  admin: SupabaseClient,
+  tableSessionId: string
+): Promise<Set<string>> {
+  const { data: shares } = await admin
+    .from('payment_shares')
+    .select('id')
+    .eq('table_session_id', tableSessionId)
+    .eq('status', 'succeeded')
+
+  const shareIds = (shares ?? []).map((s) => s.id)
+  if (shareIds.length === 0) return new Set()
+
+  const { data: claims } = await admin
+    .from('payment_share_items')
+    .select('order_item_id')
+    .in('payment_share_id', shareIds)
+
+  return new Set((claims ?? []).map((c) => c.order_item_id))
+}
+
 // Stripe needs an absolute success/cancel/return URL. Reading it off the
 // request's own Host header (rather than a hardcoded/env site URL) means
 // this works unmodified in local dev, previews, and production alike.

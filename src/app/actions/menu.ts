@@ -158,6 +158,8 @@ export async function createMenuItem(
   const imageFile = formData.get('image')
   const dietaryTags = readDietaryTags(formData)
   const recommendedItemId = String(formData.get('recommended_item_id') ?? '') || null
+  const availableFrom = String(formData.get('available_from') ?? '') || null
+  const availableUntil = String(formData.get('available_until') ?? '') || null
 
   if (!name) {
     return { error: 'Escribe un nombre de plato.' }
@@ -205,6 +207,8 @@ export async function createMenuItem(
     sort_order: sortOrder,
     dietary_tags: dietaryTags,
     recommended_item_id: recommendedItemId,
+    available_from: availableFrom,
+    available_until: availableUntil,
   })
 
   if (error) {
@@ -229,6 +233,8 @@ export async function updateMenuItem(
   const dietaryTags = readDietaryTags(formData)
   const recommendedItemIdRaw = String(formData.get('recommended_item_id') ?? '') || null
   const recommendedItemId = recommendedItemIdRaw === id ? null : recommendedItemIdRaw
+  const availableFrom = String(formData.get('available_from') ?? '') || null
+  const availableUntil = String(formData.get('available_until') ?? '') || null
 
   if (!id) {
     return { error: 'Falta el identificador del plato.' }
@@ -252,6 +258,8 @@ export async function updateMenuItem(
     category_id: string | null
     dietary_tags: string[]
     recommended_item_id: string | null
+    available_from: string | null
+    available_until: string | null
     image_url?: string
   } = {
     name,
@@ -260,6 +268,8 @@ export async function updateMenuItem(
     category_id: categoryId,
     dietary_tags: dietaryTags,
     recommended_item_id: recommendedItemId,
+    available_from: availableFrom,
+    available_until: availableUntil,
   }
 
   let oldImagePath: string | null = null

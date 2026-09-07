@@ -78,6 +78,7 @@ export async function updateRestaurantProfile(
   const enabledPaymentMethods = formData
     .getAll('enabled_payment_methods')
     .filter((m): m is string => typeof m === 'string' && VALID_PAYMENT_METHODS.has(m))
+  const googleReviewUrl = String(formData.get('google_review_url') ?? '').trim() || null
 
   if (!name) {
     return { error: 'Escribe el nombre de tu restaurante.' }
@@ -94,6 +95,7 @@ export async function updateRestaurantProfile(
       currency,
       enabled_dietary_tags: enabledDietaryTags,
       enabled_payment_methods: enabledPaymentMethods,
+      google_review_url: googleReviewUrl,
     })
     .eq('id', restaurant.id)
 

@@ -19,7 +19,7 @@ export default async function MenuPage() {
     supabase
       .from('menu_items')
       .select(
-        'id, category_id, name, description, price_cents, image_url, is_available, dietary_tags, recommended_item_id'
+        'id, category_id, name, description, price_cents, image_url, is_available, dietary_tags, recommended_item_id, available_from, available_until'
       )
       .eq('restaurant_id', restaurant.id)
       .order('sort_order', { ascending: true })

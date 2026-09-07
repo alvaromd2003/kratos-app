@@ -21,6 +21,8 @@ type Item = {
   is_available: boolean
   dietary_tags: string[]
   recommended_item_id: string | null
+  available_from: string | null
+  available_until: string | null
 }
 
 export function ItemRow({
@@ -124,6 +126,26 @@ export function ItemRow({
             </label>
           ))}
         </div>
+        <div className="flex flex-wrap gap-3">
+          <label className="flex items-center gap-1 text-xs text-gray-500">
+            Desde
+            <input
+              name="available_from"
+              type="time"
+              defaultValue={item.available_from?.slice(0, 5) ?? ''}
+              className="rounded border border-gray-300 px-2 py-1 text-sm"
+            />
+          </label>
+          <label className="flex items-center gap-1 text-xs text-gray-500">
+            Hasta
+            <input
+              name="available_until"
+              type="time"
+              defaultValue={item.available_until?.slice(0, 5) ?? ''}
+              className="rounded border border-gray-300 px-2 py-1 text-sm"
+            />
+          </label>
+        </div>
         {otherItems.length > 0 && (
           <div className="flex flex-col gap-1">
             <label htmlFor={`recommend-${item.id}`} className="text-xs text-gray-500">
@@ -159,6 +181,11 @@ export function ItemRow({
           </button>
           {showSaved && <span className="text-xs text-green-600">Guardado ✓</span>}
           {!item.is_available && <span className="text-xs text-gray-400">(oculto)</span>}
+          {item.available_from && item.available_until && (
+            <span className="text-xs text-gray-400">
+              🕒 {item.available_from.slice(0, 5)}–{item.available_until.slice(0, 5)}
+            </span>
+          )}
         </div>
       </form>
       <div className="flex flex-col gap-1">

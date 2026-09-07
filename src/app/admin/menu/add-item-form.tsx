@@ -102,6 +102,26 @@ export function AddItemForm({
           </span>
         </div>
       )}
+      <div className="flex flex-wrap gap-3">
+        <div className="flex flex-col gap-1">
+          <label htmlFor="item-available-from">Disponible desde (opcional)</label>
+          <input
+            id="item-available-from"
+            name="available_from"
+            type="time"
+            className="rounded border border-gray-300 px-3 py-2"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor="item-available-until">Disponible hasta (opcional)</label>
+          <input
+            id="item-available-until"
+            name="available_until"
+            type="time"
+            className="rounded border border-gray-300 px-3 py-2"
+          />
+        </div>
+      </div>
       <div className="flex flex-col gap-1">
         <label htmlFor="item-image">Foto (opcional)</label>
         <input

@@ -12,6 +12,7 @@ import { SendOrderButton } from './send-order-button'
 import { HelpButton } from './help-button'
 import { PaymentPanel } from './payment-panel'
 import { LoyaltyPanel } from './loyalty-panel'
+import { ItemizedPaymentPanel } from './itemized-payment-panel'
 
 type Category = { id: string; name: string }
 type MenuItem = {
@@ -98,6 +99,9 @@ export function LiveTable({
   avgWaitMinutes,
   loyaltyEmail,
   loyaltyStamps,
+  googleReviewUrl,
+  hasSubmittedFeedback,
+  claimedOrderItemIds,
 }: {
   qrToken: string
   tableLabel: string
@@ -119,6 +123,9 @@ export function LiveTable({
   avgWaitMinutes: number | null
   loyaltyEmail: string | null
   loyaltyStamps: number
+  googleReviewUrl: string | null
+  hasSubmittedFeedback: boolean
+  claimedOrderItemIds: string[]
 }) {
   const [participants, setParticipants] = useState(initialParticipants)
   const [orderItems, setOrderItems] = useState(initialOrderItems)
@@ -310,6 +317,23 @@ export function LiveTable({
     return participantsById.get(id)?.name ?? '—'
   }
 
+  const claimedSet = new Set(claimedOrderItemIds)
+  const pickableItems = orderItems
+    .filter((row) => !claimedSet.has(row.id))
+    .map((row) => {
+      const item = itemsById.get(row.menu_item_id)
+      return item
+        ? {
+            id: row.id,
+            name: item.name,
+            priceCents: item.price_cents,
+            quantity: row.quantity,
+            participantLabel: participantLabel(row.participant_id),
+          }
+        : null
+    })
+    .filter((row): row is NonNullable<typeof row> => row !== null)
+
   const sortedOrders = [...orders].sort((a, b) => a.created_at.localeCompare(b.created_at))
 
   function queuePosition(order: OrderRow): number {
@@ -346,15 +370,22 @@ export function LiveTable({
       <LoyaltyPanel qrToken={qrToken} loyaltyEmail={loyaltyEmail} stamps={loyaltyStamps} />
 
       {stripeOnboardingComplete && (
-        <PaymentPanel
-          qrToken={qrToken}
-          currency={currency}
-          remainingCents={remainingCents}
-          individualDueCents={individualDueCents}
-          defaultShareCount={participants.length}
-          paymentResult={paymentResult}
-          pendingCashAmountCents={pendingCashAmountCents}
-        />
+        <>
+          <PaymentPanel
+            qrToken={qrToken}
+            currency={currency}
+            remainingCents={remainingCents}
+            individualDueCents={individualDueCents}
+            defaultShareCount={participants.length}
+            paymentResult={paymentResult}
+            pendingCashAmountCents={pendingCashAmountCents}
+            hasSubmittedFeedback={hasSubmittedFeedback}
+            googleReviewUrl={googleReviewUrl}
+          />
+          {remainingCents > 0 && pendingCashAmountCents === null && (
+            <ItemizedPaymentPanel qrToken={qrToken} currency={currency} items={pickableItems} />
+          )}
+        </>
       )}
 
       {sortedOrders.length > 0 && (

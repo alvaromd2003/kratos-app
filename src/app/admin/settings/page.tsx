@@ -44,6 +44,7 @@ export default async function SettingsPage({
         currency={restaurant.currency}
         enabledDietaryTags={restaurant.enabled_dietary_tags}
         enabledPaymentMethods={restaurant.enabled_payment_methods}
+        googleReviewUrl={restaurant.google_review_url}
       />
       <StripeConnectSection connected={onboardingComplete} />
     </div>

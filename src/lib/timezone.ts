@@ -30,3 +30,20 @@ export function startOfTodayIso(timeZone = 'Europe/Madrid'): string {
 export function daysAgoIso(days: number): string {
   return new Date(Date.now() - days * 86400000).toISOString()
 }
+
+export function currentTimeInZone(timeZone = 'Europe/Madrid'): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date())
+}
+
+// from/until are "HH:MM" (or "HH:MM:SS", straight from a Postgres `time`
+// column — comparing as plain strings works either way since they're
+// zero-padded). Handles a window that crosses midnight (e.g. 22:00–02:00).
+export function isWithinTimeWindow(from: string, until: string, now: string): boolean {
+  if (from <= until) return now >= from && now <= until
+  return now >= from || now <= until
+}

@@ -6,6 +6,7 @@ import { getActiveTableByQrToken, getVerifiedParticipant } from '@/lib/ordering'
 import {
   getRequestOrigin,
   getTableBillSummary,
+  getClaimedOrderItemIds,
   individualAmountDue,
   splitAmountDue,
 } from '@/lib/payments'
@@ -16,7 +17,7 @@ import type Stripe from 'stripe'
 
 export type PaymentFormState = { error?: string } | undefined
 
-type PaymentMode = 'individual' | 'split' | 'collective'
+type PaymentMode = 'individual' | 'split' | 'collective' | 'items'
 type AdminClient = ReturnType<typeof createAdminClient>
 type VerifiedTable = { restaurant_id: string; label: string }
 type VerifiedParticipant = { participantId: string; tableSessionId: string }
@@ -39,7 +40,8 @@ async function createPaymentCheckout(
   verified: VerifiedParticipant,
   mode: PaymentMode,
   amountCents: number,
-  tipCents: number
+  tipCents: number,
+  orderItemIds?: string[]
 ): Promise<PaymentFormState> {
   if (amountCents <= 0) {
     return { error: 'No hay nada pendiente de pagar.' }
@@ -80,6 +82,15 @@ async function createPaymentCheckout(
 
   if (insertError || !share) {
     return { error: 'No se pudo iniciar el pago. Inténtalo de nuevo.' }
+  }
+
+  if (orderItemIds && orderItemIds.length > 0) {
+    await admin.from('payment_share_items').insert(
+      orderItemIds.map((orderItemId) => ({
+        payment_share_id: share.id,
+        order_item_id: orderItemId,
+      }))
+    )
   }
 
   const origin = await getRequestOrigin()
@@ -230,6 +241,81 @@ export async function createCollectivePayment(
     'collective',
     summary.remainingCents,
     tipCents
+  )
+}
+
+// Lets a diner cover exactly the dishes they pick — anyone's at the
+// table, not just their own (covering a shared starter, or someone
+// else's dessert as a treat) — instead of a fixed individual/split/
+// collective amount.
+export async function createItemizedPayment(
+  _prevState: PaymentFormState,
+  formData: FormData
+): Promise<PaymentFormState> {
+  const qrToken = String(formData.get('qr_token') ?? '')
+  const orderItemIds = formData
+    .getAll('order_item_id')
+    .map(String)
+    .filter((id) => id.length > 0)
+
+  const table = await getActiveTableByQrToken(qrToken)
+  const verified = table ? await getVerifiedParticipant(qrToken) : null
+  if (!table || !verified) {
+    return { error: 'Tu sesión en la mesa caducó. Vuelve a escanear el código QR.' }
+  }
+
+  if (orderItemIds.length === 0) {
+    return { error: 'Selecciona al menos un plato.' }
+  }
+
+  const admin = createAdminClient()
+
+  const summary = await getTableBillSummary(admin, verified.tableSessionId)
+  if (summary.remainingCents <= 0) {
+    return { error: 'La cuenta ya está pagada.' }
+  }
+
+  // Re-derive everything from the DB — never trust client-supplied ids
+  // blindly — and drop any line that's already been paid off since the
+  // diner loaded the page.
+  const [{ data: items }, claimedIds] = await Promise.all([
+    admin
+      .from('order_items')
+      .select('id, menu_item_id, quantity')
+      .eq('table_session_id', verified.tableSessionId)
+      .in('id', orderItemIds),
+    getClaimedOrderItemIds(admin, verified.tableSessionId),
+  ])
+
+  const validItems = (items ?? []).filter((item) => !claimedIds.has(item.id))
+  if (validItems.length === 0) {
+    return {
+      error: 'Esos platos ya no están disponibles para pagar (puede que ya los haya pagado otra persona).',
+    }
+  }
+
+  const menuItemIds = [...new Set(validItems.map((item) => item.menu_item_id))]
+  const { data: menuItems } = await admin
+    .from('menu_items')
+    .select('id, price_cents')
+    .in('id', menuItemIds)
+  const priceById = new Map((menuItems ?? []).map((m) => [m.id, m.price_cents]))
+
+  const amountCents = validItems.reduce(
+    (sum, item) => sum + (priceById.get(item.menu_item_id) ?? 0) * item.quantity,
+    0
+  )
+  const tipCents = tipCentsFromFormData(formData, amountCents)
+
+  return createPaymentCheckout(
+    admin,
+    qrToken,
+    table,
+    verified,
+    'items',
+    amountCents,
+    tipCents,
+    validItems.map((item) => item.id)
   )
 }
 

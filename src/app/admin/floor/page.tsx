@@ -26,7 +26,7 @@ export default async function FloorPage() {
       .order('created_at'),
     supabase
       .from('table_sessions')
-      .select('id, table_id')
+      .select('id, table_id, created_at')
       .eq('restaurant_id', restaurant.id)
       .eq('status', 'open'),
   ])
@@ -46,6 +46,27 @@ export default async function FloorPage() {
       })
     )
   )
+
+  // Last activity per session, for the "mesa parada" nudge — a single
+  // bulk query (not one per table) of every open session's order_items,
+  // reduced client-side to the freshest created_at per session. Falls
+  // back to the session's own created_at if nothing's been ordered yet.
+  const sessionIds = sessionList.map((s) => s.id)
+  const { data: recentItems } =
+    sessionIds.length > 0
+      ? await supabase
+          .from('order_items')
+          .select('table_session_id, created_at')
+          .in('table_session_id', sessionIds)
+      : { data: [] }
+  const lastActivityBySessionId = new Map(sessionList.map((s) => [s.id, s.created_at]))
+  for (const item of recentItems ?? []) {
+    const current = lastActivityBySessionId.get(item.table_session_id)
+    if (!current || item.created_at > current) {
+      lastActivityBySessionId.set(item.table_session_id, item.created_at)
+    }
+  }
+
   const initialTables = (tables ?? []).map((t) => {
     const sessionId = sessionIdByTableId.get(t.id)
     return {
@@ -53,6 +74,7 @@ export default async function FloorPage() {
       label: t.label,
       occupied: sessionId !== undefined,
       pendingCents: sessionId !== undefined ? (pendingCentsBySessionId.get(sessionId) ?? 0) : 0,
+      lastActivityAt: sessionId !== undefined ? (lastActivityBySessionId.get(sessionId) ?? null) : null,
     }
   })
 

@@ -6,22 +6,61 @@ import { closeTableSession } from '@/app/actions/tables'
 import { useWakeLock } from '@/lib/use-wake-lock'
 import { formatPrice } from '@/lib/format'
 
-type Table = { id: string; label: string; occupied: boolean; pendingCents: number }
+type Table = {
+  id: string
+  label: string
+  occupied: boolean
+  pendingCents: number
+  lastActivityAt: string | null
+}
 type SessionRow = { table_id: string; status: 'open' | 'closed' }
 
-async function fetchOccupancy(
+const IDLE_THRESHOLD_MINUTES = 30
+
+// Refreshes occupancy AND last-activity together — same query shape as
+// the server-side one in floor/page.tsx. Used both on realtime reconnect
+// and on a periodic timer (order_items has no restaurant_id column to
+// filter a Realtime channel on, so this can't just be pushed live).
+async function fetchTableState(
   supabase: ReturnType<typeof createClient>,
   restaurantId: string,
   tables: Table[]
 ): Promise<Table[]> {
   const { data: openSessions } = await supabase
     .from('table_sessions')
-    .select('table_id')
+    .select('id, table_id, created_at')
     .eq('restaurant_id', restaurantId)
     .eq('status', 'open')
 
-  const occupiedIds = new Set((openSessions ?? []).map((s) => s.table_id))
-  return tables.map((t) => ({ ...t, occupied: occupiedIds.has(t.id) }))
+  const sessionList = openSessions ?? []
+  const occupiedTableIds = new Set(sessionList.map((s) => s.table_id))
+  const sessionIdByTableId = new Map(sessionList.map((s) => [s.table_id, s.id]))
+
+  const sessionIds = sessionList.map((s) => s.id)
+  const { data: recentItems } =
+    sessionIds.length > 0
+      ? await supabase
+          .from('order_items')
+          .select('table_session_id, created_at')
+          .in('table_session_id', sessionIds)
+      : { data: [] }
+
+  const lastActivityBySessionId = new Map(sessionList.map((s) => [s.id, s.created_at]))
+  for (const item of recentItems ?? []) {
+    const current = lastActivityBySessionId.get(item.table_session_id)
+    if (!current || item.created_at > current) {
+      lastActivityBySessionId.set(item.table_session_id, item.created_at)
+    }
+  }
+
+  return tables.map((t) => {
+    const sessionId = sessionIdByTableId.get(t.id)
+    return {
+      ...t,
+      occupied: occupiedTableIds.has(t.id),
+      lastActivityAt: sessionId ? (lastActivityBySessionId.get(sessionId) ?? null) : null,
+    }
+  })
 }
 
 export function TableStatus({
@@ -34,9 +73,29 @@ export function TableStatus({
   currency: string
 }) {
   const [tables, setTables] = useState(initialTables)
+  const [now, setNow] = useState(() => Date.now())
   const hasConnectedBefore = useRef(false)
 
   useWakeLock()
+
+  // Forces a re-render every minute so "sin actividad hace N min" keeps
+  // counting up even with no new data, and periodically re-pulls
+  // lastActivityAt fresh from the server (see fetchTableState's comment
+  // on why this can't just be Realtime).
+  useEffect(() => {
+    const tickInterval = setInterval(() => setNow(Date.now()), 60_000)
+    const refreshInterval = setInterval(() => {
+      const supabase = createClient()
+      setTables((current) => {
+        fetchTableState(supabase, restaurantId, current).then(setTables)
+        return current
+      })
+    }, 120_000)
+    return () => {
+      clearInterval(tickInterval)
+      clearInterval(refreshInterval)
+    }
+  }, [restaurantId])
 
   useEffect(() => {
     const supabase = createClient()
@@ -55,7 +114,9 @@ export function TableStatus({
           const row = payload.new as SessionRow
           setTables((current) =>
             current.map((t) =>
-              t.id === row.table_id ? { ...t, occupied: true, pendingCents: 0 } : t
+              t.id === row.table_id
+                ? { ...t, occupied: true, pendingCents: 0, lastActivityAt: new Date().toISOString() }
+                : t
             )
           )
         }
@@ -83,7 +144,7 @@ export function TableStatus({
           return
         }
         setTables((current) => {
-          fetchOccupancy(supabase, restaurantId, current).then(setTables)
+          fetchTableState(supabase, restaurantId, current).then(setTables)
           return current
         })
       })
@@ -115,6 +176,17 @@ export function TableStatus({
                     Pendiente: {formatPrice(table.pendingCents, currency)}
                   </span>
                 )}
+                {table.lastActivityAt &&
+                  (() => {
+                    const idleMinutes = Math.floor(
+                      (now - new Date(table.lastActivityAt).getTime()) / 60_000
+                    )
+                    return idleMinutes >= IDLE_THRESHOLD_MINUTES ? (
+                      <span className="text-xs text-orange-600">
+                        ⏳ Sin actividad hace {idleMinutes} min
+                      </span>
+                    ) : null
+                  })()}
                 <form
                   action={closeTableSession}
                   onSubmit={(e) => {

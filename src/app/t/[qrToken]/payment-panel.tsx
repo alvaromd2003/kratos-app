@@ -8,6 +8,7 @@ import {
   createCollectivePayment,
   requestCashPayment,
 } from '@/app/actions/payments'
+import { FeedbackPanel } from './feedback-panel'
 
 export function PaymentPanel({
   qrToken,
@@ -17,6 +18,8 @@ export function PaymentPanel({
   defaultShareCount,
   paymentResult,
   pendingCashAmountCents,
+  hasSubmittedFeedback,
+  googleReviewUrl,
 }: {
   qrToken: string
   currency: string
@@ -25,6 +28,8 @@ export function PaymentPanel({
   defaultShareCount: number
   paymentResult: 'success' | 'cancelled' | null
   pendingCashAmountCents: number | null
+  hasSubmittedFeedback: boolean
+  googleReviewUrl: string | null
 }) {
   const [individualState, individualAction, individualPending] = useActionState(
     createIndividualPayment,
@@ -43,8 +48,13 @@ export function PaymentPanel({
 
   if (remainingCents <= 0) {
     return (
-      <div className="rounded border border-green-200 bg-green-50 p-3 text-sm text-green-700">
-        ✓ Cuenta pagada
+      <div className="flex flex-col gap-3 rounded border border-green-200 bg-green-50 p-3">
+        <p className="text-sm text-green-700">✓ Cuenta pagada</p>
+        <FeedbackPanel
+          qrToken={qrToken}
+          hasSubmittedFeedback={hasSubmittedFeedback}
+          googleReviewUrl={googleReviewUrl}
+        />
       </div>
     )
   }

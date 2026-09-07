@@ -17,11 +17,13 @@ export function SettingsForm({
   currency,
   enabledDietaryTags,
   enabledPaymentMethods,
+  googleReviewUrl,
 }: {
   name: string
   currency: string
   enabledDietaryTags: string[]
   enabledPaymentMethods: string[]
+  googleReviewUrl: string | null
 }) {
   const [state, action, pending] = useActionState(updateRestaurantProfile, undefined)
 
@@ -86,6 +88,20 @@ export function SettingsForm({
             </label>
           ))}
         </div>
+      </div>
+      <div className="flex flex-col gap-1">
+        <label htmlFor="google-review-url">Enlace de reseña de Google (opcional)</label>
+        <input
+          id="google-review-url"
+          name="google_review_url"
+          type="url"
+          placeholder="https://g.page/r/..."
+          defaultValue={googleReviewUrl ?? ''}
+          className="rounded border border-gray-300 px-3 py-2"
+        />
+        <span className="text-xs text-gray-500">
+          Se lo mostramos a los clientes que puntúen su experiencia con 4-5 estrellas tras pagar.
+        </span>
       </div>
       {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
       <button
