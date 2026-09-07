@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { closeTableSession } from '@/app/actions/tables'
 import { useWakeLock } from '@/lib/use-wake-lock'
 import { formatPrice } from '@/lib/format'
+import { AssistedOrderForm } from './assisted-order-form'
 
 type Table = {
   id: string
@@ -67,13 +68,16 @@ export function TableStatus({
   restaurantId,
   initialTables,
   currency,
+  menuItems,
 }: {
   restaurantId: string
   initialTables: Table[]
   currency: string
+  menuItems: { id: string; name: string; price_cents: number }[]
 }) {
   const [tables, setTables] = useState(initialTables)
   const [now, setNow] = useState(() => Date.now())
+  const [expandedTableId, setExpandedTableId] = useState<string | null>(null)
   const hasConnectedBefore = useRef(false)
 
   useWakeLock()
@@ -163,52 +167,64 @@ export function TableStatus({
         {tables.map((table) => (
           <li
             key={table.id}
-            className="flex items-center gap-2 rounded border border-gray-200 px-3 py-2 text-sm"
+            className="flex flex-col gap-2 rounded border border-gray-200 px-3 py-2 text-sm"
           >
-            <span className="font-medium">Mesa {table.label}</span>
-            {table.occupied ? (
-              <>
-                <span className="rounded bg-red-600 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
-                  Ocupada
-                </span>
-                {table.pendingCents > 0 && (
-                  <span className="text-xs text-amber-700">
-                    Pendiente: {formatPrice(table.pendingCents, currency)}
+            <div className="flex items-center gap-2">
+              <span className="font-medium">Mesa {table.label}</span>
+              {table.occupied ? (
+                <>
+                  <span className="rounded bg-red-600 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
+                    Ocupada
                   </span>
-                )}
-                {table.lastActivityAt &&
-                  (() => {
-                    const idleMinutes = Math.floor(
-                      (now - new Date(table.lastActivityAt).getTime()) / 60_000
-                    )
-                    return idleMinutes >= IDLE_THRESHOLD_MINUTES ? (
-                      <span className="text-xs text-orange-600">
-                        ⏳ Sin actividad hace {idleMinutes} min
-                      </span>
-                    ) : null
-                  })()}
-                <form
-                  action={closeTableSession}
-                  onSubmit={(e) => {
-                    const warning =
-                      table.pendingCents > 0
-                        ? `Quedan ${formatPrice(table.pendingCents, currency)} sin cobrar por la app en la mesa ${table.label} (puede que ya se haya cobrado en efectivo o con datáfono). ¿Cerrar de todas formas?`
-                        : `¿Cerrar la mesa ${table.label}? Los clientes conectados tendrán que volver a escanear el código QR.`
-                    if (!confirm(warning)) {
-                      e.preventDefault()
-                    }
-                  }}
-                >
-                  <input type="hidden" name="table_id" value={table.id} />
-                  <button type="submit" className="text-xs underline">
-                    Cerrar
-                  </button>
-                </form>
-              </>
-            ) : (
-              <span className="rounded bg-green-600 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
-                Libre
-              </span>
+                  {table.pendingCents > 0 && (
+                    <span className="text-xs text-amber-700">
+                      Pendiente: {formatPrice(table.pendingCents, currency)}
+                    </span>
+                  )}
+                  {table.lastActivityAt &&
+                    (() => {
+                      const idleMinutes = Math.floor(
+                        (now - new Date(table.lastActivityAt).getTime()) / 60_000
+                      )
+                      return idleMinutes >= IDLE_THRESHOLD_MINUTES ? (
+                        <span className="text-xs text-orange-600">
+                          ⏳ Sin actividad hace {idleMinutes} min
+                        </span>
+                      ) : null
+                    })()}
+                  <form
+                    action={closeTableSession}
+                    onSubmit={(e) => {
+                      const warning =
+                        table.pendingCents > 0
+                          ? `Quedan ${formatPrice(table.pendingCents, currency)} sin cobrar por la app en la mesa ${table.label} (puede que ya se haya cobrado en efectivo o con datáfono). ¿Cerrar de todas formas?`
+                          : `¿Cerrar la mesa ${table.label}? Los clientes conectados tendrán que volver a escanear el código QR.`
+                      if (!confirm(warning)) {
+                        e.preventDefault()
+                      }
+                    }}
+                  >
+                    <input type="hidden" name="table_id" value={table.id} />
+                    <button type="submit" className="text-xs underline">
+                      Cerrar
+                    </button>
+                  </form>
+                </>
+              ) : (
+                <span className="rounded bg-green-600 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
+                  Libre
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => setExpandedTableId((current) => (current === table.id ? null : table.id))}
+                className="text-xs text-gray-500 underline"
+              >
+                Pedido asistido
+              </button>
+            </div>
+            {expandedTableId === table.id && (
+              <AssistedOrderForm tableId={table.id} currency={currency} menuItems={menuItems} />
             )}
           </li>
         ))}

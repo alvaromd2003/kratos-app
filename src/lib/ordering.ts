@@ -73,3 +73,117 @@ export async function getVerifiedParticipant(qrToken: string) {
 
   return { participantId: verified.participant.id, tableSessionId: verified.session.id }
 }
+
+// Shared by joinTable (a diner scanning the QR) and the staff-assisted
+// order flow (a diner who'd rather not use their own phone) — either way,
+// "the" open session for a table, creating it if this is the first
+// person at the table this sitting. Handles two people racing to open it
+// at the same instant via the unique-open-session-per-table index.
+export async function getOrCreateOpenSession(
+  admin: ReturnType<typeof createAdminClient>,
+  table: { id: string; restaurant_id: string }
+): Promise<string | null> {
+  const { data: existingSession } = await admin
+    .from('table_sessions')
+    .select('id')
+    .eq('table_id', table.id)
+    .eq('status', 'open')
+    .maybeSingle()
+
+  if (existingSession) return existingSession.id
+
+  const { data: created, error: createError } = await admin
+    .from('table_sessions')
+    .insert({ restaurant_id: table.restaurant_id, table_id: table.id })
+    .select('id')
+    .single()
+
+  if (created) return created.id
+
+  if (createError?.code === '23505') {
+    // Someone else opened it a moment before us — use theirs.
+    const { data: raceWinner } = await admin
+      .from('table_sessions')
+      .select('id')
+      .eq('table_id', table.id)
+      .eq('status', 'open')
+      .maybeSingle()
+    return raceWinner?.id ?? null
+  }
+
+  return null
+}
+
+// Shared by sendOrderToKitchen (a diner) and the staff-assisted order
+// flow — claims every still-unsent order_item for a session into a new
+// orders row, routing straight to 'ready' if the round is drinks-only.
+export async function sendSessionOrderToKitchen(
+  admin: ReturnType<typeof createAdminClient>,
+  tableSessionId: string,
+  restaurantId: string
+): Promise<{ error?: string }> {
+  const { data: pendingItems } = await admin
+    .from('order_items')
+    .select('id, menu_item_id')
+    .eq('table_session_id', tableSessionId)
+    .is('order_id', null)
+
+  if (!pendingItems || pendingItems.length === 0) {
+    return { error: 'No hay nada en el carrito para enviar.' }
+  }
+
+  const menuItemIds = [...new Set(pendingItems.map((i) => i.menu_item_id))]
+  const { data: menuItems } = await admin
+    .from('menu_items')
+    .select('id, category_id')
+    .in('id', menuItemIds)
+  const categoryIds = [
+    ...new Set((menuItems ?? []).map((m) => m.category_id).filter((id): id is string => !!id)),
+  ]
+  const { data: categories } =
+    categoryIds.length > 0
+      ? await admin.from('menu_categories').select('id, station').in('id', categoryIds)
+      : { data: [] }
+  const stationByCategoryId = new Map((categories ?? []).map((c) => [c.id, c.station]))
+  const categoryByMenuItemId = new Map((menuItems ?? []).map((m) => [m.id, m.category_id]))
+  const hasKitchenItem = pendingItems.some((item) => {
+    const categoryId = categoryByMenuItemId.get(item.menu_item_id)
+    const station = categoryId ? (stationByCategoryId.get(categoryId) ?? 'kitchen') : 'kitchen'
+    return station === 'kitchen'
+  })
+
+  const { data: order, error: orderError } = await admin
+    .from('orders')
+    .insert({
+      restaurant_id: restaurantId,
+      table_session_id: tableSessionId,
+      status: hasKitchenItem ? 'pending' : 'ready',
+    })
+    .select('id')
+    .single()
+
+  if (orderError || !order) {
+    return { error: 'No se pudo enviar el pedido. Inténtalo de nuevo.' }
+  }
+
+  // Guards the same double-send race as elsewhere: if a concurrent call
+  // already claimed everything, this order ends up empty and gets
+  // cleaned up instead of sitting on the kitchen board empty.
+  const { data: claimed, error: updateError } = await admin
+    .from('order_items')
+    .update({ order_id: order.id })
+    .eq('table_session_id', tableSessionId)
+    .is('order_id', null)
+    .select('id')
+
+  if (updateError) {
+    await admin.from('orders').delete().eq('id', order.id)
+    return { error: 'No se pudo enviar el pedido. Inténtalo de nuevo.' }
+  }
+
+  if (!claimed || claimed.length === 0) {
+    await admin.from('orders').delete().eq('id', order.id)
+  }
+
+  return {}
+}

@@ -7,16 +7,17 @@ import { getClaimedOrderItemIds } from '@/lib/payments'
 import { currentTimeInZone, isWithinTimeWindow } from '@/lib/timezone'
 import { JoinForm } from './join-form'
 import { LiveTable } from './live-table'
+import { MenuPreview } from './menu-preview'
 
 export default async function TableOrderPage({
   params,
   searchParams,
 }: {
   params: Promise<{ qrToken: string }>
-  searchParams: Promise<{ payment?: string }>
+  searchParams: Promise<{ payment?: string; browse?: string }>
 }) {
   const { qrToken } = await params
-  const { payment } = await searchParams
+  const { payment, browse } = await searchParams
   const paymentResult = payment === 'success' || payment === 'cancelled' ? payment : null
 
   const table = await getActiveTableByQrToken(qrToken)
@@ -50,6 +51,39 @@ export default async function TableOrderPage({
       : null
 
   if (!verified) {
+    if (browse === '1') {
+      const [{ data: previewCategories }, { data: previewItems }] = await Promise.all([
+        admin
+          .from('menu_categories')
+          .select('id, name')
+          .eq('restaurant_id', table.restaurant_id)
+          .order('sort_order', { ascending: true }),
+        admin
+          .from('menu_items')
+          .select('id, category_id, name, description, price_cents, image_url, dietary_tags, available_from, available_until')
+          .eq('restaurant_id', table.restaurant_id)
+          .eq('is_available', true)
+          .order('sort_order', { ascending: true }),
+      ])
+      const now = currentTimeInZone()
+      const visiblePreviewItems = (previewItems ?? []).filter(
+        (item) =>
+          !item.available_from ||
+          !item.available_until ||
+          isWithinTimeWindow(item.available_from, item.available_until, now)
+      )
+      return (
+        <MenuPreview
+          qrToken={qrToken}
+          tableLabel={table.label}
+          restaurantName={restaurant.name}
+          currency={restaurant.currency}
+          enabledTags={restaurant.enabled_dietary_tags}
+          categories={previewCategories ?? []}
+          items={visiblePreviewItems}
+        />
+      )
+    }
     return (
       <JoinForm qrToken={qrToken} tableLabel={table.label} restaurantName={restaurant.name} />
     )

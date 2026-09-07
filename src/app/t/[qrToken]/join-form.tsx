@@ -40,9 +40,12 @@ export function JoinForm({
           type="submit"
           className="rounded bg-black px-4 py-2 text-white disabled:opacity-50"
         >
-          {pending ? 'Entrando…' : 'Ver el menú'}
+          {pending ? 'Entrando…' : 'Entrar y pedir'}
         </button>
       </form>
+      <a href={`/t/${qrToken}?browse=1`} className="text-center text-sm underline">
+        Ver el menú sin unirme
+      </a>
     </main>
   )
 }

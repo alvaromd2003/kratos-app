@@ -6,7 +6,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import {
   dinerCookieName,
   getActiveTableByQrToken,
+  getOrCreateOpenSession,
   getVerifiedParticipant,
+  sendSessionOrderToKitchen,
 } from '@/lib/ordering'
 
 export type OrderingFormState = { error?: string } | undefined
@@ -31,36 +33,7 @@ export async function joinTable(
 
   const admin = createAdminClient()
 
-  const { data: existingSession } = await admin
-    .from('table_sessions')
-    .select('id')
-    .eq('table_id', table.id)
-    .eq('status', 'open')
-    .maybeSingle()
-
-  let sessionId = existingSession?.id
-
-  if (!sessionId) {
-    const { data: created, error: createError } = await admin
-      .from('table_sessions')
-      .insert({ restaurant_id: table.restaurant_id, table_id: table.id })
-      .select('id')
-      .single()
-
-    if (created) {
-      sessionId = created.id
-    } else if (createError?.code === '23505') {
-      // Someone else opened the session a moment before us — use theirs.
-      const { data: raceWinner } = await admin
-        .from('table_sessions')
-        .select('id')
-        .eq('table_id', table.id)
-        .eq('status', 'open')
-        .maybeSingle()
-      sessionId = raceWinner?.id
-    }
-  }
-
+  const sessionId = await getOrCreateOpenSession(admin, table)
   if (!sessionId) {
     return { error: 'No se pudo abrir la mesa. Inténtalo de nuevo.' }
   }
@@ -197,74 +170,9 @@ export async function sendOrderToKitchen(
 
   const admin = createAdminClient()
 
-  const { data: pendingItems } = await admin
-    .from('order_items')
-    .select('id, menu_item_id')
-    .eq('table_session_id', verified.tableSessionId)
-    .is('order_id', null)
-
-  if (!pendingItems || pendingItems.length === 0) {
-    return { error: 'Añade algo al carrito antes de enviar el pedido.' }
-  }
-
-  // A round that's drinks-only has nothing for the kitchen to do — it
-  // skips straight to "ready", so it lands directly on Barra's board
-  // instead of sitting on Cocina's until someone notices there's no food
-  // in it.
-  const menuItemIds = [...new Set(pendingItems.map((i) => i.menu_item_id))]
-  const { data: menuItems } = await admin
-    .from('menu_items')
-    .select('id, category_id')
-    .in('id', menuItemIds)
-  const categoryIds = [
-    ...new Set((menuItems ?? []).map((m) => m.category_id).filter((id): id is string => !!id)),
-  ]
-  const { data: categories } =
-    categoryIds.length > 0
-      ? await admin.from('menu_categories').select('id, station').in('id', categoryIds)
-      : { data: [] }
-  const stationByCategoryId = new Map((categories ?? []).map((c) => [c.id, c.station]))
-  const categoryByMenuItemId = new Map((menuItems ?? []).map((m) => [m.id, m.category_id]))
-  const hasKitchenItem = pendingItems.some((item) => {
-    const categoryId = categoryByMenuItemId.get(item.menu_item_id)
-    const station = categoryId ? (stationByCategoryId.get(categoryId) ?? 'kitchen') : 'kitchen'
-    return station === 'kitchen'
-  })
-
-  const { data: order, error: orderError } = await admin
-    .from('orders')
-    .insert({
-      restaurant_id: table.restaurant_id,
-      table_session_id: verified.tableSessionId,
-      status: hasKitchenItem ? 'pending' : 'ready',
-    })
-    .select('id')
-    .single()
-
-  if (orderError || !order) {
-    return { error: 'No se pudo enviar el pedido. Inténtalo de nuevo.' }
-  }
-
-  // Two people at the table can both tap "Enviar pedido" within the same
-  // instant — both read the same unsent items before either has claimed
-  // them. Whoever's UPDATE lands second claims nothing, so its order
-  // would otherwise sit on the kitchen board empty. .select() here reveals
-  // exactly that: if nothing was actually claimed, this was a duplicate
-  // send and the empty order gets cleaned up instead of shown to staff.
-  const { data: claimed, error: updateError } = await admin
-    .from('order_items')
-    .update({ order_id: order.id })
-    .eq('table_session_id', verified.tableSessionId)
-    .is('order_id', null)
-    .select('id')
-
-  if (updateError) {
-    await admin.from('orders').delete().eq('id', order.id)
-    return { error: 'No se pudo enviar el pedido. Inténtalo de nuevo.' }
-  }
-
-  if (!claimed || claimed.length === 0) {
-    await admin.from('orders').delete().eq('id', order.id)
+  const result = await sendSessionOrderToKitchen(admin, verified.tableSessionId, table.restaurant_id)
+  if (result.error) {
+    return { error: result.error }
   }
 }
 

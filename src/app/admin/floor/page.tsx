@@ -16,20 +16,27 @@ export default async function FloorPage() {
 
   const supabase = await createClient()
 
-  const [readyOrders, { data: tables }, { data: openSessions }] = await Promise.all([
-    getRestaurantOrders(supabase, restaurant.id, { statuses: ['ready'], ascending: true }),
-    supabase
-      .from('tables')
-      .select('id, label')
-      .eq('restaurant_id', restaurant.id)
-      .eq('active', true)
-      .order('created_at'),
-    supabase
-      .from('table_sessions')
-      .select('id, table_id, created_at')
-      .eq('restaurant_id', restaurant.id)
-      .eq('status', 'open'),
-  ])
+  const [readyOrders, { data: tables }, { data: openSessions }, { data: menuItems }] =
+    await Promise.all([
+      getRestaurantOrders(supabase, restaurant.id, { statuses: ['ready'], ascending: true }),
+      supabase
+        .from('tables')
+        .select('id, label')
+        .eq('restaurant_id', restaurant.id)
+        .eq('active', true)
+        .order('created_at'),
+      supabase
+        .from('table_sessions')
+        .select('id, table_id, created_at')
+        .eq('restaurant_id', restaurant.id)
+        .eq('status', 'open'),
+      supabase
+        .from('menu_items')
+        .select('id, name, price_cents')
+        .eq('restaurant_id', restaurant.id)
+        .eq('is_available', true)
+        .order('sort_order', { ascending: true }),
+    ])
 
   const sessionList = openSessions ?? []
   const tableLabelById = new Map((tables ?? []).map((t) => [t.id, t.label]))
@@ -131,6 +138,7 @@ export default async function FloorPage() {
         restaurantId={restaurant.id}
         initialTables={initialTables}
         currency={restaurant.currency}
+        menuItems={menuItems ?? []}
       />
     </div>
   )
