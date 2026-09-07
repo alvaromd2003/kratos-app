@@ -43,6 +43,7 @@ export default async function SettingsPage({
         name={restaurant.name}
         currency={restaurant.currency}
         enabledDietaryTags={restaurant.enabled_dietary_tags}
+        enabledPaymentMethods={restaurant.enabled_payment_methods}
       />
       <StripeConnectSection connected={onboardingComplete} />
     </div>

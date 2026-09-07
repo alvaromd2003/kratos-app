@@ -10,6 +10,7 @@ import {
   splitAmountDue,
 } from '@/lib/payments'
 import { stripe } from '@/lib/stripe'
+import { OPTIONAL_PAYMENT_METHODS } from '@/lib/payment-methods'
 import type Stripe from 'stripe'
 
 export type PaymentFormState = { error?: string } | undefined
@@ -38,7 +39,7 @@ async function createPaymentCheckout(
 
   const { data: restaurant } = await admin
     .from('restaurants')
-    .select('currency, stripe_account_id, stripe_onboarding_complete')
+    .select('currency, stripe_account_id, stripe_onboarding_complete, enabled_payment_methods')
     .eq('id', table.restaurant_id)
     .maybeSingle()
 
@@ -65,10 +66,18 @@ async function createPaymentCheckout(
   const origin = await getRequestOrigin()
   let checkoutUrl: string | null = null
 
-  // Bizum only ever settles in EUR — restaurants billing in another
-  // currency would otherwise get a Stripe error for offering it.
-  const paymentMethodTypes: Stripe.Checkout.SessionCreateParams.PaymentMethodType[] =
-    restaurant.currency.toUpperCase() === 'EUR' ? ['card', 'bizum'] : ['card']
+  // Card is always offered; anything else is the restaurant owner's own
+  // choice from Ajustes — re-checked against currency here too (e.g.
+  // Bizum only ever settles in EUR) rather than trusting the stored list
+  // blindly, in case the restaurant changed currency after choosing it.
+  const paymentMethodTypes = [
+    'card',
+    ...OPTIONAL_PAYMENT_METHODS.filter(
+      (m) =>
+        restaurant.enabled_payment_methods.includes(m.value) &&
+        (!m.euroOnly || restaurant.currency.toUpperCase() === 'EUR')
+    ).map((m) => m.value),
+  ] as Stripe.Checkout.SessionCreateParams.PaymentMethodType[]
 
   try {
     const session = await stripe.checkout.sessions.create({

@@ -6,11 +6,13 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentRestaurant } from '@/lib/restaurant'
 import { DIETARY_TAGS } from '@/lib/dietary-tags'
+import { OPTIONAL_PAYMENT_METHODS } from '@/lib/payment-methods'
 
 export type OnboardingFormState = { error?: string } | undefined
 
 const ALLOWED_CURRENCIES = ['EUR', 'GBP', 'USD', 'AED']
 const VALID_DIETARY_TAGS = new Set<string>(DIETARY_TAGS.map((t) => t.value))
+const VALID_PAYMENT_METHODS = new Set<string>(OPTIONAL_PAYMENT_METHODS.map((m) => m.value))
 
 function slugify(name: string) {
   return name
@@ -73,6 +75,9 @@ export async function updateRestaurantProfile(
   const enabledDietaryTags = formData
     .getAll('enabled_dietary_tags')
     .filter((tag): tag is string => typeof tag === 'string' && VALID_DIETARY_TAGS.has(tag))
+  const enabledPaymentMethods = formData
+    .getAll('enabled_payment_methods')
+    .filter((m): m is string => typeof m === 'string' && VALID_PAYMENT_METHODS.has(m))
 
   if (!name) {
     return { error: 'Escribe el nombre de tu restaurante.' }
@@ -84,7 +89,12 @@ export async function updateRestaurantProfile(
   const supabase = await createClient()
   const { error } = await supabase
     .from('restaurants')
-    .update({ name, currency, enabled_dietary_tags: enabledDietaryTags })
+    .update({
+      name,
+      currency,
+      enabled_dietary_tags: enabledDietaryTags,
+      enabled_payment_methods: enabledPaymentMethods,
+    })
     .eq('id', restaurant.id)
 
   if (error) {

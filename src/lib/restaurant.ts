@@ -10,6 +10,7 @@ type RestaurantRow = {
   enabled_dietary_tags: string[]
   stripe_account_id: string | null
   stripe_onboarding_complete: boolean
+  enabled_payment_methods: string[]
 }
 type MembershipRow = {
   restaurant_id: string
@@ -38,7 +39,7 @@ export async function getCurrentRestaurant() {
   const { data: membership, error } = await supabase
     .from('restaurant_users')
     .select(
-      'restaurant_id, role, restaurants(id, name, slug, currency, enabled_dietary_tags, stripe_account_id, stripe_onboarding_complete)'
+      'restaurant_id, role, restaurants(id, name, slug, currency, enabled_dietary_tags, stripe_account_id, stripe_onboarding_complete, enabled_payment_methods)'
     )
     .eq('user_id', user.id)
     .limit(1)

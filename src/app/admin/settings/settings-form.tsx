@@ -3,6 +3,7 @@
 import { useActionState } from 'react'
 import { updateRestaurantProfile } from '@/app/actions/restaurant'
 import { DIETARY_TAGS } from '@/lib/dietary-tags'
+import { OPTIONAL_PAYMENT_METHODS } from '@/lib/payment-methods'
 
 const CURRENCIES = [
   { code: 'EUR', label: 'Euro (€)' },
@@ -15,10 +16,12 @@ export function SettingsForm({
   name,
   currency,
   enabledDietaryTags,
+  enabledPaymentMethods,
 }: {
   name: string
   currency: string
   enabledDietaryTags: string[]
+  enabledPaymentMethods: string[]
 }) {
   const [state, action, pending] = useActionState(updateRestaurantProfile, undefined)
 
@@ -67,6 +70,22 @@ export function SettingsForm({
         <span className="text-xs text-gray-500">
           Solo las que marques aquí aparecerán al crear/editar platos y para que el cliente filtre.
         </span>
+      </div>
+      <div className="flex flex-col gap-1">
+        <span className="text-sm">Métodos de pago (además de tarjeta, siempre activa)</span>
+        <div className="flex flex-wrap gap-3">
+          {OPTIONAL_PAYMENT_METHODS.filter((m) => !m.euroOnly || currency === 'EUR').map((method) => (
+            <label key={method.value} className="flex items-center gap-1 text-sm">
+              <input
+                type="checkbox"
+                name="enabled_payment_methods"
+                value={method.value}
+                defaultChecked={enabledPaymentMethods.includes(method.value)}
+              />
+              {method.label}
+            </label>
+          ))}
+        </div>
       </div>
       {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
       <button
