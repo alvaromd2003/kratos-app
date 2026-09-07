@@ -72,7 +72,7 @@ export default async function FloorPage() {
 
   const { data: cashRequests } = await supabase
     .from('payment_shares')
-    .select('id, table_session_id, amount_cents, created_at')
+    .select('id, table_session_id, charged_cents, created_at')
     .eq('restaurant_id', restaurant.id)
     .eq('mode', 'cash')
     .eq('status', 'pending')
@@ -82,7 +82,7 @@ export default async function FloorPage() {
     id: c.id,
     tableSessionId: c.table_session_id,
     tableLabel: tableLabelBySessionId.get(c.table_session_id) ?? '—',
-    amountCents: c.amount_cents,
+    amountCents: c.charged_cents,
     createdAt: c.created_at,
   }))
 

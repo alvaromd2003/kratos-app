@@ -11,6 +11,7 @@ import { CartItemRow } from './cart-item-row'
 import { SendOrderButton } from './send-order-button'
 import { HelpButton } from './help-button'
 import { PaymentPanel } from './payment-panel'
+import { LoyaltyPanel } from './loyalty-panel'
 
 type Category = { id: string; name: string }
 type MenuItem = {
@@ -94,6 +95,9 @@ export function LiveTable({
   stripeOnboardingComplete,
   initialPaymentShares,
   paymentResult,
+  avgWaitMinutes,
+  loyaltyEmail,
+  loyaltyStamps,
 }: {
   qrToken: string
   tableLabel: string
@@ -112,6 +116,9 @@ export function LiveTable({
   stripeOnboardingComplete: boolean
   initialPaymentShares: PaymentShareRow[]
   paymentResult: 'success' | 'cancelled' | null
+  avgWaitMinutes: number | null
+  loyaltyEmail: string | null
+  loyaltyStamps: number
 }) {
   const [participants, setParticipants] = useState(initialParticipants)
   const [orderItems, setOrderItems] = useState(initialOrderItems)
@@ -336,6 +343,8 @@ export function LiveTable({
         <HelpButton qrToken={qrToken} />
       </div>
 
+      <LoyaltyPanel qrToken={qrToken} loyaltyEmail={loyaltyEmail} stamps={loyaltyStamps} />
+
       {stripeOnboardingComplete && (
         <PaymentPanel
           qrToken={qrToken}
@@ -350,7 +359,14 @@ export function LiveTable({
 
       {sortedOrders.length > 0 && (
         <section className="flex flex-col gap-3 rounded border border-gray-200 p-3">
-          <h2 className="font-medium">Tus pedidos</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="font-medium">Tus pedidos</h2>
+            {avgWaitMinutes !== null && (
+              <span className="text-xs text-gray-500">
+                Tiempo medio de la cocina: ~{avgWaitMinutes} min
+              </span>
+            )}
+          </div>
           <ul className="flex flex-col gap-2 text-sm">
             {sortedOrders.map((order) => {
               const orderRows = orderItems.filter((row) => row.order_id === order.id)

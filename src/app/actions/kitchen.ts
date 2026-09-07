@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCurrentRestaurant } from '@/lib/restaurant'
+import { awardLoyaltyStampsIfFullyPaid, redeemLoyaltyStamps } from '@/lib/loyalty'
 
 const ORDER_STATUSES = ['pending', 'preparing', 'ready', 'delivered'] as const
 
@@ -26,7 +27,11 @@ export async function updateOrderStatus(formData: FormData) {
   }
 
   const supabase = await createClient()
-  await supabase.from('orders').update({ status }).eq('id', id).eq('restaurant_id', restaurant.id)
+  await supabase
+    .from('orders')
+    .update({ status, ...(status === 'ready' ? { ready_at: new Date().toISOString() } : {}) })
+    .eq('id', id)
+    .eq('restaurant_id', restaurant.id)
 
   revalidatePath('/admin/kitchen')
   revalidatePath('/admin/floor')
@@ -98,13 +103,23 @@ export async function confirmCashPayment(formData: FormData) {
   const id = String(formData.get('id') ?? '')
 
   const supabase = await createClient()
-  await supabase
+  const { data: updated } = await supabase
     .from('payment_shares')
     .update({ status: 'succeeded', completed_at: new Date().toISOString() })
     .eq('id', id)
     .eq('restaurant_id', restaurant.id)
     .eq('mode', 'cash')
     .eq('status', 'pending')
+    .select('table_session_id')
+    .maybeSingle()
+
+  // loyalty_accounts has no RLS policies (service-role only, see
+  // migration 0020) — the staff-scoped client above can't touch it.
+  if (updated) {
+    const admin = createAdminClient()
+    await redeemLoyaltyStamps(admin, id)
+    await awardLoyaltyStampsIfFullyPaid(admin, updated.table_session_id, restaurant.id)
+  }
 
   revalidatePath('/admin/floor')
 }

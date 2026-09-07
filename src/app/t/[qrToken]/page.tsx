@@ -2,6 +2,7 @@ import { cookies } from 'next/headers'
 import { notFound } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getActiveTableByQrToken, getOpenSessionParticipant } from '@/lib/ordering'
+import { getAverageWaitMinutes } from '@/lib/orders'
 import { JoinForm } from './join-form'
 import { LiveTable } from './live-table'
 
@@ -102,6 +103,29 @@ export default async function TableOrderPage({
     .eq('restaurant_id', table.restaurant_id)
     .in('status', ['pending', 'preparing'])
 
+  const avgWaitMinutes = await getAverageWaitMinutes(admin, table.restaurant_id)
+
+  // Fetched separately from the shared `participants` list above (which
+  // only exposes id/name to every diner at the table) — an email is
+  // private to whoever left it, never shown to the other diners.
+  const { data: ownParticipant } = await admin
+    .from('session_participants')
+    .select('loyalty_email')
+    .eq('id', verified.participant.id)
+    .maybeSingle()
+
+  const loyaltyEmail = ownParticipant?.loyalty_email ?? null
+  let loyaltyStamps = 0
+  if (loyaltyEmail) {
+    const { data: loyaltyAccount } = await admin
+      .from('loyalty_accounts')
+      .select('stamps')
+      .eq('restaurant_id', table.restaurant_id)
+      .eq('email', loyaltyEmail)
+      .maybeSingle()
+    loyaltyStamps = loyaltyAccount?.stamps ?? 0
+  }
+
   return (
     <LiveTable
       qrToken={qrToken}
@@ -121,6 +145,9 @@ export default async function TableOrderPage({
       stripeOnboardingComplete={restaurant.stripe_onboarding_complete}
       initialPaymentShares={paymentShares ?? []}
       paymentResult={paymentResult}
+      avgWaitMinutes={avgWaitMinutes}
+      loyaltyEmail={loyaltyEmail}
+      loyaltyStamps={loyaltyStamps}
     />
   )
 }

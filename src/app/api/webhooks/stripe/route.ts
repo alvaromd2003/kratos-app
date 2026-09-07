@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { stripe } from '@/lib/stripe'
+import { awardLoyaltyStampsIfFullyPaid, redeemLoyaltyStamps } from '@/lib/loyalty'
 import type Stripe from 'stripe'
 
 // Needs the raw request body to verify Stripe's signature — must run on
@@ -27,7 +28,7 @@ export async function POST(request: Request) {
 
     if (paymentShareId) {
       const admin = createAdminClient()
-      await admin
+      const { data: updated } = await admin
         .from('payment_shares')
         .update({
           status: 'succeeded',
@@ -37,6 +38,13 @@ export async function POST(request: Request) {
         })
         .eq('id', paymentShareId)
         .eq('status', 'pending')
+        .select('table_session_id, restaurant_id')
+        .maybeSingle()
+
+      if (updated) {
+        await redeemLoyaltyStamps(admin, paymentShareId)
+        await awardLoyaltyStampsIfFullyPaid(admin, updated.table_session_id, updated.restaurant_id)
+      }
     }
   }
 

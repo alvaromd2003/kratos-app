@@ -1,5 +1,6 @@
 import 'server-only'
 import type { createClient } from '@/lib/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
 type Station = 'kitchen' | 'bar'
@@ -130,4 +131,30 @@ export async function getRestaurantOrders(
         }
       }),
   }))
+}
+
+// A rough "how long does this kitchen usually take" — the average over
+// the most recent completed orders, not adjusted for current queue depth
+// (kitchens often prep several orders in parallel, so "avg time x orders
+// ahead" would just as often be wrong as right — a plain historical
+// average is the honest number to show).
+export async function getAverageWaitMinutes(
+  supabase: SupabaseClient,
+  restaurantId: string
+): Promise<number | null> {
+  const { data } = await supabase
+    .from('orders')
+    .select('created_at, ready_at')
+    .eq('restaurant_id', restaurantId)
+    .not('ready_at', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(30)
+
+  if (!data || data.length === 0) return null
+
+  const totalMinutes = data.reduce(
+    (sum, o) => sum + (new Date(o.ready_at!).getTime() - new Date(o.created_at).getTime()) / 60000,
+    0
+  )
+  return Math.round(totalMinutes / data.length)
 }

@@ -19,7 +19,7 @@ type PaymentShareRow = {
   table_session_id: string
   mode: string
   status: string
-  amount_cents: number
+  charged_cents: number
   created_at: string
 }
 
@@ -30,7 +30,7 @@ async function fetchPendingCashRequests(
 ): Promise<CashRequest[]> {
   const { data } = await supabase
     .from('payment_shares')
-    .select('id, table_session_id, amount_cents, created_at')
+    .select('id, table_session_id, charged_cents, created_at')
     .eq('restaurant_id', restaurantId)
     .eq('mode', 'cash')
     .eq('status', 'pending')
@@ -40,7 +40,7 @@ async function fetchPendingCashRequests(
     id: c.id,
     tableSessionId: c.table_session_id,
     tableLabel: tableLabelBySessionId[c.table_session_id] ?? '—',
-    amountCents: c.amount_cents,
+    amountCents: c.charged_cents,
     createdAt: c.created_at,
   }))
 }
@@ -89,7 +89,7 @@ export function CashPaymentAlerts({
                     id: row.id,
                     tableSessionId: row.table_session_id,
                     tableLabel: tableLabelBySessionId[row.table_session_id] ?? '—',
-                    amountCents: row.amount_cents,
+                    amountCents: row.charged_cents,
                     createdAt: row.created_at,
                   },
                 ]

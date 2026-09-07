@@ -37,6 +37,9 @@ export function PaymentPanel({
   )
   const [cashState, cashAction, cashPending] = useActionState(requestCashPayment, undefined)
   const [shareCount, setShareCount] = useState(Math.max(1, defaultShareCount))
+  const [tipPercent, setTipPercent] = useState(0)
+
+  const withTip = (baseCents: number) => baseCents + Math.round((baseCents * tipPercent) / 100)
 
   if (remainingCents <= 0) {
     return (
@@ -77,9 +80,28 @@ export function PaymentPanel({
         <p className="text-sm text-gray-500">Pago cancelado. Puedes intentarlo de nuevo.</p>
       )}
 
+      <div className="flex items-center gap-2">
+        <span className="text-sm">Propina:</span>
+        {[0, 5, 10, 15].map((pct) => (
+          <button
+            key={pct}
+            type="button"
+            onClick={() => setTipPercent(pct)}
+            className={`rounded-full border px-2.5 py-0.5 text-xs ${
+              tipPercent === pct
+                ? 'border-black bg-black text-white'
+                : 'border-gray-300 text-gray-700'
+            }`}
+          >
+            {pct}%
+          </button>
+        ))}
+      </div>
+
       <form action={individualAction} className="flex items-center justify-between gap-2">
         <input type="hidden" name="qr_token" value={qrToken} />
-        <span className="text-sm">Tu parte: {formatPrice(individualDueCents, currency)}</span>
+        <input type="hidden" name="tip_percent" value={tipPercent} />
+        <span className="text-sm">Tu parte: {formatPrice(withTip(individualDueCents), currency)}</span>
         <button
           type="submit"
           disabled={individualPending || individualDueCents <= 0}
@@ -92,6 +114,7 @@ export function PaymentPanel({
 
       <form action={splitAction} className="flex items-center justify-between gap-2">
         <input type="hidden" name="qr_token" value={qrToken} />
+        <input type="hidden" name="tip_percent" value={tipPercent} />
         <label className="flex items-center gap-2 text-sm">
           Dividir entre
           <input
@@ -108,20 +131,23 @@ export function PaymentPanel({
           disabled={splitPending}
           className="rounded bg-black px-3 py-1.5 text-sm text-white disabled:opacity-50"
         >
-          {splitPending ? 'Redirigiendo…' : formatPrice(Math.ceil(remainingCents / shareCount), currency)}
+          {splitPending
+            ? 'Redirigiendo…'
+            : formatPrice(withTip(Math.ceil(remainingCents / shareCount)), currency)}
         </button>
       </form>
       {splitState?.error && <p className="text-xs text-red-600">{splitState.error}</p>}
 
       <form action={collectiveAction} className="flex items-center justify-between gap-2">
         <input type="hidden" name="qr_token" value={qrToken} />
+        <input type="hidden" name="tip_percent" value={tipPercent} />
         <span className="text-sm">Pagar toda la cuenta</span>
         <button
           type="submit"
           disabled={collectivePending}
           className="rounded bg-black px-3 py-1.5 text-sm text-white disabled:opacity-50"
         >
-          {collectivePending ? 'Redirigiendo…' : formatPrice(remainingCents, currency)}
+          {collectivePending ? 'Redirigiendo…' : formatPrice(withTip(remainingCents), currency)}
         </button>
       </form>
       {collectiveState?.error && <p className="text-xs text-red-600">{collectiveState.error}</p>}

@@ -11,6 +11,7 @@ import {
 } from '@/lib/payments'
 import { stripe } from '@/lib/stripe'
 import { OPTIONAL_PAYMENT_METHODS } from '@/lib/payment-methods'
+import { getParticipantLoyaltyDiscount } from '@/lib/loyalty'
 import type Stripe from 'stripe'
 
 export type PaymentFormState = { error?: string } | undefined
@@ -20,18 +21,25 @@ type AdminClient = ReturnType<typeof createAdminClient>
 type VerifiedTable = { restaurant_id: string; label: string }
 type VerifiedParticipant = { participantId: string; tableSessionId: string }
 
+const ALLOWED_TIP_PERCENTS = [0, 5, 10, 15]
+
 // Shared by all 3 modes below — they only differ in how amountCents gets
-// computed. Creates the pending payment_shares row, then a Stripe Checkout
-// Session for it (a destination charge straight to the restaurant's
-// connected account — Kratos takes no cut for now), and redirects the
-// diner's browser to Stripe's hosted payment page.
+// computed. amountCents is the bill amount being settled and must stay
+// exactly that (see src/lib/payments.ts and the migration comment for
+// why) — tip and any loyalty discount are tracked separately and only
+// affect what's actually charged, never the shared table balance.
+// Creates the pending payment_shares row, then a Stripe Checkout Session
+// for it (a destination charge straight to the restaurant's connected
+// account — Kratos takes no cut for now), and redirects the diner's
+// browser to Stripe's hosted payment page.
 async function createPaymentCheckout(
   admin: AdminClient,
   qrToken: string,
   table: VerifiedTable,
   verified: VerifiedParticipant,
   mode: PaymentMode,
-  amountCents: number
+  amountCents: number,
+  tipCents: number
 ): Promise<PaymentFormState> {
   if (amountCents <= 0) {
     return { error: 'No hay nada pendiente de pagar.' }
@@ -47,6 +55,14 @@ async function createPaymentCheckout(
     return { error: 'Este restaurante todavía no acepta pagos por la app.' }
   }
 
+  const discountCents = await getParticipantLoyaltyDiscount(
+    admin,
+    verified.participantId,
+    table.restaurant_id,
+    amountCents
+  )
+  const chargedCents = amountCents - discountCents + tipCents
+
   const { data: share, error: insertError } = await admin
     .from('payment_shares')
     .insert({
@@ -55,6 +71,9 @@ async function createPaymentCheckout(
       participant_id: verified.participantId,
       mode,
       amount_cents: amountCents,
+      tip_cents: tipCents,
+      loyalty_discount_cents: discountCents,
+      charged_cents: chargedCents,
     })
     .select('id')
     .single()
@@ -79,6 +98,32 @@ async function createPaymentCheckout(
     ).map((m) => m.value),
   ] as Stripe.Checkout.SessionCreateParams.PaymentMethodType[]
 
+  const billLineName =
+    discountCents > 0
+      ? `Mesa ${table.label} — Kratos (descuento fidelidad aplicado)`
+      : `Mesa ${table.label} — Kratos`
+
+  const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
+    {
+      price_data: {
+        currency: restaurant.currency.toLowerCase(),
+        product_data: { name: billLineName },
+        unit_amount: amountCents - discountCents,
+      },
+      quantity: 1,
+    },
+  ]
+  if (tipCents > 0) {
+    lineItems.push({
+      price_data: {
+        currency: restaurant.currency.toLowerCase(),
+        product_data: { name: 'Propina' },
+        unit_amount: tipCents,
+      },
+      quantity: 1,
+    })
+  }
+
   try {
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
@@ -87,16 +132,7 @@ async function createPaymentCheckout(
       // automatically on top of 'card' when the diner's device supports
       // them, no separate entry needed for those.
       payment_method_types: paymentMethodTypes,
-      line_items: [
-        {
-          price_data: {
-            currency: restaurant.currency.toLowerCase(),
-            product_data: { name: `Mesa ${table.label} — Kratos` },
-            unit_amount: amountCents,
-          },
-          quantity: 1,
-        },
-      ],
+      line_items: lineItems,
       payment_intent_data: {
         transfer_data: { destination: restaurant.stripe_account_id },
       },
@@ -123,6 +159,12 @@ async function createPaymentCheckout(
   redirect(checkoutUrl)
 }
 
+function tipCentsFromFormData(formData: FormData, amountCents: number): number {
+  const percent = Number(formData.get('tip_percent') ?? 0)
+  if (!ALLOWED_TIP_PERCENTS.includes(percent)) return 0
+  return Math.round((amountCents * percent) / 100)
+}
+
 export async function createIndividualPayment(
   _prevState: PaymentFormState,
   formData: FormData
@@ -138,8 +180,9 @@ export async function createIndividualPayment(
   const admin = createAdminClient()
   const summary = await getTableBillSummary(admin, verified.tableSessionId)
   const amountCents = individualAmountDue(summary, verified.participantId)
+  const tipCents = tipCentsFromFormData(formData, amountCents)
 
-  return createPaymentCheckout(admin, qrToken, table, verified, 'individual', amountCents)
+  return createPaymentCheckout(admin, qrToken, table, verified, 'individual', amountCents, tipCents)
 }
 
 export async function createSplitPayment(
@@ -158,8 +201,9 @@ export async function createSplitPayment(
   const admin = createAdminClient()
   const summary = await getTableBillSummary(admin, verified.tableSessionId)
   const amountCents = splitAmountDue(summary, shareCount)
+  const tipCents = tipCentsFromFormData(formData, amountCents)
 
-  return createPaymentCheckout(admin, qrToken, table, verified, 'split', amountCents)
+  return createPaymentCheckout(admin, qrToken, table, verified, 'split', amountCents, tipCents)
 }
 
 export async function createCollectivePayment(
@@ -176,8 +220,17 @@ export async function createCollectivePayment(
 
   const admin = createAdminClient()
   const summary = await getTableBillSummary(admin, verified.tableSessionId)
+  const tipCents = tipCentsFromFormData(formData, summary.remainingCents)
 
-  return createPaymentCheckout(admin, qrToken, table, verified, 'collective', summary.remainingCents)
+  return createPaymentCheckout(
+    admin,
+    qrToken,
+    table,
+    verified,
+    'collective',
+    summary.remainingCents,
+    tipCents
+  )
 }
 
 // Cash isn't verified by Stripe, so it can't be marked paid the instant a
@@ -214,12 +267,23 @@ export async function requestCashPayment(
     .maybeSingle()
   if (existing) return
 
+  // No tip step for cash (left directly, the traditional way) — but the
+  // loyalty discount still applies, same as any other mode.
+  const discountCents = await getParticipantLoyaltyDiscount(
+    admin,
+    verified.participantId,
+    table.restaurant_id,
+    summary.remainingCents
+  )
+
   const { error } = await admin.from('payment_shares').insert({
     restaurant_id: table.restaurant_id,
     table_session_id: verified.tableSessionId,
     participant_id: verified.participantId,
     mode: 'cash',
     amount_cents: summary.remainingCents,
+    loyalty_discount_cents: discountCents,
+    charged_cents: summary.remainingCents - discountCents,
   })
 
   if (error) {
