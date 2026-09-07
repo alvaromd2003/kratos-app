@@ -82,6 +82,9 @@ export default async function AdminLayout({
               <Link href="/admin/settings" className="underline">
                 Ajustes
               </Link>
+              <Link href="/admin/help" className="underline">
+                Ayuda
+              </Link>
             </>
           )}
         </nav>
