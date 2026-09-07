@@ -10,6 +10,7 @@ import {
   splitAmountDue,
 } from '@/lib/payments'
 import { stripe } from '@/lib/stripe'
+import type Stripe from 'stripe'
 
 export type PaymentFormState = { error?: string } | undefined
 
@@ -64,6 +65,11 @@ async function createPaymentCheckout(
   const origin = await getRequestOrigin()
   let checkoutUrl: string | null = null
 
+  // Bizum only ever settles in EUR — restaurants billing in another
+  // currency would otherwise get a Stripe error for offering it.
+  const paymentMethodTypes: Stripe.Checkout.SessionCreateParams.PaymentMethodType[] =
+    restaurant.currency.toUpperCase() === 'EUR' ? ['card', 'bizum'] : ['card']
+
   try {
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
@@ -71,7 +77,7 @@ async function createPaymentCheckout(
       // method configuration — Apple Pay/Google Pay still render
       // automatically on top of 'card' when the diner's device supports
       // them, no separate entry needed for those.
-      payment_method_types: ['card'],
+      payment_method_types: paymentMethodTypes,
       line_items: [
         {
           price_data: {
