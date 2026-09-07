@@ -7,6 +7,29 @@ import type Stripe from 'stripe'
 // the Node.js runtime, not Edge.
 export const runtime = 'nodejs'
 
+async function markSucceeded(
+  admin: ReturnType<typeof createAdminClient>,
+  paymentShareId: string,
+  paymentIntentId: string | null
+) {
+  const { data: updated } = await admin
+    .from('payment_shares')
+    .update({
+      status: 'succeeded',
+      stripe_payment_intent_id: paymentIntentId,
+      completed_at: new Date().toISOString(),
+    })
+    .eq('id', paymentShareId)
+    .eq('status', 'pending')
+    .select('table_session_id, restaurant_id')
+    .maybeSingle()
+
+  if (updated) {
+    await redeemLoyaltyStamps(admin, paymentShareId)
+    await awardLoyaltyStampsIfFullyPaid(admin, updated.table_session_id, updated.restaurant_id)
+  }
+}
+
 export async function POST(request: Request) {
   const signature = request.headers.get('stripe-signature')
   const rawBody = await request.text()
@@ -22,29 +45,38 @@ export async function POST(request: Request) {
     return new Response('Invalid signature', { status: 400 })
   }
 
-  if (event.type === 'checkout.session.completed') {
+  const admin = createAdminClient()
+
+  // A redirect-confirmed method still settling behind the scenes (Bizum
+  // works this way) can report the *session* as "completed" before the
+  // money has actually arrived — payment_status stays 'unpaid' until the
+  // matching async_payment_succeeded event lands. Only a session that's
+  // actually 'paid' (true for cards immediately, true for Bizum once it
+  // clears) should ever mark a bill as settled — otherwise a diner's
+  // table could get treated as paid while the charge is still pending,
+  // or later fails outright.
+  if (
+    event.type === 'checkout.session.completed' ||
+    event.type === 'checkout.session.async_payment_succeeded'
+  ) {
     const session = event.data.object as Stripe.Checkout.Session
     const paymentShareId = session.metadata?.payment_share_id
+    const paymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : null
 
+    if (paymentShareId && session.payment_status === 'paid') {
+      await markSucceeded(admin, paymentShareId, paymentIntentId)
+    }
+  }
+
+  if (event.type === 'checkout.session.async_payment_failed') {
+    const session = event.data.object as Stripe.Checkout.Session
+    const paymentShareId = session.metadata?.payment_share_id
     if (paymentShareId) {
-      const admin = createAdminClient()
-      const { data: updated } = await admin
+      await admin
         .from('payment_shares')
-        .update({
-          status: 'succeeded',
-          stripe_payment_intent_id:
-            typeof session.payment_intent === 'string' ? session.payment_intent : null,
-          completed_at: new Date().toISOString(),
-        })
+        .update({ status: 'failed' })
         .eq('id', paymentShareId)
         .eq('status', 'pending')
-        .select('table_session_id, restaurant_id')
-        .maybeSingle()
-
-      if (updated) {
-        await redeemLoyaltyStamps(admin, paymentShareId)
-        await awardLoyaltyStampsIfFullyPaid(admin, updated.table_session_id, updated.restaurant_id)
-      }
     }
   }
 

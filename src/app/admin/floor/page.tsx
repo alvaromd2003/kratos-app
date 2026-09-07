@@ -3,6 +3,7 @@ import { getCurrentRestaurant } from '@/lib/restaurant'
 import { createClient } from '@/lib/supabase/server'
 import { getRestaurantOrders } from '@/lib/orders'
 import { getTableBillSummary } from '@/lib/payments'
+import { currentTimeInZone, isWithinTimeWindow } from '@/lib/timezone'
 import { TableStatus } from './table-status'
 import { HelpAlerts } from './help-alerts'
 import { ReadyOrders } from './ready-orders'
@@ -32,11 +33,22 @@ export default async function FloorPage() {
         .eq('status', 'open'),
       supabase
         .from('menu_items')
-        .select('id, name, price_cents')
+        .select('id, name, price_cents, available_from, available_until')
         .eq('restaurant_id', restaurant.id)
         .eq('is_available', true)
         .order('sort_order', { ascending: true }),
     ])
+
+  // Same time-of-day window enforced on the diner-facing menu — assisted
+  // ordering shouldn't be a backdoor around a breakfast-only dish showing
+  // up at dinner time.
+  const now = currentTimeInZone()
+  const availableMenuItems = (menuItems ?? []).filter(
+    (item) =>
+      !item.available_from ||
+      !item.available_until ||
+      isWithinTimeWindow(item.available_from, item.available_until, now)
+  )
 
   const sessionList = openSessions ?? []
   const tableLabelById = new Map((tables ?? []).map((t) => [t.id, t.label]))
@@ -138,7 +150,7 @@ export default async function FloorPage() {
         restaurantId={restaurant.id}
         initialTables={initialTables}
         currency={restaurant.currency}
-        menuItems={menuItems ?? []}
+        menuItems={availableMenuItems}
       />
     </div>
   )

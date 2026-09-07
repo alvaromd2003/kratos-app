@@ -10,6 +10,8 @@ import {
   getVerifiedParticipant,
   sendSessionOrderToKitchen,
 } from '@/lib/ordering'
+import { isOrderItemClaimed } from '@/lib/payments'
+import { currentTimeInZone, isWithinTimeWindow } from '@/lib/timezone'
 
 export type OrderingFormState = { error?: string } | undefined
 
@@ -79,13 +81,24 @@ export async function addItemToCart(
   // dish to the cart.
   const { data: menuItem } = await admin
     .from('menu_items')
-    .select('id')
+    .select('id, available_from, available_until')
     .eq('id', menuItemId)
     .eq('restaurant_id', table.restaurant_id)
     .eq('is_available', true)
     .maybeSingle()
   if (!menuItem) {
     return { error: 'Este plato ya no está disponible.' }
+  }
+  // The menu shown to diners already hides an out-of-window dish, but a
+  // request could still be sent directly bypassing that UI — re-checked
+  // here rather than trusted client-side, same as everything else in
+  // this file.
+  if (
+    menuItem.available_from &&
+    menuItem.available_until &&
+    !isWithinTimeWindow(menuItem.available_from, menuItem.available_until, currentTimeInZone())
+  ) {
+    return { error: 'Este plato no está disponible a esta hora.' }
   }
 
   // Adding the same dish again just bumps the quantity on the existing
@@ -112,6 +125,14 @@ export async function changeItemQuantity(formData: FormData) {
   if (!verified) return
 
   const admin = createAdminClient()
+
+  // A line someone already paid for via the itemized payment mode must
+  // never shrink or disappear, or that payment ends up covering nothing.
+  // Only matters for a decrease — adding more on top of a paid line is
+  // harmless (it's just unpaid food stacked on the same row).
+  if (delta < 0 && (await isOrderItemClaimed(admin, orderItemId))) {
+    return
+  }
 
   // Atomic (quantity = quantity + delta, then delete if <=0) instead of a
   // separate read-then-write — otherwise two rapid taps of +/- can read
@@ -148,6 +169,13 @@ export async function removeItemFromCart(formData: FormData) {
   if (!verified) return
 
   const admin = createAdminClient()
+
+  // Same reasoning as changeItemQuantity — never let an already-paid
+  // line just vanish from the cart with nothing to show for it.
+  if (await isOrderItemClaimed(admin, orderItemId)) {
+    return
+  }
+
   await admin
     .from('order_items')
     .delete()

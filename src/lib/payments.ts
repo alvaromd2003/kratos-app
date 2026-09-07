@@ -112,6 +112,32 @@ export async function getClaimedOrderItemIds(
   return new Set((claims ?? []).map((c) => c.order_item_id))
 }
 
+// A single-item version of the above, for guarding edits to one cart
+// line — an order_item someone already paid for via the itemized mode
+// must never be quietly removed or have its quantity reduced, or that
+// payment covers nothing.
+export async function isOrderItemClaimed(
+  admin: SupabaseClient,
+  orderItemId: string
+): Promise<boolean> {
+  const { data: claims } = await admin
+    .from('payment_share_items')
+    .select('payment_share_id')
+    .eq('order_item_id', orderItemId)
+
+  const shareIds = (claims ?? []).map((c) => c.payment_share_id)
+  if (shareIds.length === 0) return false
+
+  const { data: succeededShare } = await admin
+    .from('payment_shares')
+    .select('id')
+    .in('id', shareIds)
+    .eq('status', 'succeeded')
+    .maybeSingle()
+
+  return Boolean(succeededShare)
+}
+
 // Stripe needs an absolute success/cancel/return URL. Reading it off the
 // request's own Host header (rather than a hardcoded/env site URL) means
 // this works unmodified in local dev, previews, and production alike.

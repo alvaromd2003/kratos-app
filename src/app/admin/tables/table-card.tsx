@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react'
 import { updateTable, deleteTable, closeTableSession, toggleTableActive } from '@/app/actions/tables'
+import { formatPrice } from '@/lib/format'
 
 export function TableCard({
   id,
@@ -11,6 +12,8 @@ export function TableCard({
   occupied,
   participantCount,
   active,
+  pendingCents,
+  currency,
 }: {
   id: string
   label: string
@@ -19,6 +22,8 @@ export function TableCard({
   occupied: boolean
   participantCount: number
   active: boolean
+  pendingCents: number
+  currency: string
 }) {
   const [state, action, pending] = useActionState(updateTable, undefined)
   const [deleteState, deleteAction] = useActionState(deleteTable, undefined)
@@ -53,10 +58,19 @@ export function TableCard({
           <span className="rounded bg-red-600 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
             Ocupada ({participantCount} {participantCount === 1 ? 'persona' : 'personas'})
           </span>
+          {pendingCents > 0 && (
+            <span className="text-xs text-amber-700">
+              Pendiente: {formatPrice(pendingCents, currency)}
+            </span>
+          )}
           <form
             action={closeTableSession}
             onSubmit={(e) => {
-              if (!confirm(`¿Cerrar la mesa ${label}? Los clientes conectados tendrán que volver a escanear el código QR.`)) {
+              const warning =
+                pendingCents > 0
+                  ? `Quedan ${formatPrice(pendingCents, currency)} sin cobrar por la app en la mesa ${label} (puede que ya se haya cobrado en efectivo o con datáfono). ¿Cerrar de todas formas?`
+                  : `¿Cerrar la mesa ${label}? Los clientes conectados tendrán que volver a escanear el código QR.`
+              if (!confirm(warning)) {
                 e.preventDefault()
               }
             }}

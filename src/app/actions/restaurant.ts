@@ -86,6 +86,11 @@ export async function updateRestaurantProfile(
   if (!ALLOWED_CURRENCIES.includes(currency)) {
     return { error: 'Elige una moneda válida.' }
   }
+  // It's rendered straight into an <a href> for every diner who rates
+  // 4-5 stars — only http(s) allowed, never e.g. a javascript: URI.
+  if (googleReviewUrl && !/^https?:\/\//i.test(googleReviewUrl)) {
+    return { error: 'El enlace de reseña debe empezar por http:// o https://' }
+  }
 
   const supabase = await createClient()
   const { error } = await supabase

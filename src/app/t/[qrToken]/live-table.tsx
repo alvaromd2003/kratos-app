@@ -312,6 +312,13 @@ export function LiveTable({
   const pendingCash = paymentShares.find((s) => s.mode === 'cash' && s.status === 'pending')
   const pendingCashAmountCents = pendingCash?.amount_cents ?? null
 
+  // Display-only mirror of LOYALTY_STAMP_THRESHOLD/LOYALTY_DISCOUNT_PERCENT
+  // in src/lib/loyalty.ts (a server-only module, can't be imported here) —
+  // the actual charge is always computed authoritatively server-side
+  // regardless of this; this only keeps what the buttons show from
+  // silently diverging from what Stripe will actually charge.
+  const loyaltyDiscountPercent = loyaltyStamps >= 10 ? 10 : 0
+
   const participantLabel = (id: string) => {
     if (id === participantId) return 'Tú'
     return participantsById.get(id)?.name ?? '—'
@@ -381,9 +388,15 @@ export function LiveTable({
             pendingCashAmountCents={pendingCashAmountCents}
             hasSubmittedFeedback={hasSubmittedFeedback}
             googleReviewUrl={googleReviewUrl}
+            loyaltyDiscountPercent={loyaltyDiscountPercent}
           />
           {remainingCents > 0 && pendingCashAmountCents === null && (
-            <ItemizedPaymentPanel qrToken={qrToken} currency={currency} items={pickableItems} />
+            <ItemizedPaymentPanel
+              qrToken={qrToken}
+              currency={currency}
+              items={pickableItems}
+              loyaltyDiscountPercent={loyaltyDiscountPercent}
+            />
           )}
         </>
       )}

@@ -16,10 +16,12 @@ export function ItemizedPaymentPanel({
   qrToken,
   currency,
   items,
+  loyaltyDiscountPercent,
 }: {
   qrToken: string
   currency: string
   items: PickableItem[]
+  loyaltyDiscountPercent: number
 }) {
   const [state, action, pending] = useActionState(createItemizedPayment, undefined)
   const [expanded, setExpanded] = useState(false)
@@ -31,7 +33,11 @@ export function ItemizedPaymentPanel({
   const baseCents = items
     .filter((item) => selected.has(item.id))
     .reduce((sum, item) => sum + item.priceCents * item.quantity, 0)
-  const totalCents = baseCents + Math.round((baseCents * tipPercent) / 100)
+  // Mirrors createPaymentCheckout server-side: discount and tip both come
+  // off the same base amount, never compounded.
+  const discountCents = Math.round((baseCents * loyaltyDiscountPercent) / 100)
+  const tipCents = Math.round((baseCents * tipPercent) / 100)
+  const totalCents = baseCents - discountCents + tipCents
 
   function toggle(id: string) {
     setSelected((current) => {

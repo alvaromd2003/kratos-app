@@ -135,6 +135,8 @@ async function createPaymentCheckout(
     })
   }
 
+  let amountTooSmall = false
+
   try {
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
@@ -158,12 +160,27 @@ async function createPaymentCheckout(
         .update({ stripe_checkout_session_id: session.id })
         .eq('id', share.id)
     }
-  } catch {
+  } catch (err) {
     checkoutUrl = null
+    // Stripe enforces a minimum charge per currency (~0.50€) — without
+    // this, a diner left with a tiny remainder (e.g. their share of just
+    // a side dish) would hit the generic "try again" error forever, with
+    // no way to actually pay it by card.
+    amountTooSmall =
+      typeof err === 'object' &&
+      err !== null &&
+      'code' in err &&
+      (err as { code?: string }).code === 'amount_too_small'
   }
 
   if (!checkoutUrl) {
     await admin.from('payment_shares').delete().eq('id', share.id)
+    if (amountTooSmall) {
+      return {
+        error:
+          'Ese importe es demasiado pequeño para pagarlo por tarjeta/Bizum. Prueba a pagar en efectivo, o júntalo con otro pago (por ejemplo, "Pagar toda la cuenta").',
+      }
+    }
     return { error: 'No se pudo conectar con Stripe. Inténtalo de nuevo.' }
   }
 

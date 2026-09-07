@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCurrentRestaurant } from '@/lib/restaurant'
 import { getOrCreateOpenSession, sendSessionOrderToKitchen } from '@/lib/ordering'
+import { currentTimeInZone, isWithinTimeWindow } from '@/lib/timezone'
 
 export type StaffOrderFormState = { error?: string } | undefined
 
@@ -62,13 +63,20 @@ export async function addStaffItem(
 
   const { data: menuItem } = await admin
     .from('menu_items')
-    .select('id')
+    .select('id, available_from, available_until')
     .eq('id', menuItemId)
     .eq('restaurant_id', restaurant.id)
     .eq('is_available', true)
     .maybeSingle()
   if (!menuItem) {
     return { error: 'Este plato ya no está disponible.' }
+  }
+  if (
+    menuItem.available_from &&
+    menuItem.available_until &&
+    !isWithinTimeWindow(menuItem.available_from, menuItem.available_until, currentTimeInZone())
+  ) {
+    return { error: 'Este plato no está disponible a esta hora.' }
   }
 
   const sessionId = await getOrCreateOpenSession(admin, table)

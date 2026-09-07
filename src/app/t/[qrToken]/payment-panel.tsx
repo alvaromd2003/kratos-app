@@ -20,6 +20,7 @@ export function PaymentPanel({
   pendingCashAmountCents,
   hasSubmittedFeedback,
   googleReviewUrl,
+  loyaltyDiscountPercent,
 }: {
   qrToken: string
   currency: string
@@ -30,6 +31,7 @@ export function PaymentPanel({
   pendingCashAmountCents: number | null
   hasSubmittedFeedback: boolean
   googleReviewUrl: string | null
+  loyaltyDiscountPercent: number
 }) {
   const [individualState, individualAction, individualPending] = useActionState(
     createIndividualPayment,
@@ -44,7 +46,15 @@ export function PaymentPanel({
   const [shareCount, setShareCount] = useState(Math.max(1, defaultShareCount))
   const [tipPercent, setTipPercent] = useState(0)
 
-  const withTip = (baseCents: number) => baseCents + Math.round((baseCents * tipPercent) / 100)
+  // Mirrors exactly what createPaymentCheckout computes server-side
+  // (src/app/actions/payments.ts): discount and tip both come off the
+  // same base amount, never compounded — so the number shown here is
+  // never a surprise once the diner reaches Stripe.
+  const withDiscountAndTip = (baseCents: number) => {
+    const discountCents = Math.round((baseCents * loyaltyDiscountPercent) / 100)
+    const tipCents = Math.round((baseCents * tipPercent) / 100)
+    return baseCents - discountCents + tipCents
+  }
 
   if (remainingCents <= 0) {
     return (
@@ -111,7 +121,7 @@ export function PaymentPanel({
       <form action={individualAction} className="flex items-center justify-between gap-2">
         <input type="hidden" name="qr_token" value={qrToken} />
         <input type="hidden" name="tip_percent" value={tipPercent} />
-        <span className="text-sm">Tu parte: {formatPrice(withTip(individualDueCents), currency)}</span>
+        <span className="text-sm">Tu parte: {formatPrice(withDiscountAndTip(individualDueCents), currency)}</span>
         <button
           type="submit"
           disabled={individualPending || individualDueCents <= 0}
@@ -143,7 +153,7 @@ export function PaymentPanel({
         >
           {splitPending
             ? 'Redirigiendo…'
-            : formatPrice(withTip(Math.ceil(remainingCents / shareCount)), currency)}
+            : formatPrice(withDiscountAndTip(Math.ceil(remainingCents / shareCount)), currency)}
         </button>
       </form>
       {splitState?.error && <p className="text-xs text-red-600">{splitState.error}</p>}
@@ -157,14 +167,21 @@ export function PaymentPanel({
           disabled={collectivePending}
           className="rounded bg-black px-3 py-1.5 text-sm text-white disabled:opacity-50"
         >
-          {collectivePending ? 'Redirigiendo…' : formatPrice(withTip(remainingCents), currency)}
+          {collectivePending ? 'Redirigiendo…' : formatPrice(withDiscountAndTip(remainingCents), currency)}
         </button>
       </form>
       {collectiveState?.error && <p className="text-xs text-red-600">{collectiveState.error}</p>}
 
       <form action={cashAction} className="flex items-center justify-between gap-2">
         <input type="hidden" name="qr_token" value={qrToken} />
-        <span className="text-sm">Pagar en efectivo (la cuenta completa)</span>
+        <span className="text-sm">
+          Pagar en efectivo:{' '}
+          {formatPrice(
+            remainingCents - Math.round((remainingCents * loyaltyDiscountPercent) / 100),
+            currency
+          )}{' '}
+          (la cuenta completa)
+        </span>
         <button
           type="submit"
           disabled={cashPending}
