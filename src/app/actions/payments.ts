@@ -67,6 +67,11 @@ async function createPaymentCheckout(
   try {
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
+      // Pinned explicitly rather than left to the Dashboard's payment
+      // method configuration — Apple Pay/Google Pay still render
+      // automatically on top of 'card' when the diner's device supports
+      // them, no separate entry needed for those.
+      payment_method_types: ['card'],
       line_items: [
         {
           price_data: {
