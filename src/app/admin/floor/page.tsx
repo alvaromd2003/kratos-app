@@ -6,6 +6,7 @@ import { getTableBillSummary } from '@/lib/payments'
 import { TableStatus } from './table-status'
 import { HelpAlerts } from './help-alerts'
 import { ReadyOrders } from './ready-orders'
+import { CashPaymentAlerts } from './cash-payment-alerts'
 
 export default async function FloorPage() {
   const { restaurant, role } = await getCurrentRestaurant()
@@ -69,6 +70,22 @@ export default async function FloorPage() {
     createdAt: h.created_at,
   }))
 
+  const { data: cashRequests } = await supabase
+    .from('payment_shares')
+    .select('id, table_session_id, amount_cents, created_at')
+    .eq('restaurant_id', restaurant.id)
+    .eq('mode', 'cash')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true })
+
+  const initialCashRequests = (cashRequests ?? []).map((c) => ({
+    id: c.id,
+    tableSessionId: c.table_session_id,
+    tableLabel: tableLabelBySessionId.get(c.table_session_id) ?? '—',
+    amountCents: c.amount_cents,
+    createdAt: c.created_at,
+  }))
+
   return (
     <div className="flex flex-col gap-8">
       <h1 className="text-xl font-semibold">Barra — {restaurant.name}</h1>
@@ -77,6 +94,13 @@ export default async function FloorPage() {
         restaurantId={restaurant.id}
         initialRequests={initialHelpRequests}
         tableLabelBySessionId={Object.fromEntries(tableLabelBySessionId)}
+      />
+
+      <CashPaymentAlerts
+        restaurantId={restaurant.id}
+        initialRequests={initialCashRequests}
+        tableLabelBySessionId={Object.fromEntries(tableLabelBySessionId)}
+        currency={restaurant.currency}
       />
 
       <ReadyOrders restaurantId={restaurant.id} initialOrders={readyOrders} />

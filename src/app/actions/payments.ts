@@ -179,3 +179,50 @@ export async function createCollectivePayment(
 
   return createPaymentCheckout(admin, qrToken, table, verified, 'collective', summary.remainingCents)
 }
+
+// Cash isn't verified by Stripe, so it can't be marked paid the instant a
+// diner taps the button — it sits 'pending' until staff physically
+// receive the money and confirm it from /admin/floor (see
+// confirmCashPayment/rejectCashPayment in actions/kitchen.ts). Always the
+// full remaining balance, never a partial share, so there's no ambiguity
+// about how much cash staff should be expecting.
+export async function requestCashPayment(
+  _prevState: PaymentFormState,
+  formData: FormData
+): Promise<PaymentFormState> {
+  const qrToken = String(formData.get('qr_token') ?? '')
+
+  const table = await getActiveTableByQrToken(qrToken)
+  const verified = table ? await getVerifiedParticipant(qrToken) : null
+  if (!table || !verified) {
+    return { error: 'Tu sesión en la mesa caducó. Vuelve a escanear el código QR.' }
+  }
+
+  const admin = createAdminClient()
+  const summary = await getTableBillSummary(admin, verified.tableSessionId)
+
+  if (summary.remainingCents <= 0) {
+    return { error: 'No hay nada pendiente de pagar.' }
+  }
+
+  const { data: existing } = await admin
+    .from('payment_shares')
+    .select('id')
+    .eq('table_session_id', verified.tableSessionId)
+    .eq('mode', 'cash')
+    .eq('status', 'pending')
+    .maybeSingle()
+  if (existing) return
+
+  const { error } = await admin.from('payment_shares').insert({
+    restaurant_id: table.restaurant_id,
+    table_session_id: verified.tableSessionId,
+    participant_id: verified.participantId,
+    mode: 'cash',
+    amount_cents: summary.remainingCents,
+  })
+
+  if (error) {
+    return { error: 'No se pudo avisar al personal. Inténtalo de nuevo.' }
+  }
+}

@@ -88,3 +88,43 @@ export async function rejectCancelOrder(formData: FormData) {
 
   revalidatePath('/admin/kitchen')
 }
+
+// Staff physically received the cash — only now does it count toward the
+// table's paid balance.
+export async function confirmCashPayment(formData: FormData) {
+  const { restaurant, role } = await getCurrentRestaurant()
+  if (role !== 'owner' && role !== 'admin' && role !== 'waiter') return
+
+  const id = String(formData.get('id') ?? '')
+
+  const supabase = await createClient()
+  await supabase
+    .from('payment_shares')
+    .update({ status: 'succeeded', completed_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('restaurant_id', restaurant.id)
+    .eq('mode', 'cash')
+    .eq('status', 'pending')
+
+  revalidatePath('/admin/floor')
+}
+
+// Staff decline the cash request (e.g. the diner pays by card instead) —
+// the request just disappears, nothing was ever counted as paid.
+export async function rejectCashPayment(formData: FormData) {
+  const { restaurant, role } = await getCurrentRestaurant()
+  if (role !== 'owner' && role !== 'admin' && role !== 'waiter') return
+
+  const id = String(formData.get('id') ?? '')
+
+  const supabase = await createClient()
+  await supabase
+    .from('payment_shares')
+    .delete()
+    .eq('id', id)
+    .eq('restaurant_id', restaurant.id)
+    .eq('mode', 'cash')
+    .eq('status', 'pending')
+
+  revalidatePath('/admin/floor')
+}

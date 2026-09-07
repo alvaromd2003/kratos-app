@@ -40,7 +40,7 @@ type OrderRow = {
   cancellation_requested_at: string | null
 }
 type ActiveOrderRow = { id: string; status: OrderStatus; created_at: string }
-type PaymentMode = 'individual' | 'split' | 'collective'
+type PaymentMode = 'individual' | 'split' | 'collective' | 'cash'
 type PaymentShareRow = {
   id: string
   participant_id: string
@@ -295,6 +295,8 @@ export function LiveTable({
     .filter((s) => s.participant_id === participantId && s.mode === 'individual')
     .reduce((sum, s) => sum + s.amount_cents, 0)
   const individualDueCents = Math.max(0, Math.min(remainingCents, mySubtotal - myPaidIndividual))
+  const pendingCash = paymentShares.find((s) => s.mode === 'cash' && s.status === 'pending')
+  const pendingCashAmountCents = pendingCash?.amount_cents ?? null
 
   const participantLabel = (id: string) => {
     if (id === participantId) return 'Tú'
@@ -342,6 +344,7 @@ export function LiveTable({
           individualDueCents={individualDueCents}
           defaultShareCount={participants.length}
           paymentResult={paymentResult}
+          pendingCashAmountCents={pendingCashAmountCents}
         />
       )}
 

@@ -2,7 +2,12 @@
 
 import { useActionState, useState } from 'react'
 import { formatPrice } from '@/lib/format'
-import { createIndividualPayment, createSplitPayment, createCollectivePayment } from '@/app/actions/payments'
+import {
+  createIndividualPayment,
+  createSplitPayment,
+  createCollectivePayment,
+  requestCashPayment,
+} from '@/app/actions/payments'
 
 export function PaymentPanel({
   qrToken,
@@ -11,6 +16,7 @@ export function PaymentPanel({
   individualDueCents,
   defaultShareCount,
   paymentResult,
+  pendingCashAmountCents,
 }: {
   qrToken: string
   currency: string
@@ -18,6 +24,7 @@ export function PaymentPanel({
   individualDueCents: number
   defaultShareCount: number
   paymentResult: 'success' | 'cancelled' | null
+  pendingCashAmountCents: number | null
 }) {
   const [individualState, individualAction, individualPending] = useActionState(
     createIndividualPayment,
@@ -28,6 +35,7 @@ export function PaymentPanel({
     createCollectivePayment,
     undefined
   )
+  const [cashState, cashAction, cashPending] = useActionState(requestCashPayment, undefined)
   const [shareCount, setShareCount] = useState(Math.max(1, defaultShareCount))
 
   if (remainingCents <= 0) {
@@ -35,6 +43,21 @@ export function PaymentPanel({
       <div className="rounded border border-green-200 bg-green-50 p-3 text-sm text-green-700">
         ✓ Cuenta pagada
       </div>
+    )
+  }
+
+  // Waiting on staff to physically receive the cash and confirm it — hide
+  // every other payment option meanwhile so nobody double-pays while it's
+  // pending (see confirmCashPayment/rejectCashPayment in actions/kitchen.ts).
+  if (pendingCashAmountCents !== null) {
+    return (
+      <section className="flex flex-col gap-2 rounded border border-amber-200 bg-amber-50 p-3">
+        <h2 className="font-medium">Pagar la cuenta</h2>
+        <p className="text-sm text-amber-800">
+          Avisado al personal para pagar {formatPrice(pendingCashAmountCents, currency)} en
+          efectivo — esperando que confirmen que lo han recibido.
+        </p>
+      </section>
     )
   }
 
@@ -102,6 +125,19 @@ export function PaymentPanel({
         </button>
       </form>
       {collectiveState?.error && <p className="text-xs text-red-600">{collectiveState.error}</p>}
+
+      <form action={cashAction} className="flex items-center justify-between gap-2">
+        <input type="hidden" name="qr_token" value={qrToken} />
+        <span className="text-sm">Pagar en efectivo (la cuenta completa)</span>
+        <button
+          type="submit"
+          disabled={cashPending}
+          className="rounded border border-gray-400 px-3 py-1.5 text-sm disabled:opacity-50"
+        >
+          {cashPending ? 'Avisando…' : 'Avisar al personal'}
+        </button>
+      </form>
+      {cashState?.error && <p className="text-xs text-red-600">{cashState.error}</p>}
     </section>
   )
 }
