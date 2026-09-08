@@ -387,6 +387,7 @@ export function LiveTable({
           <PaymentPanel
             qrToken={qrToken}
             currency={currency}
+            tableTotalCents={tableTotal}
             remainingCents={remainingCents}
             individualDueCents={individualDueCents}
             defaultShareCount={participants.length}

@@ -13,6 +13,7 @@ import { FeedbackPanel } from './feedback-panel'
 export function PaymentPanel({
   qrToken,
   currency,
+  tableTotalCents,
   remainingCents,
   individualDueCents,
   defaultShareCount,
@@ -24,6 +25,7 @@ export function PaymentPanel({
 }: {
   qrToken: string
   currency: string
+  tableTotalCents: number
   remainingCents: number
   individualDueCents: number
   defaultShareCount: number
@@ -54,6 +56,13 @@ export function PaymentPanel({
     const discountCents = Math.round((baseCents * loyaltyDiscountPercent) / 100)
     const tipCents = Math.round((baseCents * tipPercent) / 100)
     return baseCents - discountCents + tipCents
+  }
+
+  // Nothing ordered yet also computes as "0 pendiente" — that must not
+  // look like a paid bill (and definitely shouldn't ask for a rating).
+  // Only a table that actually had a total, now fully covered, counts.
+  if (tableTotalCents <= 0) {
+    return null
   }
 
   if (remainingCents <= 0) {
