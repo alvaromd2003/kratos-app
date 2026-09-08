@@ -59,11 +59,11 @@ export default function ResetPasswordPage() {
 
   if (!ready) {
     return (
-      <div className="flex min-h-screen flex-col">
+      <div className="flex min-h-screen flex-col bg-gradient-to-b from-ink to-ink-2">
         <AuthHeader />
         <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-4 px-6 py-12 text-center">
-          <h1 className="text-2xl font-display text-ink">Enlace no válido</h1>
-          <p className="text-bronze">
+          <h1 className="text-2xl font-display text-white">Enlace no válido</h1>
+          <p className="text-cream-dim">
             Abre esta página directamente desde el enlace del email que te hemos enviado.
           </p>
         </main>
@@ -72,13 +72,15 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col bg-gradient-to-b from-ink to-ink-2">
       <AuthHeader />
       <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-6 px-6 py-12">
-      <h1 className="text-2xl font-display text-ink">Elige una contraseña nueva</h1>
+      <h1 className="text-2xl font-display text-white">Elige una contraseña nueva</h1>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
-          <label htmlFor="password">Contraseña nueva</label>
+          <label htmlFor="password" className="text-sm text-cream-dim">
+            Contraseña nueva
+          </label>
           <input
             id="password"
             type="password"
@@ -86,11 +88,13 @@ export default function ResetPasswordPage() {
             minLength={8}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="rounded-lg border border-marble-3 px-3 py-2 focus:border-ember focus:outline-none"
+            className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-white focus:border-ember focus:outline-none"
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label htmlFor="confirm-password">Repite la contraseña</label>
+          <label htmlFor="confirm-password" className="text-sm text-cream-dim">
+            Repite la contraseña
+          </label>
           <input
             id="confirm-password"
             type="password"
@@ -98,14 +102,14 @@ export default function ResetPasswordPage() {
             minLength={8}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            className="rounded-lg border border-marble-3 px-3 py-2 focus:border-ember focus:outline-none"
+            className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-white focus:border-ember focus:outline-none"
           />
         </div>
         {error && <p className="text-sm text-rust">{error}</p>}
         <button
           disabled={pending}
           type="submit"
-          className="rounded-lg bg-ink px-4 py-2.5 font-medium text-white disabled:opacity-50"
+          className="rounded-lg bg-ember px-4 py-2.5 font-medium text-ink disabled:opacity-50"
         >
           {pending ? 'Guardando…' : 'Guardar contraseña'}
         </button>

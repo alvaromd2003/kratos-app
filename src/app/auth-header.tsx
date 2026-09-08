@@ -3,7 +3,7 @@ import Link from 'next/link'
 
 export function AuthHeader() {
   return (
-    <div className="flex justify-center bg-gradient-to-b from-ink to-ink-2 py-8">
+    <div className="flex justify-center pt-14 pb-6">
       <Link href="/">
         <Image
           src="/kratos-mark-light.png"
@@ -11,7 +11,7 @@ export function AuthHeader() {
           width={743}
           height={338}
           priority
-          className="h-8 w-auto"
+          className="h-16 w-auto sm:h-20"
         />
       </Link>
     </div>
