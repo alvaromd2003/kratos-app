@@ -187,3 +187,33 @@ export async function sendSessionOrderToKitchen(
 
   return {}
 }
+
+// Quiet fallback for a diner who can't or won't use their own phone — not
+// something to lead with in a sales pitch (the whole point of Kratos is
+// not needing a waiter to take orders), just a safety net so that diner
+// isn't left out and their order still ends up properly recorded instead
+// of handled entirely off-system. Also doubles as the attribution for a
+// staff-recorded manual payment (cash/datáfono collected in person) when
+// nobody at a table ever scanned the QR, so there's no real participant to
+// credit it to.
+export const STAFF_PARTICIPANT_NAME = 'Pedido en barra'
+
+export async function getOrCreateStaffParticipant(
+  admin: ReturnType<typeof createAdminClient>,
+  tableSessionId: string
+): Promise<string | null> {
+  const { data: existing } = await admin
+    .from('session_participants')
+    .select('id')
+    .eq('table_session_id', tableSessionId)
+    .eq('name', STAFF_PARTICIPANT_NAME)
+    .maybeSingle()
+  if (existing) return existing.id
+
+  const { data: created } = await admin
+    .from('session_participants')
+    .insert({ table_session_id: tableSessionId, name: STAFF_PARTICIPANT_NAME })
+    .select('id')
+    .single()
+  return created?.id ?? null
+}

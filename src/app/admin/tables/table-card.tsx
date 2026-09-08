@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react'
 import { updateTable, deleteTable, closeTableSession, toggleTableActive } from '@/app/actions/tables'
+import { recordManualPayment } from '@/app/actions/kitchen'
 import { formatPrice } from '@/lib/format'
 
 export function TableCard({
@@ -59,9 +60,28 @@ export function TableCard({
             Ocupada ({participantCount} {participantCount === 1 ? 'persona' : 'personas'})
           </span>
           {pendingCents > 0 && (
-            <span className="text-xs text-amber-700">
-              Pendiente: {formatPrice(pendingCents, currency)}
-            </span>
+            <>
+              <span className="text-xs text-amber-700">
+                Pendiente: {formatPrice(pendingCents, currency)}
+              </span>
+              <form
+                action={recordManualPayment}
+                onSubmit={(e) => {
+                  if (
+                    !confirm(
+                      `¿Confirmas que ya has cobrado ${formatPrice(pendingCents, currency)} en efectivo o con datáfono en la mesa ${label}? Esto marca la cuenta como pagada — útil cuando nadie en la mesa ha usado el QR.`
+                    )
+                  ) {
+                    e.preventDefault()
+                  }
+                }}
+              >
+                <input type="hidden" name="table_id" value={id} />
+                <button type="submit" className="text-xs underline">
+                  Cobrado en efectivo/datáfono
+                </button>
+              </form>
+            </>
           )}
           <form
             action={closeTableSession}

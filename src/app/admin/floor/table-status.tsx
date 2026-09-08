@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { closeTableSession } from '@/app/actions/tables'
+import { recordManualPayment } from '@/app/actions/kitchen'
 import { useWakeLock } from '@/lib/use-wake-lock'
 import { formatPrice } from '@/lib/format'
 import { AssistedOrderForm } from './assisted-order-form'
@@ -177,9 +178,28 @@ export function TableStatus({
                     Ocupada
                   </span>
                   {table.pendingCents > 0 && (
-                    <span className="text-xs text-amber-700">
-                      Pendiente: {formatPrice(table.pendingCents, currency)}
-                    </span>
+                    <>
+                      <span className="text-xs text-amber-700">
+                        Pendiente: {formatPrice(table.pendingCents, currency)}
+                      </span>
+                      <form
+                        action={recordManualPayment}
+                        onSubmit={(e) => {
+                          if (
+                            !confirm(
+                              `¿Confirmas que ya has cobrado ${formatPrice(table.pendingCents, currency)} en efectivo o con datáfono en la mesa ${table.label}? Esto marca la cuenta como pagada — útil cuando nadie en la mesa ha usado el QR.`
+                            )
+                          ) {
+                            e.preventDefault()
+                          }
+                        }}
+                      >
+                        <input type="hidden" name="table_id" value={table.id} />
+                        <button type="submit" className="text-xs underline">
+                          Cobrado en efectivo/datáfono
+                        </button>
+                      </form>
+                    </>
                   )}
                   {table.lastActivityAt &&
                     (() => {
