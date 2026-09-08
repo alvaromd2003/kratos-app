@@ -26,19 +26,20 @@ export function AddItemButton({
   const showSuggestion = justAdded && recommendedItem && !dismissedSuggestion
 
   return (
-    <div className="flex flex-col items-end gap-1">
+    <div className="flex shrink-0 flex-col items-end gap-1">
       <form action={action}>
         <input type="hidden" name="qr_token" value={qrToken} />
         <input type="hidden" name="menu_item_id" value={menuItemId} />
         <button
           type="submit"
           disabled={pending}
-          className="rounded bg-ink px-3 py-1 text-xs text-white disabled:opacity-50"
+          aria-label="Añadir"
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-ink text-lg leading-none text-ember-bright disabled:opacity-50"
         >
-          {pending ? 'Añadiendo…' : 'Añadir'}
+          {pending ? '…' : '+'}
         </button>
       </form>
-      {state?.error && <p className="text-xs text-red-600">{state.error}</p>}
+      {state?.error && <p className="text-xs text-rust">{state.error}</p>}
       {showSuggestion && recommendedItem && (
         <div className="flex items-center gap-1 rounded border border-gray-300 bg-gray-50 px-2 py-1 text-xs">
           <span>

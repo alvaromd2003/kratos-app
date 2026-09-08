@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { AuthHeader } from '@/app/auth-header'
 
 export default function ResetPasswordPage() {
   const router = useRouter()
@@ -58,18 +59,23 @@ export default function ResetPasswordPage() {
 
   if (!ready) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-4 px-6 text-center">
-        <h1 className="text-2xl font-semibold">Enlace no válido</h1>
-        <p className="text-gray-600">
-          Abre esta página directamente desde el enlace del email que te hemos enviado.
-        </p>
-      </main>
+      <div className="flex min-h-screen flex-col">
+        <AuthHeader />
+        <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-4 px-6 py-12 text-center">
+          <h1 className="text-2xl font-display text-ink">Enlace no válido</h1>
+          <p className="text-bronze">
+            Abre esta página directamente desde el enlace del email que te hemos enviado.
+          </p>
+        </main>
+      </div>
     )
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 px-6">
-      <h1 className="text-2xl font-semibold">Elige una contraseña nueva</h1>
+    <div className="flex min-h-screen flex-col">
+      <AuthHeader />
+      <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-6 px-6 py-12">
+      <h1 className="text-2xl font-display text-ink">Elige una contraseña nueva</h1>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
           <label htmlFor="password">Contraseña nueva</label>
@@ -80,7 +86,7 @@ export default function ResetPasswordPage() {
             minLength={8}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="rounded border border-gray-300 px-3 py-2"
+            className="rounded-lg border border-marble-3 px-3 py-2 focus:border-ember focus:outline-none"
           />
         </div>
         <div className="flex flex-col gap-1">
@@ -92,18 +98,19 @@ export default function ResetPasswordPage() {
             minLength={8}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            className="rounded border border-gray-300 px-3 py-2"
+            className="rounded-lg border border-marble-3 px-3 py-2 focus:border-ember focus:outline-none"
           />
         </div>
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-rust">{error}</p>}
         <button
           disabled={pending}
           type="submit"
-          className="rounded bg-ink px-4 py-2 text-white disabled:opacity-50"
+          className="rounded-lg bg-ink px-4 py-2.5 font-medium text-white disabled:opacity-50"
         >
           {pending ? 'Guardando…' : 'Guardar contraseña'}
         </button>
       </form>
-    </main>
+      </main>
+    </div>
   )
 }

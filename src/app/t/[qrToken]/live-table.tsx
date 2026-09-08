@@ -437,27 +437,27 @@ export function LiveTable({
       )}
 
       {sortedOrders.length > 0 && (
-        <section className="flex flex-col gap-3 rounded border border-gray-200 p-3">
+        <section className="flex flex-col gap-3 rounded-xl border border-marble-3 bg-white p-4">
           <div className="flex items-center justify-between">
-            <h2 className="font-medium">Tus pedidos</h2>
+            <h2 className="font-display text-base text-ink">Tus pedidos</h2>
             {avgWaitMinutes !== null && (
-              <span className="text-xs text-gray-500">
-                Tiempo medio de la cocina: ~{avgWaitMinutes} min
+              <span className="text-xs text-bronze">
+                Tiempo medio de la cocina: ~<span className="font-mono">{avgWaitMinutes}</span> min
               </span>
             )}
           </div>
-          <ul className="flex flex-col gap-2 text-sm">
+          <ul className="flex flex-col gap-3 text-sm">
             {sortedOrders.map((order) => {
               const orderRows = orderItems.filter((row) => row.order_id === order.id)
               const ahead = order.status === 'pending' ? queuePosition(order) : 0
               return (
-                <li key={order.id}>
+                <li key={order.id} className="flex flex-col gap-0.5 border-t border-marble-2 pt-3 first:border-t-0 first:pt-0">
                   <div className="flex items-center justify-between gap-2">
-                    <p>
-                      <span className="font-medium">{formatTime(order.created_at)}</span> —{' '}
-                      {ORDER_STATUS_LABEL[order.status]}
+                    <p className="text-ink">
+                      <span className="font-mono text-xs text-bronze">{formatTime(order.created_at)}</span>{' '}
+                      — {ORDER_STATUS_LABEL[order.status]}
                       {order.status === 'pending' && (
-                        <span className="text-gray-500">
+                        <span className="text-bronze">
                           {' '}
                           ({ahead > 0 ? `${ahead} por delante` : 'el siguiente'})
                         </span>
@@ -465,7 +465,7 @@ export function LiveTable({
                     </p>
                     {order.status === 'pending' &&
                       (order.cancellation_requested_at ? (
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-bronze">
                           Cancelación solicitada, esperando confirmación
                         </span>
                       ) : (
@@ -483,13 +483,13 @@ export function LiveTable({
                         >
                           <input type="hidden" name="qr_token" value={qrToken} />
                           <input type="hidden" name="order_id" value={order.id} />
-                          <button type="submit" className="text-xs text-red-600 underline">
+                          <button type="submit" className="text-xs text-rust underline">
                             Cancelar
                           </button>
                         </form>
                       ))}
                   </div>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-bronze">
                     {orderRows
                       .map((row) => `${row.quantity}× ${itemsById.get(row.menu_item_id)?.name ?? '—'}`)
                       .join(', ')}
@@ -507,10 +507,10 @@ export function LiveTable({
             key={tag.value}
             type="button"
             onClick={() => toggleTag(tag.value)}
-            className={`rounded-full border px-3 py-1 text-xs ${
+            className={`rounded-full border px-3 py-1 text-xs transition-colors ${
               activeTags.has(tag.value)
-                ? 'border-black bg-ink text-white'
-                : 'border-gray-300 text-gray-700'
+                ? 'border-ember bg-ember text-ink'
+                : 'border-marble-3 text-bronze hover:border-cream-dim'
             }`}
           >
             {tag.label}
@@ -549,10 +549,10 @@ export function LiveTable({
         )}
       </section>
 
-      <section className="fixed inset-x-0 bottom-0 flex max-h-64 flex-col gap-3 border-t border-gray-200 bg-white px-4 py-4 text-gray-900 shadow-[0_-4px_12px_rgba(0,0,0,0.08)]">
-        <h2 className="font-medium">Carrito de la mesa</h2>
+      <section className="fixed inset-x-0 bottom-0 mx-auto flex max-h-64 w-full max-w-md flex-col gap-3 rounded-t-2xl border-t border-marble-3 bg-white px-5 py-4 text-ink shadow-[0_-8px_24px_rgba(11,25,44,0.1)]">
+        <h2 className="font-display text-base text-ink">Carrito de la mesa</h2>
         {cartItems.length === 0 ? (
-          <p className="text-sm text-gray-500">Todavía no hay nada en el carrito.</p>
+          <p className="text-sm text-bronze">Todavía no hay nada en el carrito.</p>
         ) : (
           <ul className="flex flex-col gap-2 overflow-y-auto">
             {cartItems.map((row) => {
@@ -604,26 +604,35 @@ function MenuSection({
 }) {
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="font-medium">{title}</h2>
+      <h2 className="text-xs font-semibold uppercase tracking-wider text-bronze">{title}</h2>
       <ul className="flex flex-col gap-3">
         {items.map((item) => (
-          <li key={item.id} className="flex items-center gap-3">
-            {item.image_url && (
+          <li
+            key={item.id}
+            className="flex items-center gap-3 rounded-xl border border-marble-3 bg-white p-3"
+          >
+            {item.image_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={item.image_url}
                 alt={item.name}
                 width={56}
                 height={56}
-                className="h-14 w-14 rounded object-cover"
+                className="h-14 w-14 shrink-0 rounded-lg object-cover"
               />
+            ) : (
+              <div className="h-14 w-14 shrink-0 rounded-lg bg-gradient-to-br from-ember-bright to-ember" />
             )}
-            <div className="flex-1">
-              <p className="text-sm font-medium">{item.name}</p>
-              {item.description && <p className="text-xs text-gray-600">{item.description}</p>}
-              <p className="text-xs text-gray-500">{formatPrice(item.price_cents, currency)}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-ink">{item.name}</p>
+              {item.description && (
+                <p className="truncate text-xs text-bronze">{item.description}</p>
+              )}
+              <p className="font-mono text-xs text-bronze">
+                {formatPrice(item.price_cents, currency)}
+              </p>
               {item.dietary_tags.filter((t) => enabledTags.includes(t)).length > 0 && (
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-bronze">
                   {item.dietary_tags
                     .filter((t) => enabledTags.includes(t))
                     .map(dietaryTagLabel)

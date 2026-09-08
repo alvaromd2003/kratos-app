@@ -23,43 +23,49 @@ export function CartItemRow({
   const [removeState, removeAction] = useActionState(removeItemFromCart, undefined)
 
   return (
-    <li className="flex flex-col gap-1 text-sm">
+    <li className="flex flex-col gap-1.5 border-b border-marble-2 pb-3 text-sm last:border-b-0 last:pb-0">
       <div className="flex items-center gap-2">
-        <span className="flex-1 truncate">{name}</span>
-        <div className="flex items-center gap-1">
+        <span className="flex-1 truncate text-ink">{name}</span>
+        <div className="flex items-center gap-1.5">
           <form action={decreaseAction}>
             <input type="hidden" name="qr_token" value={qrToken} />
             <input type="hidden" name="order_item_id" value={orderItemId} />
             <input type="hidden" name="delta" value="-1" />
-            <button type="submit" className="h-6 w-6 rounded border border-gray-300">
+            <button
+              type="submit"
+              className="flex h-6 w-6 items-center justify-center rounded-full border border-marble-3 text-bronze"
+            >
               −
             </button>
           </form>
-          <span className="w-5 text-center">{quantity}</span>
+          <span className="w-5 text-center font-mono text-ink">{quantity}</span>
           <form action={increaseAction}>
             <input type="hidden" name="qr_token" value={qrToken} />
             <input type="hidden" name="order_item_id" value={orderItemId} />
             <input type="hidden" name="delta" value="1" />
-            <button type="submit" className="h-6 w-6 rounded border border-gray-300">
+            <button
+              type="submit"
+              className="flex h-6 w-6 items-center justify-center rounded-full border border-marble-3 text-bronze"
+            >
               +
             </button>
           </form>
         </div>
-        <span className="w-16 text-right">{lineTotal}</span>
+        <span className="w-16 text-right font-mono text-ink">{lineTotal}</span>
         <form action={removeAction}>
           <input type="hidden" name="qr_token" value={qrToken} />
           <input type="hidden" name="order_item_id" value={orderItemId} />
-          <button type="submit" className="text-xs text-red-600 underline">
+          <button type="submit" className="text-xs text-rust underline">
             Quitar
           </button>
         </form>
       </div>
       {(decreaseState?.error || increaseState?.error || removeState?.error) && (
-        <p className="text-xs text-red-600">
+        <p className="text-xs text-rust">
           {decreaseState?.error || increaseState?.error || removeState?.error}
         </p>
       )}
-      <form action={setItemNote} className="flex items-center gap-1 pl-0">
+      <form action={setItemNote} className="flex items-center gap-1.5 pl-0">
         <input type="hidden" name="qr_token" value={qrToken} />
         <input type="hidden" name="order_item_id" value={orderItemId} />
         <input
@@ -67,9 +73,9 @@ export function CartItemRow({
           defaultValue={note ?? ''}
           placeholder="Nota (ej: sin cebolla)"
           maxLength={140}
-          className="w-full rounded border border-gray-300 px-2 py-1 text-xs"
+          className="w-full rounded-lg border border-marble-3 px-2.5 py-1.5 text-xs text-ink focus:border-ember focus:outline-none"
         />
-        <button type="submit" className="text-xs underline">
+        <button type="submit" className="text-xs whitespace-nowrap text-bronze underline">
           Guardar
         </button>
       </form>

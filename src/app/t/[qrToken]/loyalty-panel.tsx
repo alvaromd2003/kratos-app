@@ -18,32 +18,48 @@ export function LoyaltyPanel({
 
   if (!loyaltyEmail) {
     return (
-      <form action={action} className="flex items-center gap-2 rounded border border-gray-200 p-3">
+      <form
+        action={action}
+        className="flex items-center gap-2 rounded-xl border border-marble-3 bg-white p-3"
+      >
         <input type="hidden" name="qr_token" value={qrToken} />
         <input
           type="email"
           name="email"
           placeholder="tu@email.com"
           required
-          className="flex-1 rounded border border-gray-300 px-2 py-1 text-sm"
+          className="flex-1 rounded-lg border border-marble-3 px-3 py-2 text-sm text-ink focus:border-ember focus:outline-none"
         />
         <button
           type="submit"
           disabled={pending}
-          className="whitespace-nowrap rounded border border-gray-400 px-3 py-1 text-sm disabled:opacity-50"
+          className="whitespace-nowrap rounded-lg bg-ink px-3.5 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
           {pending ? 'Guardando…' : 'Acumular sellos'}
         </button>
-        {state?.error && <p className="text-xs text-red-600">{state.error}</p>}
+        {state?.error && <p className="text-xs text-rust">{state.error}</p>}
       </form>
     )
   }
 
   return (
-    <div className="rounded border border-gray-200 p-3 text-sm">
-      Sellos: {stamps}/{STAMP_THRESHOLD}
+    <div className="flex flex-col gap-2.5 rounded-xl border border-marble-3 bg-white p-4">
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-bronze">Sellos acumulados</span>
+        <span className="font-mono text-xs text-bronze">
+          {stamps}/{STAMP_THRESHOLD}
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {Array.from({ length: STAMP_THRESHOLD }).map((_, i) => (
+          <span
+            key={i}
+            className={`h-2.5 w-2.5 rounded-full ${i < stamps ? 'bg-ember' : 'bg-marble-3'}`}
+          />
+        ))}
+      </div>
       {stamps >= STAMP_THRESHOLD && (
-        <span className="ml-2 text-green-700">
+        <span className="text-xs font-medium text-sage">
           🎉 Descuento disponible — se aplicará solo en tu próximo pago
         </span>
       )}

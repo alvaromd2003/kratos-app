@@ -86,7 +86,7 @@ export function ItemizedPaymentPanel({
       <button
         type="button"
         onClick={() => setExpanded(true)}
-        className="self-start text-sm underline"
+        className="self-start text-sm font-medium text-bronze underline underline-offset-2"
       >
         Elegir platos concretos
       </button>
@@ -94,32 +94,43 @@ export function ItemizedPaymentPanel({
   }
 
   return (
-    <form action={action} className="flex flex-col gap-3 rounded border border-gray-200 p-3">
+    <form action={action} className="flex flex-col gap-4 rounded-2xl bg-ink px-5 py-5 text-marble-2">
       <input type="hidden" name="qr_token" value={qrToken} />
       <input type="hidden" name="tip_percent" value={tipPercent} />
 
       <div className="flex items-center justify-between">
-        <h2 className="font-medium">Elegir platos concretos</h2>
-        <button type="button" onClick={() => setExpanded(false)} className="text-xs underline">
+        <h2 className="font-display text-lg text-white">Elegir platos concretos</h2>
+        <button
+          type="button"
+          onClick={() => setExpanded(false)}
+          className="text-xs text-cream-dim underline"
+        >
           Cerrar
         </button>
       </div>
-      <ul className="flex flex-col gap-2">
+      <ul className="flex flex-col gap-2.5">
         {items.map((item) => (
-          <li key={item.id} className="flex flex-col gap-1">
-            <label className="flex items-center gap-2 text-sm">
+          <li
+            key={item.id}
+            className={`flex flex-col gap-1.5 rounded-lg px-3.5 py-3 ${
+              selected.has(item.id) ? 'bg-white/10' : 'bg-white/5'
+            }`}
+          >
+            <label className="flex items-center gap-2.5 text-sm">
               <input
                 type="checkbox"
                 checked={selected.has(item.id)}
                 onChange={() => toggle(item.id)}
+                className="h-4 w-4 accent-ember"
               />
-              {item.name} — {item.participantLabel}
-              <span className="ml-auto text-gray-500">
+              <span className="text-white">{item.name}</span>
+              <span className="text-cream-dim">— {item.participantLabel}</span>
+              <span className="ml-auto font-mono text-cream-dim">
                 Queda: {formatPrice(item.remainingCents, currency)}
               </span>
             </label>
             {item.contributors.length > 0 && (
-              <p className="ml-6 text-xs text-gray-500">
+              <p className="ml-6 text-xs text-cream-dim">
                 Ya pagado:{' '}
                 {item.contributors
                   .map((c) => `${c.label} ${formatPrice(c.amountCents, currency)}`)
@@ -127,12 +138,12 @@ export function ItemizedPaymentPanel({
               </p>
             )}
             {selected.has(item.id) && (
-              <div className="ml-6 flex flex-col gap-1.5 text-xs text-gray-600">
+              <div className="ml-6 flex flex-col gap-1.5 text-xs text-cream-dim">
                 {tableParticipants.filter((p) => p.id !== currentParticipantId).length > 0 && (
                   <>
                     <span>¿Entre quién se divide?</span>
                     <div className="flex flex-wrap gap-1">
-                      <span className="rounded-full border border-black bg-ink px-2 py-0.5 text-white">
+                      <span className="rounded-full border border-ember bg-ember px-2 py-0.5 text-ink">
                         Tú
                       </span>
                       {tableParticipants
@@ -146,8 +157,8 @@ export function ItemizedPaymentPanel({
                               onClick={() => toggleSplitParticipant(item.id, p.id)}
                               className={`rounded-full border px-2 py-0.5 ${
                                 active
-                                  ? 'border-black bg-ink text-white'
-                                  : 'border-gray-300 text-gray-700'
+                                  ? 'border-ember bg-ember text-ink'
+                                  : 'border-white/15 text-cream-dim'
                               }`}
                             >
                               {p.label}
@@ -163,7 +174,7 @@ export function ItemizedPaymentPanel({
                   name={`share_count_${item.id}`}
                   value={shareCountFor(item.id)}
                 />
-                <span>
+                <span className="font-mono text-ember-bright">
                   {shareCountFor(item.id) > 1
                     ? `Se divide entre ${shareCountFor(item.id)} personas · `
                     : ''}
@@ -176,7 +187,7 @@ export function ItemizedPaymentPanel({
       </ul>
 
       <div className="flex items-center gap-2">
-        <span className="text-sm">Propina:</span>
+        <span className="text-sm text-cream-dim">Propina:</span>
         {[0, 5, 10, 15].map((pct) => (
           <button
             key={pct}
@@ -184,8 +195,8 @@ export function ItemizedPaymentPanel({
             onClick={() => setTipPercent(pct)}
             className={`rounded-full border px-2.5 py-0.5 text-xs ${
               tipPercent === pct
-                ? 'border-black bg-ink text-white'
-                : 'border-gray-300 text-gray-700'
+                ? 'border-ember bg-ember text-ink'
+                : 'border-white/15 text-cream-dim'
             }`}
           >
             {pct}%
@@ -193,17 +204,19 @@ export function ItemizedPaymentPanel({
         ))}
       </div>
 
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-sm">Total: {formatPrice(totalCents, currency)}</span>
+      <div className="flex items-center justify-between gap-2 border-t border-white/10 pt-3">
+        <span className="text-sm">
+          Total: <span className="font-mono text-ember-bright">{formatPrice(totalCents, currency)}</span>
+        </span>
         <button
           type="submit"
           disabled={pending || selected.size === 0}
-          className="rounded bg-ink px-3 py-1.5 text-sm text-white disabled:opacity-50"
+          className="rounded-lg bg-ember px-3.5 py-2 text-sm font-medium text-ink disabled:opacity-40"
         >
           {pending ? 'Redirigiendo…' : 'Pagar estos platos'}
         </button>
       </div>
-      {state?.error && <p className="text-xs text-red-600">{state.error}</p>}
+      {state?.error && <p className="text-xs text-rust">{state.error}</p>}
     </form>
   )
 }
