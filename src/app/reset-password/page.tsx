@@ -60,12 +60,14 @@ export default function ResetPasswordPage() {
   if (!ready) {
     return (
       <div className="flex min-h-screen flex-col bg-gradient-to-b from-ink to-ink-2">
-        <AuthHeader />
-        <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-4 px-6 py-12 text-center">
-          <h1 className="text-2xl font-display text-white">Enlace no válido</h1>
-          <p className="text-cream-dim">
-            Abre esta página directamente desde el enlace del email que te hemos enviado.
-          </p>
+        <main className="mx-auto flex w-full max-w-sm flex-1 flex-col items-center justify-center gap-8 px-6 py-12 text-center">
+          <AuthHeader />
+          <div className="flex w-full flex-col gap-4">
+            <h1 className="text-2xl font-display text-white">Enlace no válido</h1>
+            <p className="text-cream-dim">
+              Abre esta página directamente desde el enlace del email que te hemos enviado.
+            </p>
+          </div>
         </main>
       </div>
     )
@@ -73,8 +75,9 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-ink to-ink-2">
+      <main className="mx-auto flex w-full max-w-sm flex-1 flex-col items-center justify-center gap-8 px-6 py-12">
       <AuthHeader />
-      <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-6 px-6 py-12">
+      <div className="flex w-full flex-col gap-6">
       <h1 className="text-2xl font-display text-white">Elige una contraseña nueva</h1>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
@@ -114,6 +117,7 @@ export default function ResetPasswordPage() {
           {pending ? 'Guardando…' : 'Guardar contraseña'}
         </button>
       </form>
+      </div>
       </main>
     </div>
   )

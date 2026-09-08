@@ -10,8 +10,9 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-ink to-ink-2">
+      <main className="mx-auto flex w-full max-w-sm flex-1 flex-col items-center justify-center gap-8 px-6 py-12">
       <AuthHeader />
-      <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-6 px-6 py-12">
+      <div className="flex w-full flex-col gap-6">
       <h1 className="text-2xl font-display text-white">Entrar a Kratos</h1>
       <form action={action} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
@@ -58,6 +59,7 @@ export default function LoginPage() {
           Regístrate
         </Link>
       </p>
+      </div>
       </main>
     </div>
   )
