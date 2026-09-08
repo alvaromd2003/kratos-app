@@ -125,9 +125,12 @@ export function LiveTable({
   loyaltyStamps: number
   googleReviewUrl: string | null
   hasSubmittedFeedback: boolean
-  // order_item_id -> cents already paid off that line via the itemized
-  // mode (0/absent = untouched, < full price = partially split already).
-  orderItemCoverage: Record<string, number>
+  // order_item_id -> who has paid how much of that line via the itemized
+  // mode (absent/empty = untouched, sum < full price = partially split
+  // already). Kept as a list of contributions rather than a running
+  // total so the picker can show *who* already covered part of a shared
+  // dish, not just how much is left.
+  orderItemCoverage: Record<string, { participantId: string; amountCents: number }[]>
 }) {
   const [participants, setParticipants] = useState(initialParticipants)
   const [orderItems, setOrderItems] = useState(initialOrderItems)
@@ -335,7 +338,8 @@ export function LiveTable({
       const item = itemsById.get(row.menu_item_id)
       if (!item) return null
       const fullCents = item.price_cents * row.quantity
-      const coveredCents = orderItemCoverage[row.id] ?? 0
+      const contributions = orderItemCoverage[row.id] ?? []
+      const coveredCents = contributions.reduce((sum, c) => sum + c.amountCents, 0)
       const itemRemainingCents = fullCents - coveredCents
       if (itemRemainingCents <= 0) return null
       return {
@@ -343,6 +347,10 @@ export function LiveTable({
         name: item.name,
         remainingCents: itemRemainingCents,
         participantLabel: participantLabel(row.participant_id),
+        contributors: contributions.map((c) => ({
+          label: participantLabel(c.participantId),
+          amountCents: c.amountCents,
+        })),
       }
     })
     .filter((row): row is NonNullable<typeof row> => row !== null)

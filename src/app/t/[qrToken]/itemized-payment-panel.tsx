@@ -9,6 +9,7 @@ type PickableItem = {
   name: string
   remainingCents: number
   participantLabel: string
+  contributors: { label: string; amountCents: number }[]
 }
 
 export function ItemizedPaymentPanel({
@@ -26,13 +27,20 @@ export function ItemizedPaymentPanel({
   const [expanded, setExpanded] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   // How many ways each selected dish is being split — defaults to 1 (pay
-  // it in full). Only meaningful while the item is selected.
-  const [shareCounts, setShareCounts] = useState<Record<string, number>>({})
+  // it in full). Only meaningful while the item is selected. Kept as the
+  // raw typed string (not a clamped number) so the field can go through
+  // an empty state while editing — clamping on every keystroke made it
+  // snap straight back to 1 the instant you deleted it, and you could
+  // never type a second digit.
+  const [shareCounts, setShareCounts] = useState<Record<string, string>>({})
   const [tipPercent, setTipPercent] = useState(0)
 
   if (items.length === 0) return null
 
-  const shareCountFor = (id: string) => Math.max(1, shareCounts[id] ?? 1)
+  const shareCountFor = (id: string) => {
+    const parsed = parseInt(shareCounts[id] ?? '1', 10)
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 1
+  }
   const myShareCents = (item: PickableItem) => Math.ceil(item.remainingCents / shareCountFor(item.id))
 
   const baseCents = items
@@ -93,17 +101,28 @@ export function ItemizedPaymentPanel({
                 Queda: {formatPrice(item.remainingCents, currency)}
               </span>
             </label>
+            {item.contributors.length > 0 && (
+              <p className="ml-6 text-xs text-gray-500">
+                Ya pagado:{' '}
+                {item.contributors
+                  .map((c) => `${c.label} ${formatPrice(c.amountCents, currency)}`)
+                  .join(', ')}
+              </p>
+            )}
             {selected.has(item.id) && (
               <label className="ml-6 flex items-center gap-2 text-xs text-gray-600">
                 Dividir entre
                 <input
                   type="number"
                   min={1}
-                  value={shareCountFor(item.id)}
+                  value={shareCounts[item.id] ?? '1'}
                   onChange={(e) =>
+                    setShareCounts((current) => ({ ...current, [item.id]: e.target.value }))
+                  }
+                  onBlur={() =>
                     setShareCounts((current) => ({
                       ...current,
-                      [item.id]: Math.max(1, Number(e.target.value) || 1),
+                      [item.id]: String(shareCountFor(item.id)),
                     }))
                   }
                   className="w-14 rounded border border-gray-300 px-2 py-1"

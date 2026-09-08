@@ -7,6 +7,7 @@ import {
   getRequestOrigin,
   getTableBillSummary,
   getOrderItemCoverage,
+  totalOrderItemCoverage,
   individualAmountDue,
   splitAmountDue,
 } from '@/lib/payments'
@@ -319,7 +320,7 @@ export async function createItemizedPayment(
   const orderItemShares = new Map<string, number>()
   for (const item of items ?? []) {
     const fullCents = (priceById.get(item.menu_item_id) ?? 0) * item.quantity
-    const itemRemainingCents = fullCents - (coverage.get(item.id) ?? 0)
+    const itemRemainingCents = fullCents - totalOrderItemCoverage(coverage.get(item.id))
     if (itemRemainingCents <= 0) continue // fully paid already since the picker loaded — skip it
 
     const shareCountRaw = Math.floor(Number(formData.get(`share_count_${item.id}`) ?? 1))

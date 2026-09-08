@@ -86,36 +86,49 @@ export function splitAmountDue(summary: TableBillSummary, shareCount: number): n
   return Math.ceil(summary.remainingCents / shareCount)
 }
 
-// How many cents of each order_item have already been covered by
-// SUCCEEDED itemized ('items' mode) payments — a dish can be split
-// across several separate payments (each person's share of it), so this
-// is a running total per item, not a plain claimed/unclaimed flag.
-// Deliberately keyed off 'succeeded' only, never 'pending': that way an
-// abandoned Stripe Checkout can never lock any part of a dish out of
-// being picked again (see migration 0022's comment for the tradeoff).
+export type OrderItemContribution = { participantId: string; amountCents: number }
+
+// Who has paid how much of each order_item, via SUCCEEDED itemized
+// ('items' mode) payments — a dish can be split across several separate
+// payments (each person's share of it), so this is a list of
+// contributions per item, not a plain claimed/unclaimed flag or a single
+// running total, specifically so the picker can show *who* already
+// covered part of a shared dish. Deliberately keyed off 'succeeded'
+// only, never 'pending': that way an abandoned Stripe Checkout can never
+// lock any part of a dish out of being picked again (see migration
+// 0022's comment for the tradeoff).
 export async function getOrderItemCoverage(
   admin: SupabaseClient,
   tableSessionId: string
-): Promise<Map<string, number>> {
+): Promise<Map<string, OrderItemContribution[]>> {
   const { data: shares } = await admin
     .from('payment_shares')
-    .select('id')
+    .select('id, participant_id')
     .eq('table_session_id', tableSessionId)
     .eq('status', 'succeeded')
 
-  const shareIds = (shares ?? []).map((s) => s.id)
-  const coverage = new Map<string, number>()
-  if (shareIds.length === 0) return coverage
+  const participantByShareId = new Map((shares ?? []).map((s) => [s.id, s.participant_id]))
+  const shareIds = [...participantByShareId.keys()]
+  const contributions = new Map<string, OrderItemContribution[]>()
+  if (shareIds.length === 0) return contributions
 
   const { data: claims } = await admin
     .from('payment_share_items')
-    .select('order_item_id, amount_cents')
+    .select('order_item_id, amount_cents, payment_share_id')
     .in('payment_share_id', shareIds)
 
   for (const claim of claims ?? []) {
-    coverage.set(claim.order_item_id, (coverage.get(claim.order_item_id) ?? 0) + claim.amount_cents)
+    const participantId = participantByShareId.get(claim.payment_share_id)
+    if (!participantId) continue
+    const list = contributions.get(claim.order_item_id) ?? []
+    list.push({ participantId, amountCents: claim.amount_cents })
+    contributions.set(claim.order_item_id, list)
   }
-  return coverage
+  return contributions
+}
+
+export function totalOrderItemCoverage(contributions: OrderItemContribution[] | undefined): number {
+  return (contributions ?? []).reduce((sum, c) => sum + c.amountCents, 0)
 }
 
 // True the moment even a single cent of this line has been paid via the
