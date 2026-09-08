@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import Image from 'next/image'
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import { formatPrice, formatTime } from '@/lib/format'
@@ -579,7 +580,8 @@ export function LiveTable({
           </p>
           {cartItems.length > 0 && <SendOrderButton qrToken={qrToken} />}
         </div>
-        <p className="text-center text-[0.68rem] tracking-wide text-bronze/70">
+        <p className="flex items-center justify-center gap-1.5 text-center text-[0.68rem] tracking-wide text-bronze/70">
+          <Image src="/kratos-badge.png" alt="" width={40} height={40} className="h-3.5 w-3.5 rounded-[3px]" />
           Con la tecnología de Kratos Systems
         </p>
       </section>

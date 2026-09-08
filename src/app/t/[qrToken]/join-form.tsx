@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState } from 'react'
+import Image from 'next/image'
 import { joinTable } from '@/app/actions/ordering'
 
 export function JoinForm({
@@ -51,7 +52,8 @@ export function JoinForm({
       >
         Ver el menú sin unirme
       </a>
-      <p className="text-center text-[0.68rem] tracking-wide text-bronze/70">
+      <p className="flex items-center justify-center gap-1.5 text-center text-[0.68rem] tracking-wide text-bronze/70">
+        <Image src="/kratos-badge.png" alt="" width={40} height={40} className="h-3.5 w-3.5 rounded-[3px]" />
         Con la tecnología de Kratos Systems
       </p>
     </main>

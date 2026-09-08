@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import { formatPrice } from '@/lib/format'
 import { dietaryTagLabel } from '@/lib/dietary-tags'
 
@@ -69,7 +70,8 @@ export function MenuPreview({
           </div>
         )}
       </section>
-      <p className="text-center text-[0.68rem] tracking-wide text-bronze/70">
+      <p className="flex items-center justify-center gap-1.5 text-center text-[0.68rem] tracking-wide text-bronze/70">
+        <Image src="/kratos-badge.png" alt="" width={40} height={40} className="h-3.5 w-3.5 rounded-[3px]" />
         Con la tecnología de Kratos Systems
       </p>
     </main>
