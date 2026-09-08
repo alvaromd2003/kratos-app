@@ -30,38 +30,40 @@ export function TableCard({
   const [deleteState, deleteAction] = useActionState(deleteTable, undefined)
 
   return (
-    <li className="flex w-56 flex-col items-center gap-2 rounded border border-gray-200 p-4 text-center">
+    <li className="flex w-56 flex-col items-center gap-2.5 rounded-xl border border-marble-3 bg-white p-4 text-center">
       <form action={action} className="flex items-center gap-2">
         <input type="hidden" name="id" value={id} />
         <input
           name="label"
           defaultValue={label}
           required
-          className="w-28 rounded border border-gray-300 px-2 py-1 text-center text-sm"
+          className="w-28 rounded-lg border border-marble-3 px-2 py-1 text-center text-sm focus:border-ember focus:outline-none"
         />
-        <button disabled={pending} type="submit" className="text-xs underline">
+        <button disabled={pending} type="submit" className="text-xs text-bronze underline">
           {pending ? 'Guardando…' : 'Guardar'}
         </button>
       </form>
-      {state?.error && <p className="text-xs text-red-600">{state.error}</p>}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={qrDataUrl} alt={`Código QR de ${label}`} width={200} height={200} />
-      <p className="break-all text-xs text-gray-500">{url}</p>
+      {state?.error && <p className="text-xs text-rust">{state.error}</p>}
+      <div className="rounded-lg border border-marble-3 p-2">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={qrDataUrl} alt={`Código QR de ${label}`} width={200} height={200} />
+      </div>
+      <p className="break-all text-xs text-bronze">{url}</p>
 
       {!active && (
-        <span className="rounded bg-gray-400 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
+        <span className="rounded-full bg-bronze px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
           Desactivada
         </span>
       )}
 
       {occupied ? (
         <div className="flex flex-col items-center gap-2">
-          <span className="rounded bg-rust px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
+          <span className="rounded-full bg-rust px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
             Ocupada ({participantCount} {participantCount === 1 ? 'persona' : 'personas'})
           </span>
           {pendingCents > 0 && (
             <>
-              <span className="text-xs text-amber-700">
+              <span className="font-mono text-xs text-ember">
                 Pendiente: {formatPrice(pendingCents, currency)}
               </span>
               <form
@@ -77,7 +79,7 @@ export function TableCard({
                 }}
               >
                 <input type="hidden" name="table_id" value={id} />
-                <button type="submit" className="text-xs underline">
+                <button type="submit" className="text-xs text-bronze underline">
                   Cobrado en efectivo/datáfono
                 </button>
               </form>
@@ -96,14 +98,14 @@ export function TableCard({
             }}
           >
             <input type="hidden" name="table_id" value={id} />
-            <button type="submit" className="text-xs underline">
+            <button type="submit" className="text-xs text-bronze underline">
               Cerrar mesa
             </button>
           </form>
         </div>
       ) : (
         active && (
-          <span className="rounded bg-sage px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
+          <span className="rounded-full bg-sage px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
             Libre
           </span>
         )
@@ -112,7 +114,7 @@ export function TableCard({
       <form action={toggleTableActive}>
         <input type="hidden" name="id" value={id} />
         <input type="hidden" name="active" value={String(active)} />
-        <button type="submit" className="text-xs underline">
+        <button type="submit" className="text-xs text-bronze underline">
           {active ? 'Desactivar' : 'Reactivar'}
         </button>
       </form>
@@ -126,11 +128,11 @@ export function TableCard({
         }}
       >
         <input type="hidden" name="id" value={id} />
-        <button type="submit" className="text-xs text-red-600 underline">
+        <button type="submit" className="text-xs text-rust underline">
           Eliminar mesa
         </button>
       </form>
-      {deleteState?.error && <p className="text-xs text-red-600">{deleteState.error}</p>}
+      {deleteState?.error && <p className="text-xs text-rust">{deleteState.error}</p>}
     </li>
   )
 }

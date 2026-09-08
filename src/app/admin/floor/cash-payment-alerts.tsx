@@ -141,28 +141,32 @@ export function CashPaymentAlerts({
   if (requests.length === 0) return null
 
   return (
-    <section className="flex flex-col gap-2 rounded border-2 border-amber-600 bg-amber-50 p-4">
-      <h2 className="font-bold text-amber-800">💵 Pagos en efectivo pendientes de confirmar</h2>
+    <section className="flex flex-col gap-3 rounded-xl border border-ember/40 bg-ember/10 p-4">
+      <h2 className="font-display text-base text-ink">💵 Pagos en efectivo pendientes de confirmar</h2>
       <ul className="flex flex-col gap-2">
         {requests.map((req) => (
           <li key={req.id} className="flex items-center justify-between gap-3 text-sm">
-            <span>
+            <span className="text-ink">
               <span className="font-medium">Mesa {req.tableLabel}</span> —{' '}
-              {formatPrice(req.amountCents, currency)} — {formatTime(req.createdAt)}
+              <span className="font-mono">{formatPrice(req.amountCents, currency)}</span> —{' '}
+              <span className="font-mono">{formatTime(req.createdAt)}</span>
             </span>
             <span className="flex gap-2">
               <form action={confirmCashPayment}>
                 <input type="hidden" name="id" value={req.id} />
                 <button
                   type="submit"
-                  className="rounded bg-amber-700 px-3 py-1 text-xs font-medium text-white"
+                  className="rounded-lg bg-ember px-3 py-1.5 text-xs font-medium text-ink"
                 >
                   Confirmar cobro
                 </button>
               </form>
               <form action={rejectCashPayment}>
                 <input type="hidden" name="id" value={req.id} />
-                <button type="submit" className="rounded border border-gray-400 px-3 py-1 text-xs">
+                <button
+                  type="submit"
+                  className="rounded-lg border border-marble-3 bg-white px-3 py-1.5 text-xs text-bronze"
+                >
                   Rechazar
                 </button>
               </form>

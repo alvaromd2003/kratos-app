@@ -163,23 +163,23 @@ export function TableStatus({
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="font-medium">Mesas</h2>
+      <h2 className="font-display text-lg text-ink">Mesas</h2>
       <ul className="flex flex-wrap gap-3">
         {tables.map((table) => (
           <li
             key={table.id}
-            className="flex flex-col gap-2 rounded border border-gray-200 px-3 py-2 text-sm"
+            className="flex flex-col gap-2 rounded-xl border border-marble-3 bg-white px-4 py-3 text-sm"
           >
-            <div className="flex items-center gap-2">
-              <span className="font-medium">Mesa {table.label}</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-medium text-ink">Mesa {table.label}</span>
               {table.occupied ? (
                 <>
-                  <span className="rounded bg-rust px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
+                  <span className="rounded-full bg-rust px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
                     Ocupada
                   </span>
                   {table.pendingCents > 0 && (
                     <>
-                      <span className="text-xs text-amber-700">
+                      <span className="font-mono text-xs text-ember">
                         Pendiente: {formatPrice(table.pendingCents, currency)}
                       </span>
                       <form
@@ -195,7 +195,7 @@ export function TableStatus({
                         }}
                       >
                         <input type="hidden" name="table_id" value={table.id} />
-                        <button type="submit" className="text-xs underline">
+                        <button type="submit" className="text-xs text-bronze underline">
                           Cobrado en efectivo/datáfono
                         </button>
                       </form>
@@ -207,7 +207,7 @@ export function TableStatus({
                         (now - new Date(table.lastActivityAt).getTime()) / 60_000
                       )
                       return idleMinutes >= IDLE_THRESHOLD_MINUTES ? (
-                        <span className="text-xs text-orange-600">
+                        <span className="text-xs text-ember">
                           ⏳ Sin actividad hace {idleMinutes} min
                         </span>
                       ) : null
@@ -225,20 +225,20 @@ export function TableStatus({
                     }}
                   >
                     <input type="hidden" name="table_id" value={table.id} />
-                    <button type="submit" className="text-xs underline">
+                    <button type="submit" className="text-xs text-bronze underline">
                       Cerrar
                     </button>
                   </form>
                 </>
               ) : (
-                <span className="rounded bg-sage px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
+                <span className="rounded-full bg-sage px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
                   Libre
                 </span>
               )}
               <button
                 type="button"
                 onClick={() => setExpandedTableId((current) => (current === table.id ? null : table.id))}
-                className="text-xs text-gray-500 underline"
+                className="text-xs text-bronze underline"
               >
                 Pedido asistido
               </button>

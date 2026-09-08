@@ -39,16 +39,22 @@ export default async function AdminHome() {
       <h1 className="text-2xl font-display text-ink">{restaurant.name}</h1>
 
       {pendingSteps.length > 0 && (
-        <section className="flex flex-col gap-2 rounded border border-gray-200 p-4">
-          <h2 className="font-medium">Primeros pasos</h2>
-          <ul className="flex flex-col gap-1 text-sm">
+        <section className="flex flex-col gap-3 rounded-xl border border-marble-3 bg-white p-5">
+          <h2 className="font-display text-lg text-ink">Primeros pasos</h2>
+          <ul className="flex flex-col gap-2 text-sm">
             {steps.map((step) => (
-              <li key={step.label} className="flex items-center gap-2">
-                <span>{step.done ? '✓' : '○'}</span>
+              <li key={step.label} className="flex items-center gap-2.5">
+                <span
+                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs ${
+                    step.done ? 'bg-sage-bg text-sage' : 'border border-marble-3 text-bronze'
+                  }`}
+                >
+                  {step.done ? '✓' : ''}
+                </span>
                 {step.done ? (
-                  <span className="text-gray-500 line-through">{step.label}</span>
+                  <span className="text-bronze line-through">{step.label}</span>
                 ) : (
-                  <Link href={step.href} className="underline">
+                  <Link href={step.href} className="text-ink underline underline-offset-2">
                     {step.label}
                   </Link>
                 )}
@@ -58,9 +64,13 @@ export default async function AdminHome() {
         </section>
       )}
 
-      <p className="text-gray-600">
+      <p className="text-bronze">
         Usa el menú de arriba para gestionar tu carta o tus mesas. ¿Dudas sobre cómo configurar
-        algo? Consulta la <Link href="/admin/help" className="underline">Ayuda</Link>.
+        algo? Consulta la{' '}
+        <Link href="/admin/help" className="text-ink underline underline-offset-2">
+          Ayuda
+        </Link>
+        .
       </p>
     </div>
   )

@@ -173,27 +173,33 @@ export function ReadyOrders({
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="font-medium">Listos para servir</h2>
+      <h2 className="font-display text-lg text-ink">Listos para servir</h2>
       {orders.length === 0 ? (
-        <p className="text-sm text-gray-500">Nada esperando para servir ahora mismo.</p>
+        <p className="text-sm text-bronze">Nada esperando para servir ahora mismo.</p>
       ) : (
         <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {orders.map((order) => (
-            <li key={order.id} className="flex flex-col gap-3 rounded border-2 border-green-600 p-4">
-              <h3 className="font-semibold">Mesa {order.tableLabel}</h3>
+            <li
+              key={order.id}
+              className="flex flex-col gap-3 rounded-xl border border-sage bg-sage-bg p-4"
+            >
+              <h3 className="font-display text-base text-ink">Mesa {order.tableLabel}</h3>
               <ul className="flex flex-col gap-1 text-sm">
                 {order.items.map((item) => (
-                  <li key={item.id}>
+                  <li key={item.id} className="text-ink">
                     {item.quantity}× {item.dishName}{' '}
-                    <span className="text-gray-500">— {item.participantName}</span>
-                    {item.note && <p className="text-xs font-medium text-red-600">⚠ {item.note}</p>}
+                    <span className="text-bronze">— {item.participantName}</span>
+                    {item.note && <p className="text-xs font-medium text-rust">⚠ {item.note}</p>}
                   </li>
                 ))}
               </ul>
               <form action={updateOrderStatus}>
                 <input type="hidden" name="id" value={order.id} />
                 <input type="hidden" name="status" value="delivered" />
-                <button type="submit" className="rounded bg-sage px-3 py-1 text-xs font-medium text-white">
+                <button
+                  type="submit"
+                  className="rounded-lg bg-sage px-3 py-1.5 text-xs font-medium text-white"
+                >
                   Marcar como entregado
                 </button>
               </form>

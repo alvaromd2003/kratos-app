@@ -119,20 +119,20 @@ export function HelpAlerts({
   if (requests.length === 0) return null
 
   return (
-    <section className="flex flex-col gap-2 rounded border-2 border-red-600 bg-red-50 p-4">
-      <h2 className="font-bold text-red-700">🔔 Avisos de mesas</h2>
+    <section className="flex flex-col gap-3 rounded-xl border border-rust/40 bg-rust-bg p-4">
+      <h2 className="font-display text-base text-ink">🔔 Avisos de mesas</h2>
       <ul className="flex flex-col gap-2">
         {requests.map((req) => (
           <li key={req.id} className="flex items-center justify-between gap-3 text-sm">
-            <span>
+            <span className="text-ink">
               <span className="font-medium">Mesa {req.tableLabel}</span> pide ayuda —{' '}
-              {formatTime(req.createdAt)}
+              <span className="font-mono">{formatTime(req.createdAt)}</span>
             </span>
             <form action={resolveHelpRequest}>
               <input type="hidden" name="id" value={req.id} />
               <button
                 type="submit"
-                className="rounded bg-rust px-3 py-1 text-xs font-medium text-white"
+                className="rounded-lg bg-rust px-3 py-1.5 text-xs font-medium text-white"
               >
                 Atendido
               </button>

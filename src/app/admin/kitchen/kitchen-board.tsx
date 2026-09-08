@@ -250,36 +250,38 @@ export function KitchenBoard({
   return (
     <div className="flex flex-col gap-6">
       {orders.length === 0 ? (
-        <p className="text-gray-600">No hay pedidos pendientes ahora mismo.</p>
+        <p className="text-bronze">No hay pedidos pendientes ahora mismo.</p>
       ) : (
         <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {orders.map((order) => (
             <li
               key={order.id}
-              className={`flex flex-col gap-3 rounded border p-4 ${
-                order.cancellationRequestedAt ? 'border-2 border-red-600 bg-red-50' : 'border-gray-200'
+              className={`flex flex-col gap-3 rounded-xl border p-4 ${
+                order.cancellationRequestedAt
+                  ? 'border-rust bg-rust-bg'
+                  : 'border-marble-3 bg-white'
               }`}
             >
               <div className="flex items-center justify-between">
-                <h2 className="font-semibold">Mesa {order.tableLabel}</h2>
-                <span className="text-xs text-gray-500">{STATUS_LABEL[order.status]}</span>
+                <h2 className="font-display text-base text-ink">Mesa {order.tableLabel}</h2>
+                <span className="text-xs text-bronze">{STATUS_LABEL[order.status]}</span>
               </div>
               <ul className="flex flex-col gap-1 text-sm">
                 {order.items
                   .filter((item) => item.station === 'kitchen')
                   .map((item) => (
-                    <li key={item.id}>
+                    <li key={item.id} className="text-ink">
                       {item.quantity}× {item.dishName}{' '}
-                      <span className="text-gray-500">— {item.participantName}</span>
+                      <span className="text-bronze">— {item.participantName}</span>
                       {item.note && (
-                        <p className="text-xs font-medium text-red-600">⚠ {item.note}</p>
+                        <p className="text-xs font-medium text-rust">⚠ {item.note}</p>
                       )}
                     </li>
                   ))}
               </ul>
               {order.cancellationRequestedAt ? (
                 <div className="flex flex-col gap-2">
-                  <p className="text-sm font-bold text-red-700">
+                  <p className="text-sm font-bold text-rust">
                     ⚠ El cliente pide cancelar este pedido
                   </p>
                   <div className="flex items-center gap-3">
@@ -287,14 +289,14 @@ export function KitchenBoard({
                       <input type="hidden" name="id" value={order.id} />
                       <button
                         type="submit"
-                        className="rounded bg-rust px-3 py-1 text-xs font-medium text-white"
+                        className="rounded-lg bg-rust px-3 py-1.5 text-xs font-medium text-white"
                       >
                         Confirmar cancelación
                       </button>
                     </form>
                     <form action={rejectCancelOrder}>
                       <input type="hidden" name="id" value={order.id} />
-                      <button type="submit" className="text-xs underline">
+                      <button type="submit" className="text-xs text-bronze underline">
                         Rechazar (seguir preparándolo)
                       </button>
                     </form>
@@ -306,7 +308,10 @@ export function KitchenBoard({
                     <form action={updateOrderStatus}>
                       <input type="hidden" name="id" value={order.id} />
                       <input type="hidden" name="status" value={NEXT_STATUS[order.status]!} />
-                      <button type="submit" className="rounded bg-ink px-3 py-1 text-xs text-white">
+                      <button
+                        type="submit"
+                        className="rounded-lg bg-ink px-3 py-1.5 text-xs font-medium text-white"
+                      >
                         Marcar como {STATUS_LABEL[NEXT_STATUS[order.status]!].toLowerCase()}
                       </button>
                     </form>
@@ -321,7 +326,7 @@ export function KitchenBoard({
                       }}
                     >
                       <input type="hidden" name="id" value={order.id} />
-                      <button type="submit" className="text-xs text-red-600 underline">
+                      <button type="submit" className="text-xs text-rust underline">
                         Cancelar
                       </button>
                     </form>
@@ -333,23 +338,27 @@ export function KitchenBoard({
         </ul>
       )}
 
-      <details className="rounded border border-gray-200 p-3">
-        <summary className="cursor-pointer text-sm font-medium">
+      <details className="rounded-xl border border-marble-3 bg-white p-4">
+        <summary className="cursor-pointer text-sm font-medium text-ink">
           Entregados hoy ({deliveredToday.length})
         </summary>
         {deliveredToday.length === 0 ? (
-          <p className="mt-2 text-sm text-gray-500">Todavía no se ha entregado nada hoy.</p>
+          <p className="mt-2 text-sm text-bronze">Todavía no se ha entregado nada hoy.</p>
         ) : (
           <ul className="mt-3 flex flex-col gap-3">
             {deliveredToday.map((order) => (
               <li key={order.id} className="text-sm">
-                <p className="font-medium">
-                  Mesa {order.tableLabel} · {formatTime(order.createdAt)}
+                <p className="font-medium text-ink">
+                  Mesa {order.tableLabel} ·{' '}
+                  <span className="font-mono">{formatTime(order.createdAt)}</span>
                 </p>
-                <ul className="ml-4 text-xs text-gray-600">
+                <ul className="ml-4 text-xs text-bronze">
                   {order.items.map((item) => (
                     <li key={item.id}>
-                      {item.quantity}× {item.dishName} — {formatPrice(item.priceCents * item.quantity, currency)}
+                      {item.quantity}× {item.dishName} —{' '}
+                      <span className="font-mono">
+                        {formatPrice(item.priceCents * item.quantity, currency)}
+                      </span>
                     </li>
                   ))}
                 </ul>
