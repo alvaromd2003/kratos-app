@@ -77,8 +77,9 @@ export default async function HelpPage() {
         <p>
           El cliente escanea el QR, entra su nombre, y pide desde el móvil — el pedido llega solo
           a Cocina y/o Barra según lo que haya pedido. Cuando terminan de comer, pagan desde la
-          misma pantalla (individual, dividido entre varios, pagando platos concretos, en efectivo
-          avisando al personal, o toda la cuenta de una vez).
+          misma pantalla, en el modo que prefieran: su parte individual, la cuenta entera dividida
+          a partes iguales, un plato compartido dividido solo entre quienes lo pidieron, efectivo
+          avisando al personal, o toda la cuenta de una vez.
         </p>
         <p>
           Si algún cliente no quiere o no puede usar su móvil, el personal puede tomarle el pedido

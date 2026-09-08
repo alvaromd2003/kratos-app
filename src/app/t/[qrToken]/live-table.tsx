@@ -101,7 +101,7 @@ export function LiveTable({
   loyaltyStamps,
   googleReviewUrl,
   hasSubmittedFeedback,
-  claimedOrderItemIds,
+  orderItemCoverage,
 }: {
   qrToken: string
   tableLabel: string
@@ -125,7 +125,9 @@ export function LiveTable({
   loyaltyStamps: number
   googleReviewUrl: string | null
   hasSubmittedFeedback: boolean
-  claimedOrderItemIds: string[]
+  // order_item_id -> cents already paid off that line via the itemized
+  // mode (0/absent = untouched, < full price = partially split already).
+  orderItemCoverage: Record<string, number>
 }) {
   const [participants, setParticipants] = useState(initialParticipants)
   const [orderItems, setOrderItems] = useState(initialOrderItems)
@@ -324,20 +326,24 @@ export function LiveTable({
     return participantsById.get(id)?.name ?? '—'
   }
 
-  const claimedSet = new Set(claimedOrderItemIds)
+  // Only what's left unpaid on each line is shown — a dish already
+  // partially split by someone else automatically offers just the rest,
+  // no need for everyone to agree on a share count up front (mirrors
+  // splitAmountDue's same "divide what's currently left" logic).
   const pickableItems = orderItems
-    .filter((row) => !claimedSet.has(row.id))
     .map((row) => {
       const item = itemsById.get(row.menu_item_id)
-      return item
-        ? {
-            id: row.id,
-            name: item.name,
-            priceCents: item.price_cents,
-            quantity: row.quantity,
-            participantLabel: participantLabel(row.participant_id),
-          }
-        : null
+      if (!item) return null
+      const fullCents = item.price_cents * row.quantity
+      const coveredCents = orderItemCoverage[row.id] ?? 0
+      const itemRemainingCents = fullCents - coveredCents
+      if (itemRemainingCents <= 0) return null
+      return {
+        id: row.id,
+        name: item.name,
+        remainingCents: itemRemainingCents,
+        participantLabel: participantLabel(row.participant_id),
+      }
     })
     .filter((row): row is NonNullable<typeof row> => row !== null)
 

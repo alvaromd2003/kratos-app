@@ -7,8 +7,7 @@ import { createItemizedPayment } from '@/app/actions/payments'
 type PickableItem = {
   id: string
   name: string
-  priceCents: number
-  quantity: number
+  remainingCents: number
   participantLabel: string
 }
 
@@ -26,13 +25,19 @@ export function ItemizedPaymentPanel({
   const [state, action, pending] = useActionState(createItemizedPayment, undefined)
   const [expanded, setExpanded] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  // How many ways each selected dish is being split — defaults to 1 (pay
+  // it in full). Only meaningful while the item is selected.
+  const [shareCounts, setShareCounts] = useState<Record<string, number>>({})
   const [tipPercent, setTipPercent] = useState(0)
 
   if (items.length === 0) return null
 
+  const shareCountFor = (id: string) => Math.max(1, shareCounts[id] ?? 1)
+  const myShareCents = (item: PickableItem) => Math.ceil(item.remainingCents / shareCountFor(item.id))
+
   const baseCents = items
     .filter((item) => selected.has(item.id))
-    .reduce((sum, item) => sum + item.priceCents * item.quantity, 0)
+    .reduce((sum, item) => sum + myShareCents(item), 0)
   // Mirrors createPaymentCheckout server-side: discount and tip both come
   // off the same base amount, never compounded.
   const discountCents = Math.round((baseCents * loyaltyDiscountPercent) / 100)
@@ -64,27 +69,54 @@ export function ItemizedPaymentPanel({
   }
 
   return (
-    <section className="flex flex-col gap-3 rounded border border-gray-200 p-3">
+    <form action={action} className="flex flex-col gap-3 rounded border border-gray-200 p-3">
+      <input type="hidden" name="qr_token" value={qrToken} />
+      <input type="hidden" name="tip_percent" value={tipPercent} />
+
       <div className="flex items-center justify-between">
         <h2 className="font-medium">Elegir platos concretos</h2>
         <button type="button" onClick={() => setExpanded(false)} className="text-xs underline">
           Cerrar
         </button>
       </div>
-      <ul className="flex flex-col gap-1">
+      <ul className="flex flex-col gap-2">
         {items.map((item) => (
-          <li key={item.id}>
+          <li key={item.id} className="flex flex-col gap-1">
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
                 checked={selected.has(item.id)}
                 onChange={() => toggle(item.id)}
               />
-              {item.quantity}× {item.name} — {item.participantLabel}
+              {item.name} — {item.participantLabel}
               <span className="ml-auto text-gray-500">
-                {formatPrice(item.priceCents * item.quantity, currency)}
+                Queda: {formatPrice(item.remainingCents, currency)}
               </span>
             </label>
+            {selected.has(item.id) && (
+              <label className="ml-6 flex items-center gap-2 text-xs text-gray-600">
+                Dividir entre
+                <input
+                  type="number"
+                  min={1}
+                  value={shareCountFor(item.id)}
+                  onChange={(e) =>
+                    setShareCounts((current) => ({
+                      ...current,
+                      [item.id]: Math.max(1, Number(e.target.value) || 1),
+                    }))
+                  }
+                  className="w-14 rounded border border-gray-300 px-2 py-1"
+                />
+                <input type="hidden" name="order_item_id" value={item.id} />
+                <input
+                  type="hidden"
+                  name={`share_count_${item.id}`}
+                  value={shareCountFor(item.id)}
+                />
+                = tu parte: {formatPrice(myShareCents(item), currency)}
+              </label>
+            )}
           </li>
         ))}
       </ul>
@@ -107,12 +139,7 @@ export function ItemizedPaymentPanel({
         ))}
       </div>
 
-      <form action={action} className="flex items-center justify-between gap-2">
-        <input type="hidden" name="qr_token" value={qrToken} />
-        <input type="hidden" name="tip_percent" value={tipPercent} />
-        {[...selected].map((id) => (
-          <input key={id} type="hidden" name="order_item_id" value={id} />
-        ))}
+      <div className="flex items-center justify-between gap-2">
         <span className="text-sm">Total: {formatPrice(totalCents, currency)}</span>
         <button
           type="submit"
@@ -121,8 +148,8 @@ export function ItemizedPaymentPanel({
         >
           {pending ? 'Redirigiendo…' : 'Pagar estos platos'}
         </button>
-      </form>
+      </div>
       {state?.error && <p className="text-xs text-red-600">{state.error}</p>}
-    </section>
+    </form>
   )
 }

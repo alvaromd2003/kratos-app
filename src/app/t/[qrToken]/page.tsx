@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getActiveTableByQrToken, getOpenSessionParticipant } from '@/lib/ordering'
 import { getAverageWaitMinutes } from '@/lib/orders'
-import { getClaimedOrderItemIds } from '@/lib/payments'
+import { getOrderItemCoverage } from '@/lib/payments'
 import { currentTimeInZone, isWithinTimeWindow } from '@/lib/timezone'
 import { JoinForm } from './join-form'
 import { LiveTable } from './live-table'
@@ -150,7 +150,7 @@ export default async function TableOrderPage({
     .in('status', ['pending', 'preparing'])
 
   const avgWaitMinutes = await getAverageWaitMinutes(admin, table.restaurant_id)
-  const claimedOrderItemIds = await getClaimedOrderItemIds(admin, verified.session.id)
+  const orderItemCoverage = await getOrderItemCoverage(admin, verified.session.id)
 
   // Fetched separately from the shared `participants` list above (which
   // only exposes id/name to every diner at the table) — an email and a
@@ -199,7 +199,7 @@ export default async function TableOrderPage({
       loyaltyStamps={loyaltyStamps}
       googleReviewUrl={restaurant.google_review_url}
       hasSubmittedFeedback={hasSubmittedFeedback}
-      claimedOrderItemIds={[...claimedOrderItemIds]}
+      orderItemCoverage={Object.fromEntries(orderItemCoverage)}
     />
   )
 }

@@ -6,7 +6,7 @@ import { getActiveTableByQrToken, getVerifiedParticipant } from '@/lib/ordering'
 import {
   getRequestOrigin,
   getTableBillSummary,
-  getClaimedOrderItemIds,
+  getOrderItemCoverage,
   individualAmountDue,
   splitAmountDue,
 } from '@/lib/payments'
@@ -41,7 +41,7 @@ async function createPaymentCheckout(
   mode: PaymentMode,
   amountCents: number,
   tipCents: number,
-  orderItemIds?: string[]
+  orderItemShares?: Map<string, number>
 ): Promise<PaymentFormState> {
   if (amountCents <= 0) {
     return { error: 'No hay nada pendiente de pagar.' }
@@ -84,11 +84,12 @@ async function createPaymentCheckout(
     return { error: 'No se pudo iniciar el pago. Inténtalo de nuevo.' }
   }
 
-  if (orderItemIds && orderItemIds.length > 0) {
+  if (orderItemShares && orderItemShares.size > 0) {
     await admin.from('payment_share_items').insert(
-      orderItemIds.map((orderItemId) => ({
+      [...orderItemShares.entries()].map(([orderItemId, shareCents]) => ({
         payment_share_id: share.id,
         order_item_id: orderItemId,
+        amount_cents: shareCents,
       }))
     )
   }
@@ -264,7 +265,12 @@ export async function createCollectivePayment(
 // Lets a diner cover exactly the dishes they pick — anyone's at the
 // table, not just their own (covering a shared starter, or someone
 // else's dessert as a treat) — instead of a fixed individual/split/
-// collective amount.
+// collective amount. Each selected dish can also be split with a
+// "dividir entre N": the amount is always N-ths of what's *currently*
+// left unpaid on that specific line (never the dish's original price),
+// so several people can each cover their share without agreeing on a
+// share count up front — same self-correcting idea as the whole-bill
+// "dividido" mode, just applied per dish.
 export async function createItemizedPayment(
   _prevState: PaymentFormState,
   formData: FormData
@@ -293,35 +299,41 @@ export async function createItemizedPayment(
   }
 
   // Re-derive everything from the DB — never trust client-supplied ids
-  // blindly — and drop any line that's already been paid off since the
-  // diner loaded the page.
-  const [{ data: items }, claimedIds] = await Promise.all([
+  // or amounts blindly.
+  const [{ data: items }, coverage] = await Promise.all([
     admin
       .from('order_items')
       .select('id, menu_item_id, quantity')
       .eq('table_session_id', verified.tableSessionId)
       .in('id', orderItemIds),
-    getClaimedOrderItemIds(admin, verified.tableSessionId),
+    getOrderItemCoverage(admin, verified.tableSessionId),
   ])
 
-  const validItems = (items ?? []).filter((item) => !claimedIds.has(item.id))
-  if (validItems.length === 0) {
+  const menuItemIds = [...new Set((items ?? []).map((item) => item.menu_item_id))]
+  const { data: menuItems } =
+    menuItemIds.length > 0
+      ? await admin.from('menu_items').select('id, price_cents').in('id', menuItemIds)
+      : { data: [] }
+  const priceById = new Map((menuItems ?? []).map((m) => [m.id, m.price_cents]))
+
+  const orderItemShares = new Map<string, number>()
+  for (const item of items ?? []) {
+    const fullCents = (priceById.get(item.menu_item_id) ?? 0) * item.quantity
+    const itemRemainingCents = fullCents - (coverage.get(item.id) ?? 0)
+    if (itemRemainingCents <= 0) continue // fully paid already since the picker loaded — skip it
+
+    const shareCountRaw = Math.floor(Number(formData.get(`share_count_${item.id}`) ?? 1))
+    const shareCount = Number.isFinite(shareCountRaw) && shareCountRaw > 0 ? shareCountRaw : 1
+    orderItemShares.set(item.id, Math.min(itemRemainingCents, Math.ceil(itemRemainingCents / shareCount)))
+  }
+
+  if (orderItemShares.size === 0) {
     return {
-      error: 'Esos platos ya no están disponibles para pagar (puede que ya los haya pagado otra persona).',
+      error: 'Esos platos ya están completamente pagados (puede que ya los haya pagado otra persona).',
     }
   }
 
-  const menuItemIds = [...new Set(validItems.map((item) => item.menu_item_id))]
-  const { data: menuItems } = await admin
-    .from('menu_items')
-    .select('id, price_cents')
-    .in('id', menuItemIds)
-  const priceById = new Map((menuItems ?? []).map((m) => [m.id, m.price_cents]))
-
-  const amountCents = validItems.reduce(
-    (sum, item) => sum + (priceById.get(item.menu_item_id) ?? 0) * item.quantity,
-    0
-  )
+  const amountCents = [...orderItemShares.values()].reduce((sum, cents) => sum + cents, 0)
   const tipCents = tipCentsFromFormData(formData, amountCents)
 
   return createPaymentCheckout(
@@ -332,7 +344,7 @@ export async function createItemizedPayment(
     'items',
     amountCents,
     tipCents,
-    validItems.map((item) => item.id)
+    orderItemShares
   )
 }
 

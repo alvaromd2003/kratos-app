@@ -86,15 +86,17 @@ export function splitAmountDue(summary: TableBillSummary, shareCount: number): n
   return Math.ceil(summary.remainingCents / shareCount)
 }
 
-// order_items already settled by a SUCCEEDED itemized ('items' mode)
-// payment — excluded from the picker so nobody pays for the same dish
-// twice. Deliberately keyed off 'succeeded' only, never 'pending': that
-// way an abandoned Stripe Checkout can never lock a dish out of being
-// picked again (see migration 0022's comment for the tradeoff).
-export async function getClaimedOrderItemIds(
+// How many cents of each order_item have already been covered by
+// SUCCEEDED itemized ('items' mode) payments — a dish can be split
+// across several separate payments (each person's share of it), so this
+// is a running total per item, not a plain claimed/unclaimed flag.
+// Deliberately keyed off 'succeeded' only, never 'pending': that way an
+// abandoned Stripe Checkout can never lock any part of a dish out of
+// being picked again (see migration 0022's comment for the tradeoff).
+export async function getOrderItemCoverage(
   admin: SupabaseClient,
   tableSessionId: string
-): Promise<Set<string>> {
+): Promise<Map<string, number>> {
   const { data: shares } = await admin
     .from('payment_shares')
     .select('id')
@@ -102,28 +104,33 @@ export async function getClaimedOrderItemIds(
     .eq('status', 'succeeded')
 
   const shareIds = (shares ?? []).map((s) => s.id)
-  if (shareIds.length === 0) return new Set()
+  const coverage = new Map<string, number>()
+  if (shareIds.length === 0) return coverage
 
   const { data: claims } = await admin
     .from('payment_share_items')
-    .select('order_item_id')
+    .select('order_item_id, amount_cents')
     .in('payment_share_id', shareIds)
 
-  return new Set((claims ?? []).map((c) => c.order_item_id))
+  for (const claim of claims ?? []) {
+    coverage.set(claim.order_item_id, (coverage.get(claim.order_item_id) ?? 0) + claim.amount_cents)
+  }
+  return coverage
 }
 
-// A single-item version of the above, for guarding edits to one cart
-// line — an order_item someone already paid for via the itemized mode
-// must never be quietly removed or have its quantity reduced, or that
-// payment covers nothing.
+// True the moment even a single cent of this line has been paid via the
+// itemized mode — guards edits to one cart line, since an order_item
+// with any coverage at all must never be quietly removed or have its
+// quantity reduced, or that payment ends up covering less than it did.
 export async function isOrderItemClaimed(
   admin: SupabaseClient,
   orderItemId: string
 ): Promise<boolean> {
   const { data: claims } = await admin
     .from('payment_share_items')
-    .select('payment_share_id')
+    .select('payment_share_id, amount_cents')
     .eq('order_item_id', orderItemId)
+    .gt('amount_cents', 0)
 
   const shareIds = (claims ?? []).map((c) => c.payment_share_id)
   if (shareIds.length === 0) return false
