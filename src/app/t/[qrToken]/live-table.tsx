@@ -391,13 +391,16 @@ export function LiveTable({
 
   return (
     <main className="mx-auto flex max-w-md flex-col gap-8 px-4 py-6 pb-56">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-xl font-semibold">{restaurantName}</h1>
-        <p className="text-sm text-gray-600">
-          Mesa {tableLabel} · {participants.map((p) => participantLabel(p.id)).join(', ')}
-        </p>
-        <p className="text-sm font-medium">
-          Total de la mesa: {formatPrice(tableTotal, currency)}
+      <div className="flex flex-col gap-3 rounded-2xl bg-gradient-to-b from-ink to-ink-2 px-5 py-5">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-display text-white">{restaurantName}</h1>
+          <p className="text-sm text-cream-dim">
+            Mesa {tableLabel} · {participants.map((p) => participantLabel(p.id)).join(', ')}
+          </p>
+        </div>
+        <p className="text-sm font-medium text-marble-2">
+          Total de la mesa:{' '}
+          <span className="font-mono">{formatPrice(tableTotal, currency)}</span>
         </p>
         <HelpButton qrToken={qrToken} />
       </div>
@@ -506,7 +509,7 @@ export function LiveTable({
             onClick={() => toggleTag(tag.value)}
             className={`rounded-full border px-3 py-1 text-xs ${
               activeTags.has(tag.value)
-                ? 'border-black bg-black text-white'
+                ? 'border-black bg-ink text-white'
                 : 'border-gray-300 text-gray-700'
             }`}
           >
@@ -570,11 +573,15 @@ export function LiveTable({
           </ul>
         )}
         <div className="flex items-center justify-between gap-3">
-          <p className="text-sm font-semibold">
-            Total del carrito: {formatPrice(cartTotal, currency)}
+          <p className="text-sm font-semibold text-ink">
+            Total del carrito:{' '}
+            <span className="font-mono">{formatPrice(cartTotal, currency)}</span>
           </p>
           {cartItems.length > 0 && <SendOrderButton qrToken={qrToken} />}
         </div>
+        <p className="text-center text-[0.68rem] tracking-wide text-bronze/70">
+          Con la tecnología de Kratos Systems
+        </p>
       </section>
     </main>
   )

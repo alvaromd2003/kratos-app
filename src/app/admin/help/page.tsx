@@ -5,7 +5,7 @@ export default async function HelpPage() {
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-8">
-      <h1 className="text-xl font-semibold">Ayuda — Cómo configurar Kratos</h1>
+      <h1 className="text-2xl font-display text-ink">Ayuda — Cómo configurar Kratos</h1>
 
       <Section title="1. El menú">
         <p>

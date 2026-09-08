@@ -69,8 +69,8 @@ export function PaymentPanel({
 
   if (remainingCents <= 0) {
     return (
-      <div className="flex flex-col gap-3 rounded border border-green-200 bg-green-50 p-3">
-        <p className="text-sm text-green-700">✓ Cuenta pagada</p>
+      <div className="flex flex-col gap-3 rounded-2xl border border-sage-bg bg-sage-bg p-4">
+        <p className="text-sm font-medium text-sage">✓ Cuenta pagada</p>
         <FeedbackPanel
           qrToken={qrToken}
           hasSubmittedFeedback={hasSubmittedFeedback}
@@ -98,8 +98,8 @@ export function PaymentPanel({
   return (
     <>
       {myPaidCents > 0 && (
-        <div className="flex flex-col gap-3 rounded border border-green-200 bg-green-50 p-3">
-          <p className="text-sm text-green-700">✓ Ya has pagado tu parte</p>
+        <div className="flex flex-col gap-3 rounded-2xl border border-sage-bg bg-sage-bg p-4">
+          <p className="text-sm font-medium text-sage">✓ Ya has pagado tu parte</p>
           <FeedbackPanel
             qrToken={qrToken}
             hasSubmittedFeedback={hasSubmittedFeedback}
@@ -107,112 +107,121 @@ export function PaymentPanel({
           />
         </div>
       )}
-      <section className="flex flex-col gap-3 rounded border border-gray-200 p-3">
-      <div className="flex items-center justify-between">
-        <h2 className="font-medium">Pagar la cuenta</h2>
-        <p className="text-sm text-gray-600">Pendiente: {formatPrice(remainingCents, currency)}</p>
-      </div>
+      <section className="flex flex-col gap-4 rounded-2xl bg-ink px-5 py-5 text-marble-2">
+        <div className="flex items-baseline justify-between">
+          <h2 className="font-display text-lg text-white">Pagar la cuenta</h2>
+          <p className="font-mono text-sm text-cream-dim">
+            Pendiente: {formatPrice(remainingCents, currency)}
+          </p>
+        </div>
 
-      {paymentResult === 'success' && (
-        <p className="text-sm text-green-700">
-          Pago recibido — puede tardar unos segundos en reflejarse aquí.
-        </p>
-      )}
-      {paymentResult === 'cancelled' && (
-        <p className="text-sm text-gray-500">Pago cancelado. Puedes intentarlo de nuevo.</p>
-      )}
+        {paymentResult === 'success' && (
+          <p className="text-sm text-ember-bright">
+            Pago recibido — puede tardar unos segundos en reflejarse aquí.
+          </p>
+        )}
+        {paymentResult === 'cancelled' && (
+          <p className="text-sm text-cream-dim">Pago cancelado. Puedes intentarlo de nuevo.</p>
+        )}
 
-      <div className="flex items-center gap-2">
-        <span className="text-sm">Propina:</span>
-        {[0, 5, 10, 15].map((pct) => (
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-cream-dim">Propina:</span>
+          {[0, 5, 10, 15].map((pct) => (
+            <button
+              key={pct}
+              type="button"
+              onClick={() => setTipPercent(pct)}
+              className={`rounded-full border px-2.5 py-0.5 text-xs ${
+                tipPercent === pct
+                  ? 'border-ember bg-ember text-ink'
+                  : 'border-white/15 text-cream-dim'
+              }`}
+            >
+              {pct}%
+            </button>
+          ))}
+        </div>
+
+        <form action={individualAction} className="flex items-center justify-between gap-3 rounded-lg bg-white/5 px-3.5 py-2.5">
+          <input type="hidden" name="qr_token" value={qrToken} />
+          <input type="hidden" name="tip_percent" value={tipPercent} />
+          <span className="text-sm">
+            Tu parte:{' '}
+            <span className="font-mono text-ember-bright">
+              {formatPrice(withDiscountAndTip(individualDueCents), currency)}
+            </span>
+          </span>
           <button
-            key={pct}
-            type="button"
-            onClick={() => setTipPercent(pct)}
-            className={`rounded-full border px-2.5 py-0.5 text-xs ${
-              tipPercent === pct
-                ? 'border-black bg-black text-white'
-                : 'border-gray-300 text-gray-700'
-            }`}
+            type="submit"
+            disabled={individualPending || individualDueCents <= 0}
+            className="rounded-lg bg-ember px-3 py-1.5 text-sm font-medium text-ink disabled:opacity-40"
           >
-            {pct}%
+            {individualPending ? 'Redirigiendo…' : 'Pagar mi parte'}
           </button>
-        ))}
-      </div>
+        </form>
+        {individualState?.error && <p className="text-xs text-rust">{individualState.error}</p>}
 
-      <form action={individualAction} className="flex items-center justify-between gap-2">
-        <input type="hidden" name="qr_token" value={qrToken} />
-        <input type="hidden" name="tip_percent" value={tipPercent} />
-        <span className="text-sm">Tu parte: {formatPrice(withDiscountAndTip(individualDueCents), currency)}</span>
-        <button
-          type="submit"
-          disabled={individualPending || individualDueCents <= 0}
-          className="rounded bg-black px-3 py-1.5 text-sm text-white disabled:opacity-50"
-        >
-          {individualPending ? 'Redirigiendo…' : 'Pagar mi parte'}
-        </button>
-      </form>
-      {individualState?.error && <p className="text-xs text-red-600">{individualState.error}</p>}
+        <form action={splitAction} className="flex items-center justify-between gap-3 rounded-lg bg-white/5 px-3.5 py-2.5">
+          <input type="hidden" name="qr_token" value={qrToken} />
+          <input type="hidden" name="tip_percent" value={tipPercent} />
+          <label className="flex items-center gap-2 text-sm">
+            Dividir entre
+            <input
+              type="number"
+              name="share_count"
+              min={1}
+              value={shareCount}
+              onChange={(e) => setShareCount(Math.max(1, Number(e.target.value) || 1))}
+              className="w-14 rounded border border-white/15 bg-transparent px-2 py-1 text-white"
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={splitPending}
+            className="rounded-lg bg-ember px-3 py-1.5 text-sm font-medium text-ink disabled:opacity-40"
+          >
+            {splitPending
+              ? 'Redirigiendo…'
+              : formatPrice(withDiscountAndTip(Math.ceil(remainingCents / shareCount)), currency)}
+          </button>
+        </form>
+        {splitState?.error && <p className="text-xs text-rust">{splitState.error}</p>}
 
-      <form action={splitAction} className="flex items-center justify-between gap-2">
-        <input type="hidden" name="qr_token" value={qrToken} />
-        <input type="hidden" name="tip_percent" value={tipPercent} />
-        <label className="flex items-center gap-2 text-sm">
-          Dividir entre
-          <input
-            type="number"
-            name="share_count"
-            min={1}
-            value={shareCount}
-            onChange={(e) => setShareCount(Math.max(1, Number(e.target.value) || 1))}
-            className="w-14 rounded border border-gray-300 px-2 py-1"
-          />
-        </label>
-        <button
-          type="submit"
-          disabled={splitPending}
-          className="rounded bg-black px-3 py-1.5 text-sm text-white disabled:opacity-50"
-        >
-          {splitPending
-            ? 'Redirigiendo…'
-            : formatPrice(withDiscountAndTip(Math.ceil(remainingCents / shareCount)), currency)}
-        </button>
-      </form>
-      {splitState?.error && <p className="text-xs text-red-600">{splitState.error}</p>}
+        <form action={collectiveAction} className="flex items-center justify-between gap-3 rounded-lg bg-white/5 px-3.5 py-2.5">
+          <input type="hidden" name="qr_token" value={qrToken} />
+          <input type="hidden" name="tip_percent" value={tipPercent} />
+          <span className="text-sm">Pagar toda la cuenta</span>
+          <button
+            type="submit"
+            disabled={collectivePending}
+            className="rounded-lg bg-ember px-3 py-1.5 text-sm font-medium text-ink disabled:opacity-40"
+          >
+            {collectivePending ? 'Redirigiendo…' : formatPrice(withDiscountAndTip(remainingCents), currency)}
+          </button>
+        </form>
+        {collectiveState?.error && <p className="text-xs text-rust">{collectiveState.error}</p>}
 
-      <form action={collectiveAction} className="flex items-center justify-between gap-2">
-        <input type="hidden" name="qr_token" value={qrToken} />
-        <input type="hidden" name="tip_percent" value={tipPercent} />
-        <span className="text-sm">Pagar toda la cuenta</span>
-        <button
-          type="submit"
-          disabled={collectivePending}
-          className="rounded bg-black px-3 py-1.5 text-sm text-white disabled:opacity-50"
-        >
-          {collectivePending ? 'Redirigiendo…' : formatPrice(withDiscountAndTip(remainingCents), currency)}
-        </button>
-      </form>
-      {collectiveState?.error && <p className="text-xs text-red-600">{collectiveState.error}</p>}
-
-      <form action={cashAction} className="flex items-center justify-between gap-2">
-        <input type="hidden" name="qr_token" value={qrToken} />
-        <span className="text-sm">
-          Pagar en efectivo:{' '}
-          {formatPrice(
-            remainingCents - Math.round((remainingCents * loyaltyDiscountPercent) / 100),
-            currency
-          )}{' '}
-          (la cuenta completa)
-        </span>
-        <button
-          type="submit"
-          disabled={cashPending}
-          className="rounded border border-gray-400 px-3 py-1.5 text-sm disabled:opacity-50"
-        >
-          {cashPending ? 'Avisando…' : 'Avisar al personal'}
-        </button>
-      </form>
-      {cashState?.error && <p className="text-xs text-red-600">{cashState.error}</p>}
+        <form action={cashAction} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 px-3.5 py-2.5">
+          <input type="hidden" name="qr_token" value={qrToken} />
+          <span className="text-sm text-cream-dim">
+            Pagar en efectivo:{' '}
+            <span className="font-mono">
+              {formatPrice(
+                remainingCents - Math.round((remainingCents * loyaltyDiscountPercent) / 100),
+                currency
+              )}
+            </span>{' '}
+            (la cuenta completa)
+          </span>
+          <button
+            type="submit"
+            disabled={cashPending}
+            className="rounded-lg border border-white/20 px-3 py-1.5 text-sm text-marble-2 disabled:opacity-40"
+          >
+            {cashPending ? 'Avisando…' : 'Avisar al personal'}
+          </button>
+        </form>
+        {cashState?.error && <p className="text-xs text-rust">{cashState.error}</p>}
       </section>
     </>
   )

@@ -36,7 +36,7 @@ export default async function AdminHome() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-semibold">{restaurant.name}</h1>
+      <h1 className="text-2xl font-display text-ink">{restaurant.name}</h1>
 
       {pendingSteps.length > 0 && (
         <section className="flex flex-col gap-2 rounded border border-gray-200 p-4">

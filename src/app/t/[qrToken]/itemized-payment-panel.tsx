@@ -132,7 +132,7 @@ export function ItemizedPaymentPanel({
                   <>
                     <span>¿Entre quién se divide?</span>
                     <div className="flex flex-wrap gap-1">
-                      <span className="rounded-full border border-black bg-black px-2 py-0.5 text-white">
+                      <span className="rounded-full border border-black bg-ink px-2 py-0.5 text-white">
                         Tú
                       </span>
                       {tableParticipants
@@ -146,7 +146,7 @@ export function ItemizedPaymentPanel({
                               onClick={() => toggleSplitParticipant(item.id, p.id)}
                               className={`rounded-full border px-2 py-0.5 ${
                                 active
-                                  ? 'border-black bg-black text-white'
+                                  ? 'border-black bg-ink text-white'
                                   : 'border-gray-300 text-gray-700'
                               }`}
                             >
@@ -184,7 +184,7 @@ export function ItemizedPaymentPanel({
             onClick={() => setTipPercent(pct)}
             className={`rounded-full border px-2.5 py-0.5 text-xs ${
               tipPercent === pct
-                ? 'border-black bg-black text-white'
+                ? 'border-black bg-ink text-white'
                 : 'border-gray-300 text-gray-700'
             }`}
           >
@@ -198,7 +198,7 @@ export function ItemizedPaymentPanel({
         <button
           type="submit"
           disabled={pending || selected.size === 0}
-          className="rounded bg-black px-3 py-1.5 text-sm text-white disabled:opacity-50"
+          className="rounded bg-ink px-3 py-1.5 text-sm text-white disabled:opacity-50"
         >
           {pending ? 'Redirigiendo…' : 'Pagar estos platos'}
         </button>

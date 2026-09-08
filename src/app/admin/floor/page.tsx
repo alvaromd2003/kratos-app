@@ -133,7 +133,7 @@ export default async function FloorPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <h1 className="text-xl font-semibold">Barra — {restaurant.name}</h1>
+      <h1 className="text-2xl font-display text-ink">Barra — {restaurant.name}</h1>
 
       <HelpAlerts
         restaurantId={restaurant.id}

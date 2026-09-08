@@ -33,7 +33,7 @@ export default async function HistoryPage({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-xl font-semibold">Historial de pedidos — {restaurant.name}</h1>
+        <h1 className="text-2xl font-display text-ink">Historial de pedidos — {restaurant.name}</h1>
         {(orders.length > 0 || before) && (
           <a
             href="/admin/history/export"

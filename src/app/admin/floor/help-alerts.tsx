@@ -132,7 +132,7 @@ export function HelpAlerts({
               <input type="hidden" name="id" value={req.id} />
               <button
                 type="submit"
-                className="rounded bg-red-600 px-3 py-1 text-xs font-medium text-white"
+                className="rounded bg-rust px-3 py-1 text-xs font-medium text-white"
               >
                 Atendido
               </button>

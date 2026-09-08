@@ -36,7 +36,7 @@ export function StripeConnectSection({ connected }: { connected: boolean }) {
             <button
               disabled={connectPending}
               type="submit"
-              className="self-start rounded bg-black px-4 py-2 text-sm text-white disabled:opacity-50"
+              className="self-start rounded bg-ink px-4 py-2 text-sm text-white disabled:opacity-50"
             >
               {connectPending ? 'Conectando…' : 'Conectar con Stripe'}
             </button>

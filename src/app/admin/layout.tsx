@@ -1,7 +1,9 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { logout } from '@/app/actions/auth'
+import { AdminNav } from './admin-nav'
 
 export default async function AdminLayout({
   children,
@@ -32,62 +34,26 @@ export default async function AdminLayout({
   const homeHref = role === 'kitchen_staff' ? '/admin/kitchen' : role === 'waiter' ? '/admin/floor' : '/admin'
 
   return (
-    <div className="min-h-screen">
-      <header className="border-b border-gray-200">
-        <div className="flex items-center justify-between px-6 py-4">
-          <Link href={homeHref} className="font-semibold">
-            Kratos Admin
+    <div className="min-h-screen bg-marble">
+      <header className="bg-gradient-to-b from-ink to-ink-2">
+        <div className="flex items-center justify-between px-6 py-3">
+          <Link href={homeHref} className="flex items-center">
+            <Image
+              src="/kratos-mark-light.png"
+              alt="Kratos"
+              width={743}
+              height={338}
+              priority
+              className="h-6 w-auto"
+            />
           </Link>
           <form action={logout}>
-            <button type="submit" className="text-sm underline">
+            <button type="submit" className="text-sm text-cream-dim underline hover:text-marble-2">
               Salir
             </button>
           </form>
         </div>
-        <nav className="flex gap-4 px-6 pb-3 text-sm">
-          {role === 'kitchen_staff' ? (
-            <Link href="/admin/kitchen" className="underline">
-              Cocina
-            </Link>
-          ) : role === 'waiter' ? (
-            <Link href="/admin/floor" className="underline">
-              Barra
-            </Link>
-          ) : (
-            <>
-              <Link href="/admin" className="underline">
-                Resumen
-              </Link>
-              <Link href="/admin/menu" className="underline">
-                Menú
-              </Link>
-              <Link href="/admin/tables" className="underline">
-                Mesas
-              </Link>
-              <Link href="/admin/kitchen" className="underline">
-                Cocina
-              </Link>
-              <Link href="/admin/floor" className="underline">
-                Barra
-              </Link>
-              <Link href="/admin/history" className="underline">
-                Historial
-              </Link>
-              <Link href="/admin/stats" className="underline">
-                Estadísticas
-              </Link>
-              <Link href="/admin/staff" className="underline">
-                Personal
-              </Link>
-              <Link href="/admin/settings" className="underline">
-                Ajustes
-              </Link>
-              <Link href="/admin/help" className="underline">
-                Ayuda
-              </Link>
-            </>
-          )}
-        </nav>
+        <AdminNav role={role} />
       </header>
       <main className="p-6">{children}</main>
     </div>

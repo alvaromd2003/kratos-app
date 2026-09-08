@@ -31,7 +31,7 @@ export default async function MenuPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <h1 className="text-xl font-semibold">Menú — {restaurant.name}</h1>
+      <h1 className="text-2xl font-display text-ink">Menú — {restaurant.name}</h1>
 
       <section className="flex flex-col gap-3">
         <h2 className="font-medium">Categorías</h2>

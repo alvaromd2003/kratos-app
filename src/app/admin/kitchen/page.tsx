@@ -26,7 +26,7 @@ export default async function KitchenPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <h1 className="text-xl font-semibold">Cocina — {restaurant.name}</h1>
+      <h1 className="text-2xl font-display text-ink">Cocina — {restaurant.name}</h1>
 
       <KitchenBoard
         restaurantId={restaurant.id}

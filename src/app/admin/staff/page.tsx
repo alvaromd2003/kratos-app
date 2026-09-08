@@ -39,7 +39,7 @@ export default async function StaffPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-semibold">Personal — {restaurant.name}</h1>
+      <h1 className="text-2xl font-display text-ink">Personal — {restaurant.name}</h1>
 
       <ul className="flex flex-col gap-2">
         {memberList.map((m) => (

@@ -287,7 +287,7 @@ export function KitchenBoard({
                       <input type="hidden" name="id" value={order.id} />
                       <button
                         type="submit"
-                        className="rounded bg-red-600 px-3 py-1 text-xs font-medium text-white"
+                        className="rounded bg-rust px-3 py-1 text-xs font-medium text-white"
                       >
                         Confirmar cancelación
                       </button>
@@ -306,7 +306,7 @@ export function KitchenBoard({
                     <form action={updateOrderStatus}>
                       <input type="hidden" name="id" value={order.id} />
                       <input type="hidden" name="status" value={NEXT_STATUS[order.status]!} />
-                      <button type="submit" className="rounded bg-black px-3 py-1 text-xs text-white">
+                      <button type="submit" className="rounded bg-ink px-3 py-1 text-xs text-white">
                         Marcar como {STATUS_LABEL[NEXT_STATUS[order.status]!].toLowerCase()}
                       </button>
                     </form>

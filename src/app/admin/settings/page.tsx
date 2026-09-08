@@ -38,7 +38,7 @@ export default async function SettingsPage({
 
   return (
     <div className="flex flex-col gap-8">
-      <h1 className="text-xl font-semibold">Ajustes — {restaurant.name}</h1>
+      <h1 className="text-2xl font-display text-ink">Ajustes — {restaurant.name}</h1>
       <SettingsForm
         name={restaurant.name}
         currency={restaurant.currency}

@@ -64,7 +64,7 @@ export function AssistedOrderForm({
         <button
           type="submit"
           disabled={sendPending}
-          className="rounded bg-black px-2 py-1 text-xs text-white disabled:opacity-50"
+          className="rounded bg-ink px-2 py-1 text-xs text-white disabled:opacity-50"
         >
           {sendPending ? 'Enviando…' : 'Enviar a cocina'}
         </button>

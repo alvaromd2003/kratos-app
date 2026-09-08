@@ -174,7 +174,7 @@ export function TableStatus({
               <span className="font-medium">Mesa {table.label}</span>
               {table.occupied ? (
                 <>
-                  <span className="rounded bg-red-600 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
+                  <span className="rounded bg-rust px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
                     Ocupada
                   </span>
                   {table.pendingCents > 0 && (
@@ -231,7 +231,7 @@ export function TableStatus({
                   </form>
                 </>
               ) : (
-                <span className="rounded bg-green-600 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
+                <span className="rounded bg-sage px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
                   Libre
                 </span>
               )}

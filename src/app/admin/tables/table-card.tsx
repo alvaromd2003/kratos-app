@@ -56,7 +56,7 @@ export function TableCard({
 
       {occupied ? (
         <div className="flex flex-col items-center gap-2">
-          <span className="rounded bg-red-600 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
+          <span className="rounded bg-rust px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
             Ocupada ({participantCount} {participantCount === 1 ? 'persona' : 'personas'})
           </span>
           {pendingCents > 0 && (
@@ -103,7 +103,7 @@ export function TableCard({
         </div>
       ) : (
         active && (
-          <span className="rounded bg-green-600 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
+          <span className="rounded bg-sage px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
             Libre
           </span>
         )

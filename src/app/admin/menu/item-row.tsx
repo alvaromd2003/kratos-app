@@ -175,7 +175,7 @@ export function ItemRow({
           <button
             disabled={pending}
             type="submit"
-            className="rounded bg-black px-3 py-1 text-xs text-white disabled:opacity-50"
+            className="rounded bg-ink px-3 py-1 text-xs text-white disabled:opacity-50"
           >
             {pending ? 'Guardando…' : 'Guardar cambios'}
           </button>

@@ -14,11 +14,11 @@ export function HelpButton({ qrToken }: { qrToken: string }) {
       <button
         type="submit"
         disabled={pending || sent}
-        className="rounded border border-gray-300 px-3 py-1.5 text-sm disabled:opacity-50"
+        className="self-start rounded-full border border-ember/30 bg-ember/10 px-3.5 py-1.5 text-sm text-ember-bright disabled:opacity-50"
       >
         {pending ? 'Avisando…' : sent ? 'Camarero avisado ✓' : '🔔 Llamar al camarero'}
       </button>
-      {state?.error && <p className="text-xs text-red-600">{state.error}</p>}
+      {state?.error && <p className="text-xs text-rust">{state.error}</p>}
     </form>
   )
 }

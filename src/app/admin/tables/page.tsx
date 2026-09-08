@@ -65,7 +65,7 @@ export default async function TablesPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <h1 className="text-xl font-semibold">Mesas — {restaurant.name}</h1>
+      <h1 className="text-2xl font-display text-ink">Mesas — {restaurant.name}</h1>
 
       <AddTableForm />
 

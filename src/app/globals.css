@@ -3,18 +3,49 @@
 :root {
   color-scheme: light;
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #101826;
+
+  /* Kratos brand tokens — matches kratosystems.com */
+  --color-ink: #0b192c;
+  --color-ink-2: #101f35;
+  --color-ink-3: #16283f;
+  --color-marble: #f4f5f7;
+  --color-marble-2: #edeff2;
+  --color-marble-3: #e1e5e9;
+  --color-ember: #d9a441;
+  --color-ember-bright: #e8bc5c;
+  --color-bronze: #4a5568;
+  --color-cream-dim: #a9b3c1;
+  --color-rust: #b8493c;
+  --color-rust-bg: #fbeae7;
+  --color-sage: #4f7a5b;
+  --color-sage-bg: #e9f1ea;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-ink: var(--color-ink);
+  --color-ink-2: var(--color-ink-2);
+  --color-ink-3: var(--color-ink-3);
+  --color-marble: var(--color-marble);
+  --color-marble-2: var(--color-marble-2);
+  --color-marble-3: var(--color-marble-3);
+  --color-ember: var(--color-ember);
+  --color-ember-bright: var(--color-ember-bright);
+  --color-bronze: var(--color-bronze);
+  --color-cream-dim: var(--color-cream-dim);
+  --color-rust: var(--color-rust);
+  --color-rust-bg: var(--color-rust-bg);
+  --color-sage: var(--color-sage);
+  --color-sage-bg: var(--color-sage-bg);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-fraunces);
+  --font-mono: var(--font-jbmono);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body), Arial, Helvetica, sans-serif;
 }

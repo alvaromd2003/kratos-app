@@ -23,7 +23,7 @@ export function FeedbackPanel({
             href={googleReviewUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="self-start rounded bg-black px-3 py-1.5 text-white"
+            className="self-start rounded bg-ink px-3 py-1.5 text-white"
           >
             Dejar reseña en Google
           </a>

@@ -38,13 +38,13 @@ export function MenuPreview({
   return (
     <main className="mx-auto flex max-w-md flex-col gap-6 px-4 py-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold">{restaurantName}</h1>
+        <h1 className="text-2xl font-display text-ink">{restaurantName}</h1>
         <p className="text-sm text-gray-600">Mesa {tableLabel} — solo consulta, sin pedir todavía</p>
       </div>
 
       <a
         href={`/t/${qrToken}`}
-        className="self-start rounded bg-black px-4 py-2 text-sm text-white"
+        className="self-start rounded bg-ink px-4 py-2 text-sm text-white"
       >
         Pedir ahora
       </a>

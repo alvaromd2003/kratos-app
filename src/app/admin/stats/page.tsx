@@ -40,7 +40,7 @@ export default async function StatsPage({
           key={r.value}
           href={`/admin/stats?range=${r.value}`}
           className={`rounded-full border px-3 py-1 text-xs ${
-            r.value === range.value ? 'border-black bg-black text-white' : 'border-gray-300 text-gray-700'
+            r.value === range.value ? 'border-black bg-ink text-white' : 'border-gray-300 text-gray-700'
           }`}
         >
           {r.label}
@@ -53,7 +53,7 @@ export default async function StatsPage({
     return (
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-xl font-semibold">Estadísticas — {restaurant.name}</h1>
+          <h1 className="text-2xl font-display text-ink">Estadísticas — {restaurant.name}</h1>
           {rangeSelector}
         </div>
         <p className="text-gray-600">No hay pedidos en este rango de fechas.</p>
@@ -98,7 +98,7 @@ export default async function StatsPage({
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">Estadísticas — {restaurant.name}</h1>
+        <h1 className="text-2xl font-display text-ink">Estadísticas — {restaurant.name}</h1>
         {rangeSelector}
       </div>
 

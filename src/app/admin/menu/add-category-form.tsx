@@ -36,7 +36,7 @@ export function AddCategoryForm() {
       <button
         disabled={pending}
         type="submit"
-        className="rounded bg-black px-4 py-2 text-white disabled:opacity-50"
+        className="rounded bg-ink px-4 py-2 text-white disabled:opacity-50"
       >
         {pending ? 'Añadiendo…' : 'Añadir'}
       </button>

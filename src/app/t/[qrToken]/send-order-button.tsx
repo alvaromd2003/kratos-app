@@ -13,7 +13,7 @@ export function SendOrderButton({ qrToken }: { qrToken: string }) {
       <button
         type="submit"
         disabled={pending}
-        className="rounded bg-black px-4 py-2 text-sm text-white disabled:opacity-50"
+        className="rounded bg-ink px-4 py-2 text-sm text-white disabled:opacity-50"
       >
         {pending ? 'Enviando…' : 'Enviar pedido a cocina'}
       </button>

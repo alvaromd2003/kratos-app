@@ -193,7 +193,7 @@ export function ReadyOrders({
               <form action={updateOrderStatus}>
                 <input type="hidden" name="id" value={order.id} />
                 <input type="hidden" name="status" value="delivered" />
-                <button type="submit" className="rounded bg-green-600 px-3 py-1 text-xs font-medium text-white">
+                <button type="submit" className="rounded bg-sage px-3 py-1 text-xs font-medium text-white">
                   Marcar como entregado
                 </button>
               </form>
