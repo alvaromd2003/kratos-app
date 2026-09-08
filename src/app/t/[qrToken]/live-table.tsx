@@ -355,6 +355,13 @@ export function LiveTable({
     })
     .filter((row): row is NonNullable<typeof row> => row !== null)
 
+  // Who can be picked as part of a dish split. Excludes "Pedido en barra",
+  // the staff-assisted-ordering pseudo-participant (see staff-order.ts) —
+  // it's never a real person who can pay their share.
+  const splittableParticipants = participants
+    .filter((p) => p.name !== 'Pedido en barra')
+    .map((p) => ({ id: p.id, label: participantLabel(p.id) }))
+
   const sortedOrders = [...orders].sort((a, b) => a.created_at.localeCompare(b.created_at))
 
   function queuePosition(order: OrderRow): number {
@@ -411,6 +418,8 @@ export function LiveTable({
               currency={currency}
               items={pickableItems}
               loyaltyDiscountPercent={loyaltyDiscountPercent}
+              tableParticipants={splittableParticipants}
+              currentParticipantId={participantId}
             />
           )}
         </>
