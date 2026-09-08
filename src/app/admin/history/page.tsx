@@ -37,7 +37,7 @@ export default async function HistoryPage({
         {(orders.length > 0 || before) && (
           <a
             href="/admin/history/export"
-            className="rounded border border-gray-300 px-3 py-1.5 text-sm underline"
+            className="rounded-lg border border-marble-3 px-3 py-1.5 text-sm text-bronze underline"
           >
             Exportar CSV
           </a>
@@ -45,7 +45,7 @@ export default async function HistoryPage({
       </div>
 
       {orders.length === 0 ? (
-        <p className="text-gray-600">
+        <p className="text-bronze">
           {before ? 'No hay más pedidos.' : 'Todavía no se ha enviado ningún pedido.'}
         </p>
       ) : (
@@ -56,23 +56,28 @@ export default async function HistoryPage({
               0
             )
             return (
-              <li key={order.id} className="flex flex-col gap-2 rounded border border-gray-200 p-4">
+              <li
+                key={order.id}
+                className="flex flex-col gap-2 rounded-xl border border-marble-3 bg-white p-4"
+              >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <p className="font-medium">Mesa {order.tableLabel}</p>
-                    <p className="text-xs text-gray-500">{formatDateTime(order.createdAt)}</p>
+                    <p className="font-medium text-ink">Mesa {order.tableLabel}</p>
+                    <p className="font-mono text-xs text-bronze">{formatDateTime(order.createdAt)}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-gray-500">{STATUS_LABEL[order.status]}</p>
-                    <p className="text-sm font-semibold">{formatPrice(total, restaurant.currency)}</p>
+                    <p className="text-xs text-bronze">{STATUS_LABEL[order.status]}</p>
+                    <p className="font-mono text-sm font-semibold text-ink">
+                      {formatPrice(total, restaurant.currency)}
+                    </p>
                   </div>
                 </div>
-                <ul className="text-sm text-gray-700">
+                <ul className="text-sm text-bronze">
                   {order.items.map((item) => (
                     <li key={item.id}>
                       {item.quantity}× {item.dishName}{' '}
-                      <span className="text-gray-500">— {item.participantName}</span>
-                      {item.note && <span className="text-gray-500"> ({item.note})</span>}
+                      <span className="text-bronze/80">— {item.participantName}</span>
+                      {item.note && <span className="text-bronze/80"> ({item.note})</span>}
                     </li>
                   ))}
                 </ul>
@@ -85,7 +90,7 @@ export default async function HistoryPage({
       {nextCursor && (
         <a
           href={`/admin/history?before=${encodeURIComponent(nextCursor)}`}
-          className="self-start rounded border border-gray-300 px-4 py-2 text-sm underline"
+          className="self-start rounded-lg border border-marble-3 px-4 py-2 text-sm text-bronze underline"
         >
           Cargar más
         </a>

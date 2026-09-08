@@ -13,7 +13,7 @@ export function RemoveStaffButton({ id, label }: { id: string; label: string }) 
       }}
     >
       <input type="hidden" name="id" value={id} />
-      <button type="submit" className="text-xs text-red-600 underline">
+      <button type="submit" className="text-xs text-rust underline">
         Quitar
       </button>
     </form>

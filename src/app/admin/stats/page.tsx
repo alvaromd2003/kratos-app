@@ -40,7 +40,7 @@ export default async function StatsPage({
           key={r.value}
           href={`/admin/stats?range=${r.value}`}
           className={`rounded-full border px-3 py-1 text-xs ${
-            r.value === range.value ? 'border-black bg-ink text-white' : 'border-gray-300 text-gray-700'
+            r.value === range.value ? 'border-ember bg-ember text-ink' : 'border-marble-3 text-bronze'
           }`}
         >
           {r.label}
@@ -56,7 +56,7 @@ export default async function StatsPage({
           <h1 className="text-2xl font-display text-ink">Estadísticas — {restaurant.name}</h1>
           {rangeSelector}
         </div>
-        <p className="text-gray-600">No hay pedidos en este rango de fechas.</p>
+        <p className="text-bronze">No hay pedidos en este rango de fechas.</p>
       </div>
     )
   }
@@ -103,32 +103,38 @@ export default async function StatsPage({
       </div>
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded border border-gray-200 p-4">
-          <p className="text-xs text-gray-500">Ingresos totales</p>
-          <p className="text-lg font-semibold">{formatPrice(totalRevenue, restaurant.currency)}</p>
+        <div className="rounded-xl border border-marble-3 bg-white p-5">
+          <p className="text-xs font-semibold uppercase tracking-wider text-bronze">Ingresos totales</p>
+          <p className="mt-1 font-mono text-2xl text-ink">
+            {formatPrice(totalRevenue, restaurant.currency)}
+          </p>
         </div>
-        <div className="rounded border border-gray-200 p-4">
-          <p className="text-xs text-gray-500">Ticket medio por pedido</p>
-          <p className="text-lg font-semibold">{formatPrice(averageTicket, restaurant.currency)}</p>
+        <div className="rounded-xl border border-marble-3 bg-white p-5">
+          <p className="text-xs font-semibold uppercase tracking-wider text-bronze">
+            Ticket medio por pedido
+          </p>
+          <p className="mt-1 font-mono text-2xl text-ink">
+            {formatPrice(averageTicket, restaurant.currency)}
+          </p>
         </div>
-        <div className="rounded border border-gray-200 p-4">
-          <p className="text-xs text-gray-500">Hora punta</p>
-          <p className="text-lg font-semibold">
-            {busiestHour !== null ? `${busiestHour}:00 - ${busiestHour + 1}:00` : '—'}
+        <div className="rounded-xl border border-marble-3 bg-white p-5">
+          <p className="text-xs font-semibold uppercase tracking-wider text-bronze">Hora punta</p>
+          <p className="mt-1 font-mono text-2xl text-ink">
+            {busiestHour !== null ? `${busiestHour}:00–${busiestHour + 1}:00` : '—'}
           </p>
         </div>
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="font-medium">Platos más vendidos</h2>
+        <h2 className="font-display text-lg text-ink">Platos más vendidos</h2>
         <ul className="flex flex-col gap-2">
           {topDishes.map((dish) => (
             <li
               key={dish.name}
-              className="flex items-center justify-between rounded border border-gray-200 p-3 text-sm"
+              className="flex items-center justify-between rounded-xl border border-marble-3 bg-white p-4 text-sm"
             >
-              <span>{dish.name}</span>
-              <span className="text-gray-600">
+              <span className="text-ink">{dish.name}</span>
+              <span className="font-mono text-bronze">
                 {dish.quantity} vendidos — {formatPrice(dish.revenue, restaurant.currency)}
               </span>
             </li>

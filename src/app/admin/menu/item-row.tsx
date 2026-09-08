@@ -49,19 +49,19 @@ export function ItemRow({
   const visibleTags = DIETARY_TAGS.filter((tag) => enabledTags.includes(tag.value))
 
   return (
-    <li className="flex flex-col gap-3 rounded border border-gray-200 p-3">
+    <li className="flex flex-col gap-3 rounded-xl border border-marble-3 bg-white p-4">
       <div className="flex items-center gap-1">
         <form action={moveMenuItem}>
           <input type="hidden" name="id" value={item.id} />
           <input type="hidden" name="direction" value="up" />
-          <button type="submit" disabled={isFirst} className="text-xs disabled:opacity-30">
+          <button type="submit" disabled={isFirst} className="text-xs text-bronze disabled:opacity-30">
             ▲
           </button>
         </form>
         <form action={moveMenuItem}>
           <input type="hidden" name="id" value={item.id} />
           <input type="hidden" name="direction" value="down" />
-          <button type="submit" disabled={isLast} className="text-xs disabled:opacity-30">
+          <button type="submit" disabled={isLast} className="text-xs text-bronze disabled:opacity-30">
             ▼
           </button>
         </form>
@@ -76,7 +76,7 @@ export function ItemRow({
               alt={item.name}
               width={56}
               height={56}
-              className="h-14 w-14 rounded object-cover"
+              className="h-14 w-14 shrink-0 rounded-lg object-cover"
             />
           )}
           <div className="flex flex-1 flex-wrap gap-2">
@@ -84,19 +84,19 @@ export function ItemRow({
               name="name"
               defaultValue={item.name}
               required
-              className="rounded border border-gray-300 px-2 py-1 text-sm"
+              className="rounded-lg border border-marble-3 px-2 py-1 text-sm focus:border-ember focus:outline-none"
             />
             <input
               name="price"
               defaultValue={(item.price_cents / 100).toFixed(2)}
               required
               inputMode="decimal"
-              className="w-20 rounded border border-gray-300 px-2 py-1 text-sm"
+              className="w-20 rounded-lg border border-marble-3 px-2 py-1 text-sm focus:border-ember focus:outline-none"
             />
             <select
               name="category_id"
               defaultValue={item.category_id ?? ''}
-              className="rounded border border-gray-300 px-2 py-1 text-sm"
+              className="rounded-lg border border-marble-3 px-2 py-1 text-sm focus:border-ember focus:outline-none"
             >
               <option value="">Sin categoría</option>
               {categories.map((c) => (
@@ -111,7 +111,7 @@ export function ItemRow({
           name="description"
           defaultValue={item.description ?? ''}
           placeholder="Descripción (opcional)"
-          className="rounded border border-gray-300 px-2 py-1 text-sm"
+          className="rounded-lg border border-marble-3 px-2 py-1 text-sm focus:border-ember focus:outline-none"
         />
         <div className="flex flex-wrap gap-3">
           {visibleTags.map((tag) => (
@@ -127,35 +127,35 @@ export function ItemRow({
           ))}
         </div>
         <div className="flex flex-wrap gap-3">
-          <label className="flex items-center gap-1 text-xs text-gray-500">
+          <label className="flex items-center gap-1 text-xs text-bronze">
             Desde
             <input
               name="available_from"
               type="time"
               defaultValue={item.available_from?.slice(0, 5) ?? ''}
-              className="rounded border border-gray-300 px-2 py-1 text-sm"
+              className="rounded-lg border border-marble-3 px-2 py-1 text-sm focus:border-ember focus:outline-none"
             />
           </label>
-          <label className="flex items-center gap-1 text-xs text-gray-500">
+          <label className="flex items-center gap-1 text-xs text-bronze">
             Hasta
             <input
               name="available_until"
               type="time"
               defaultValue={item.available_until?.slice(0, 5) ?? ''}
-              className="rounded border border-gray-300 px-2 py-1 text-sm"
+              className="rounded-lg border border-marble-3 px-2 py-1 text-sm focus:border-ember focus:outline-none"
             />
           </label>
         </div>
         {otherItems.length > 0 && (
           <div className="flex flex-col gap-1">
-            <label htmlFor={`recommend-${item.id}`} className="text-xs text-gray-500">
+            <label htmlFor={`recommend-${item.id}`} className="text-xs text-bronze">
               Recomendar junto con (opcional)
             </label>
             <select
               id={`recommend-${item.id}`}
               name="recommended_item_id"
               defaultValue={item.recommended_item_id ?? ''}
-              className="rounded border border-gray-300 px-2 py-1 text-sm"
+              className="rounded-lg border border-marble-3 px-2 py-1 text-sm focus:border-ember focus:outline-none"
             >
               <option value="">Ninguno</option>
               {otherItems.map((i) => (
@@ -166,23 +166,23 @@ export function ItemRow({
             </select>
           </div>
         )}
-        <label className="text-xs text-gray-500">
+        <label className="text-xs text-bronze">
           Cambiar foto (opcional)
           <input name="image" type="file" accept="image/*" className="mt-1 block text-xs" />
         </label>
-        {state?.error && <p className="text-xs text-red-600">{state.error}</p>}
+        {state?.error && <p className="text-xs text-rust">{state.error}</p>}
         <div className="flex items-center gap-3">
           <button
             disabled={pending}
             type="submit"
-            className="rounded bg-ink px-3 py-1 text-xs text-white disabled:opacity-50"
+            className="rounded-lg bg-ink px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
           >
             {pending ? 'Guardando…' : 'Guardar cambios'}
           </button>
-          {showSaved && <span className="text-xs text-green-600">Guardado ✓</span>}
-          {!item.is_available && <span className="text-xs text-gray-400">(oculto)</span>}
+          {showSaved && <span className="text-xs text-sage">Guardado ✓</span>}
+          {!item.is_available && <span className="text-xs text-bronze/70">(oculto)</span>}
           {item.available_from && item.available_until && (
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-bronze/70">
               🕒 {item.available_from.slice(0, 5)}–{item.available_until.slice(0, 5)}
             </span>
           )}
@@ -193,7 +193,7 @@ export function ItemRow({
           <form action={toggleMenuItemAvailability}>
             <input type="hidden" name="id" value={item.id} />
             <input type="hidden" name="is_available" value={String(item.is_available)} />
-            <button type="submit" className="text-xs underline">
+            <button type="submit" className="text-xs text-bronze underline">
               {item.is_available ? 'Ocultar' : 'Mostrar'}
             </button>
           </form>
@@ -206,12 +206,12 @@ export function ItemRow({
             }}
           >
             <input type="hidden" name="id" value={item.id} />
-            <button type="submit" className="text-xs text-red-600 underline">
+            <button type="submit" className="text-xs text-rust underline">
               Eliminar
             </button>
           </form>
         </div>
-        {deleteState?.error && <p className="text-xs text-red-600">{deleteState.error}</p>}
+        {deleteState?.error && <p className="text-xs text-rust">{deleteState.error}</p>}
       </div>
     </li>
   )

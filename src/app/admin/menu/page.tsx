@@ -34,7 +34,7 @@ export default async function MenuPage() {
       <h1 className="text-2xl font-display text-ink">Menú — {restaurant.name}</h1>
 
       <section className="flex flex-col gap-3">
-        <h2 className="font-medium">Categorías</h2>
+        <h2 className="font-display text-lg text-ink">Categorías</h2>
         {categoryList.length > 0 && (
           <ul className="flex flex-wrap gap-2">
             {categoryList.map((c, index) => (
@@ -53,7 +53,7 @@ export default async function MenuPage() {
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="font-medium">Platos</h2>
+        <h2 className="font-display text-lg text-ink">Platos</h2>
         {itemList.length > 0 && (
           <ul className="flex flex-col gap-2">
             {itemList.map((item, index) => (

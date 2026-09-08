@@ -45,11 +45,11 @@ export default async function StaffPage() {
         {memberList.map((m) => (
           <li
             key={m.id}
-            className="flex items-center justify-between gap-4 rounded border border-gray-200 p-3"
+            className="flex items-center justify-between gap-4 rounded-xl border border-marble-3 bg-white p-4"
           >
             <div>
-              <p className="font-medium">{emailsById[m.user_id]}</p>
-              <p className="text-sm text-gray-500">{ROLE_LABELS[m.role] ?? m.role}</p>
+              <p className="font-medium text-ink">{emailsById[m.user_id]}</p>
+              <p className="text-sm text-bronze">{ROLE_LABELS[m.role] ?? m.role}</p>
             </div>
             {canManage && m.user_id !== user.id && (
               <RemoveStaffButton id={m.id} label={emailsById[m.user_id]} />

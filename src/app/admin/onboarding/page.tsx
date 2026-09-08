@@ -32,7 +32,7 @@ export default async function OnboardingPage() {
 
   return (
     <div className="mx-auto max-w-sm">
-      <h1 className="mb-4 text-xl font-semibold">Crea tu restaurante</h1>
+      <h1 className="mb-4 text-2xl font-display text-ink">Crea tu restaurante</h1>
       <OnboardingForm />
     </div>
   )

@@ -28,7 +28,10 @@ export function SettingsForm({
   const [state, action, pending] = useActionState(updateRestaurantProfile, undefined)
 
   return (
-    <form action={action} className="flex max-w-sm flex-col gap-4">
+    <form
+      action={action}
+      className="flex max-w-sm flex-col gap-4 rounded-xl border border-marble-3 bg-white p-5"
+    >
       <div className="flex flex-col gap-1">
         <label htmlFor="name">Nombre del restaurante</label>
         <input
@@ -36,7 +39,7 @@ export function SettingsForm({
           name="name"
           defaultValue={name}
           required
-          className="rounded border border-gray-300 px-3 py-2"
+          className="rounded-lg border border-marble-3 px-3 py-2 focus:border-ember focus:outline-none"
         />
       </div>
       <div className="flex flex-col gap-1">
@@ -45,7 +48,7 @@ export function SettingsForm({
           id="currency"
           name="currency"
           defaultValue={currency}
-          className="rounded border border-gray-300 px-3 py-2"
+          className="rounded-lg border border-marble-3 px-3 py-2 focus:border-ember focus:outline-none"
         >
           {CURRENCIES.map((c) => (
             <option key={c.code} value={c.code}>
@@ -69,7 +72,7 @@ export function SettingsForm({
             </label>
           ))}
         </div>
-        <span className="text-xs text-gray-500">
+        <span className="text-xs text-bronze">
           Solo las que marques aquí aparecerán al crear/editar platos y para que el cliente filtre.
         </span>
       </div>
@@ -97,17 +100,17 @@ export function SettingsForm({
           type="url"
           placeholder="https://g.page/r/..."
           defaultValue={googleReviewUrl ?? ''}
-          className="rounded border border-gray-300 px-3 py-2"
+          className="rounded-lg border border-marble-3 px-3 py-2 focus:border-ember focus:outline-none"
         />
-        <span className="text-xs text-gray-500">
+        <span className="text-xs text-bronze">
           Se lo mostramos a los clientes que puntúen su experiencia con 4-5 estrellas tras pagar.
         </span>
       </div>
-      {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
+      {state?.error && <p className="text-sm text-rust">{state.error}</p>}
       <button
         disabled={pending}
         type="submit"
-        className="self-start rounded bg-ink px-4 py-2 text-white disabled:opacity-50"
+        className="self-start rounded-lg bg-ink px-4 py-2.5 font-medium text-white disabled:opacity-50"
       >
         {pending ? 'Guardando…' : 'Guardar cambios'}
       </button>

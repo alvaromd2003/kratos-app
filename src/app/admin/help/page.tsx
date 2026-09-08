@@ -105,9 +105,9 @@ export default async function HelpPage() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="flex flex-col gap-2">
-      <h2 className="font-medium">{title}</h2>
-      <div className="flex flex-col gap-2 text-sm text-gray-700">{children}</div>
+    <section className="flex flex-col gap-2 border-l-2 border-marble-3 pl-4">
+      <h2 className="font-display text-lg text-ink">{title}</h2>
+      <div className="flex flex-col gap-2 text-sm text-bronze">{children}</div>
     </section>
   )
 }
