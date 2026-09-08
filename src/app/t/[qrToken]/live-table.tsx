@@ -314,6 +314,13 @@ export function LiveTable({
     .filter((s) => s.participant_id === participantId && s.mode === 'individual')
     .reduce((sum, s) => sum + s.amount_cents, 0)
   const individualDueCents = Math.max(0, Math.min(remainingCents, mySubtotal - myPaidIndividual))
+  // Whether THIS diner has already completed any payment of their own —
+  // used to offer the feedback survey right when they're done, instead of
+  // making them wait for the whole table's balance to hit zero (which can
+  // take a while longer if others at the table haven't paid yet).
+  const myPaidCents = succeededShares
+    .filter((s) => s.participant_id === participantId)
+    .reduce((sum, s) => sum + s.amount_cents, 0)
   const pendingCash = paymentShares.find((s) => s.mode === 'cash' && s.status === 'pending')
   const pendingCashAmountCents = pendingCash?.amount_cents ?? null
 
@@ -411,6 +418,7 @@ export function LiveTable({
             hasSubmittedFeedback={hasSubmittedFeedback}
             googleReviewUrl={googleReviewUrl}
             loyaltyDiscountPercent={loyaltyDiscountPercent}
+            myPaidCents={myPaidCents}
           />
           {remainingCents > 0 && pendingCashAmountCents === null && (
             <ItemizedPaymentPanel

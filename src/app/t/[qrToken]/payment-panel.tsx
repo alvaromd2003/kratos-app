@@ -22,6 +22,7 @@ export function PaymentPanel({
   hasSubmittedFeedback,
   googleReviewUrl,
   loyaltyDiscountPercent,
+  myPaidCents,
 }: {
   qrToken: string
   currency: string
@@ -34,6 +35,7 @@ export function PaymentPanel({
   hasSubmittedFeedback: boolean
   googleReviewUrl: string | null
   loyaltyDiscountPercent: number
+  myPaidCents: number
 }) {
   const [individualState, individualAction, individualPending] = useActionState(
     createIndividualPayment,
@@ -94,7 +96,18 @@ export function PaymentPanel({
   }
 
   return (
-    <section className="flex flex-col gap-3 rounded border border-gray-200 p-3">
+    <>
+      {myPaidCents > 0 && (
+        <div className="flex flex-col gap-3 rounded border border-green-200 bg-green-50 p-3">
+          <p className="text-sm text-green-700">✓ Ya has pagado tu parte</p>
+          <FeedbackPanel
+            qrToken={qrToken}
+            hasSubmittedFeedback={hasSubmittedFeedback}
+            googleReviewUrl={googleReviewUrl}
+          />
+        </div>
+      )}
+      <section className="flex flex-col gap-3 rounded border border-gray-200 p-3">
       <div className="flex items-center justify-between">
         <h2 className="font-medium">Pagar la cuenta</h2>
         <p className="text-sm text-gray-600">Pendiente: {formatPrice(remainingCents, currency)}</p>
@@ -200,6 +213,7 @@ export function PaymentPanel({
         </button>
       </form>
       {cashState?.error && <p className="text-xs text-red-600">{cashState.error}</p>}
-    </section>
+      </section>
+    </>
   )
 }
