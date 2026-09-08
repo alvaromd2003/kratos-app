@@ -48,6 +48,7 @@ export async function addStaffItem(
   const tableId = String(formData.get('table_id') ?? '')
   const menuItemId = String(formData.get('menu_item_id') ?? '')
   const quantity = Math.max(1, Math.min(20, Math.floor(Number(formData.get('quantity') ?? 1))))
+  const note = String(formData.get('note') ?? '').trim().slice(0, 140) || null
 
   const admin = createAdminClient()
 
@@ -98,6 +99,20 @@ export async function addStaffItem(
     if (error) {
       return { error: 'No se pudo añadir el plato. Inténtalo de nuevo.' }
     }
+  }
+
+  // add_item_to_cart upserts onto one shared (session, participant, dish)
+  // line, so after the loop above there's exactly one row to attach the
+  // note to — same semantics as the diner-facing setItemNote (overwrites
+  // whatever note that line already had).
+  if (note) {
+    await admin
+      .from('order_items')
+      .update({ note })
+      .eq('table_session_id', sessionId)
+      .eq('participant_id', participantId)
+      .eq('menu_item_id', menuItemId)
+      .is('order_id', null)
   }
 
   revalidatePath('/admin/floor')

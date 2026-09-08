@@ -42,6 +42,13 @@ export function AssistedOrderForm({
           onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))}
           className="w-14 rounded border border-gray-300 px-2 py-1 text-xs"
         />
+        <input
+          type="text"
+          name="note"
+          placeholder="Nota (opcional, ej. sin cebolla)"
+          maxLength={140}
+          className="min-w-0 flex-1 rounded border border-gray-300 px-2 py-1 text-xs"
+        />
         <button
           type="submit"
           disabled={addPending}
