@@ -67,7 +67,14 @@ export function TableStatus({
   menuItems: { id: string; name: string; price_cents: number }[]
 }) {
   const [tables, setTables] = useState(initialTables)
-  const [now, setNow] = useState(() => Date.now())
+  // Starts null (identical on server and on the client's first render) and
+  // is only ever set from an effect, which runs client-side alone — a
+  // useState(() => Date.now()) initializer here would run once during SSR
+  // and again moments later during hydration, and if those two real
+  // instants happened to straddle a minute boundary the idle-time text
+  // would differ between them, which React reports as a hydration crash
+  // rather than just a stale number (seen intermittently in testing).
+  const [now, setNow] = useState<number | null>(null)
   const [expandedTableId, setExpandedTableId] = useState<string | null>(null)
   const [view, setView] = useState<'list' | 'plan'>('list')
   const hasConnectedBefore = useRef(false)
@@ -79,6 +86,10 @@ export function TableStatus({
   // lastActivityAt fresh from the server (see fetchTableState's comment
   // on why this can't just be Realtime).
   useEffect(() => {
+    // Deferred rather than called directly in the effect body — same
+    // client-only value, just scheduled as its own task instead of
+    // running synchronously during the effect.
+    const firstTick = setTimeout(() => setNow(Date.now()), 0)
     const tickInterval = setInterval(() => setNow(Date.now()), 60_000)
     const refreshInterval = setInterval(() => {
       const supabase = createClient()
@@ -88,6 +99,7 @@ export function TableStatus({
       })
     }, 120_000)
     return () => {
+      clearTimeout(firstTick)
       clearInterval(tickInterval)
       clearInterval(refreshInterval)
     }

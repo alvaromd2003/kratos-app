@@ -30,7 +30,7 @@ export function TableRowContent({
 }: {
   table: FloorTable
   currency: string
-  now: number
+  now: number | null
   menuItems: { id: string; name: string; price_cents: number }[]
   expanded: boolean
   onToggleAssisted: () => void
@@ -69,6 +69,7 @@ export function TableRowContent({
               </>
             )}
             {table.lastActivityAt &&
+              now !== null &&
               (() => {
                 const idleMinutes = Math.floor(
                   (now - new Date(table.lastActivityAt).getTime()) / 60_000

@@ -26,7 +26,7 @@ export function FloorPlan({
 }: {
   tables: FloorTable[]
   currency: string
-  now: number
+  now: number | null
   menuItems: { id: string; name: string; price_cents: number }[]
   expandedTableId: string | null
   onToggleAssisted: (id: string | null) => void
@@ -38,13 +38,16 @@ export function FloorPlan({
   const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
 
-  let fallbackIndex = 0
+  const fallbackIndexById = new Map(
+    tables
+      .filter((t) => t.posX === null || t.posY === null)
+      .map((t, index) => [t.id, index])
+  )
   const positioned = tables.map((table) => {
     if (table.posX !== null && table.posY !== null) {
       return { table, x: table.posX, y: table.posY }
     }
-    const pos = fallbackPosition(fallbackIndex)
-    fallbackIndex += 1
+    const pos = fallbackPosition(fallbackIndexById.get(table.id) ?? 0)
     return { table, x: pos.x, y: pos.y }
   })
 
