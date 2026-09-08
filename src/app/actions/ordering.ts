@@ -116,7 +116,10 @@ export async function addItemToCart(
   }
 }
 
-export async function changeItemQuantity(formData: FormData) {
+export async function changeItemQuantity(
+  _prevState: OrderingFormState,
+  formData: FormData
+): Promise<OrderingFormState> {
   const qrToken = String(formData.get('qr_token') ?? '')
   const orderItemId = String(formData.get('order_item_id') ?? '')
   const delta = Number(formData.get('delta') ?? 0)
@@ -131,7 +134,7 @@ export async function changeItemQuantity(formData: FormData) {
   // Only matters for a decrease — adding more on top of a paid line is
   // harmless (it's just unpaid food stacked on the same row).
   if (delta < 0 && (await isOrderItemClaimed(admin, orderItemId))) {
-    return
+    return { error: 'Ya se ha pagado (parte de) este plato, así que no se puede reducir.' }
   }
 
   // Atomic (quantity = quantity + delta, then delete if <=0) instead of a
@@ -161,7 +164,10 @@ export async function setItemNote(formData: FormData) {
     .is('order_id', null) // can't touch a line that's already with the kitchen
 }
 
-export async function removeItemFromCart(formData: FormData) {
+export async function removeItemFromCart(
+  _prevState: OrderingFormState,
+  formData: FormData
+): Promise<OrderingFormState> {
   const qrToken = String(formData.get('qr_token') ?? '')
   const orderItemId = String(formData.get('order_item_id') ?? '')
 
@@ -173,7 +179,7 @@ export async function removeItemFromCart(formData: FormData) {
   // Same reasoning as changeItemQuantity — never let an already-paid
   // line just vanish from the cart with nothing to show for it.
   if (await isOrderItemClaimed(admin, orderItemId)) {
-    return
+    return { error: 'Ya se ha pagado (parte de) este plato, así que no se puede quitar.' }
   }
 
   await admin

@@ -1,5 +1,6 @@
 'use client'
 
+import { useActionState } from 'react'
 import { changeItemQuantity, removeItemFromCart, setItemNote } from '@/app/actions/ordering'
 
 export function CartItemRow({
@@ -17,12 +18,16 @@ export function CartItemRow({
   note: string | null
   lineTotal: string
 }) {
+  const [decreaseState, decreaseAction] = useActionState(changeItemQuantity, undefined)
+  const [increaseState, increaseAction] = useActionState(changeItemQuantity, undefined)
+  const [removeState, removeAction] = useActionState(removeItemFromCart, undefined)
+
   return (
     <li className="flex flex-col gap-1 text-sm">
       <div className="flex items-center gap-2">
         <span className="flex-1 truncate">{name}</span>
         <div className="flex items-center gap-1">
-          <form action={changeItemQuantity}>
+          <form action={decreaseAction}>
             <input type="hidden" name="qr_token" value={qrToken} />
             <input type="hidden" name="order_item_id" value={orderItemId} />
             <input type="hidden" name="delta" value="-1" />
@@ -31,7 +36,7 @@ export function CartItemRow({
             </button>
           </form>
           <span className="w-5 text-center">{quantity}</span>
-          <form action={changeItemQuantity}>
+          <form action={increaseAction}>
             <input type="hidden" name="qr_token" value={qrToken} />
             <input type="hidden" name="order_item_id" value={orderItemId} />
             <input type="hidden" name="delta" value="1" />
@@ -41,7 +46,7 @@ export function CartItemRow({
           </form>
         </div>
         <span className="w-16 text-right">{lineTotal}</span>
-        <form action={removeItemFromCart}>
+        <form action={removeAction}>
           <input type="hidden" name="qr_token" value={qrToken} />
           <input type="hidden" name="order_item_id" value={orderItemId} />
           <button type="submit" className="text-xs text-red-600 underline">
@@ -49,6 +54,11 @@ export function CartItemRow({
           </button>
         </form>
       </div>
+      {(decreaseState?.error || increaseState?.error || removeState?.error) && (
+        <p className="text-xs text-red-600">
+          {decreaseState?.error || increaseState?.error || removeState?.error}
+        </p>
+      )}
       <form action={setItemNote} className="flex items-center gap-1 pl-0">
         <input type="hidden" name="qr_token" value={qrToken} />
         <input type="hidden" name="order_item_id" value={orderItemId} />
