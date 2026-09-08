@@ -2,22 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { closeTableSession } from '@/app/actions/tables'
-import { recordManualPayment } from '@/app/actions/kitchen'
 import { useWakeLock } from '@/lib/use-wake-lock'
-import { formatPrice } from '@/lib/format'
-import { AssistedOrderForm } from './assisted-order-form'
+import { updateTablePosition } from '@/app/actions/tables'
+import { TableRowContent, type FloorTable } from './table-row-content'
+import { FloorPlan } from './floor-plan'
 
-type Table = {
-  id: string
-  label: string
-  occupied: boolean
-  pendingCents: number
-  lastActivityAt: string | null
-}
 type SessionRow = { table_id: string; status: 'open' | 'closed' }
-
-const IDLE_THRESHOLD_MINUTES = 30
 
 // Refreshes occupancy AND last-activity together — same query shape as
 // the server-side one in floor/page.tsx. Used both on realtime reconnect
@@ -26,8 +16,8 @@ const IDLE_THRESHOLD_MINUTES = 30
 async function fetchTableState(
   supabase: ReturnType<typeof createClient>,
   restaurantId: string,
-  tables: Table[]
-): Promise<Table[]> {
+  tables: FloorTable[]
+): Promise<FloorTable[]> {
   const { data: openSessions } = await supabase
     .from('table_sessions')
     .select('id, table_id, created_at')
@@ -72,13 +62,14 @@ export function TableStatus({
   menuItems,
 }: {
   restaurantId: string
-  initialTables: Table[]
+  initialTables: FloorTable[]
   currency: string
   menuItems: { id: string; name: string; price_cents: number }[]
 }) {
   const [tables, setTables] = useState(initialTables)
   const [now, setNow] = useState(() => Date.now())
   const [expandedTableId, setExpandedTableId] = useState<string | null>(null)
+  const [view, setView] = useState<'list' | 'plan'>('list')
   const hasConnectedBefore = useRef(false)
 
   useWakeLock()
@@ -159,96 +150,70 @@ export function TableStatus({
     }
   }, [restaurantId])
 
+  // Optimistic: reflects immediately in this tab (the server round trip
+  // to persist it happens in the background) rather than waiting on
+  // revalidatePath, which wouldn't reach this component's own local
+  // `tables` state anyway (it was seeded once from props, not re-synced).
+  function handlePositionChange(id: string, x: number, y: number) {
+    setTables((current) => current.map((t) => (t.id === id ? { ...t, posX: x, posY: y } : t)))
+    updateTablePosition(id, x, y).catch(() => {})
+  }
+
   if (tables.length === 0) return null
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="font-display text-lg text-ink">Mesas</h2>
-      <ul className="flex flex-wrap gap-3">
-        {tables.map((table) => (
-          <li
-            key={table.id}
-            className="flex flex-col gap-2 rounded-xl border border-marble-3 bg-white px-4 py-3 text-sm"
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-lg text-ink">Mesas</h2>
+        <div className="flex gap-1 rounded-full border border-marble-3 bg-white p-0.5 text-xs">
+          <button
+            type="button"
+            onClick={() => setView('list')}
+            className={`rounded-full px-3 py-1 ${view === 'list' ? 'bg-ink text-white' : 'text-bronze'}`}
           >
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-medium text-ink">Mesa {table.label}</span>
-              {table.occupied ? (
-                <>
-                  <span className="rounded-full bg-rust px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
-                    Ocupada
-                  </span>
-                  {table.pendingCents > 0 && (
-                    <>
-                      <span className="font-mono text-xs text-ember">
-                        Pendiente: {formatPrice(table.pendingCents, currency)}
-                      </span>
-                      <form
-                        action={recordManualPayment}
-                        onSubmit={(e) => {
-                          if (
-                            !confirm(
-                              `¿Confirmas que ya has cobrado ${formatPrice(table.pendingCents, currency)} en efectivo o con datáfono en la mesa ${table.label}? Esto marca la cuenta como pagada — útil cuando nadie en la mesa ha usado el QR.`
-                            )
-                          ) {
-                            e.preventDefault()
-                          }
-                        }}
-                      >
-                        <input type="hidden" name="table_id" value={table.id} />
-                        <button type="submit" className="text-xs text-bronze underline">
-                          Cobrado en efectivo/datáfono
-                        </button>
-                      </form>
-                    </>
-                  )}
-                  {table.lastActivityAt &&
-                    (() => {
-                      const idleMinutes = Math.floor(
-                        (now - new Date(table.lastActivityAt).getTime()) / 60_000
-                      )
-                      return idleMinutes >= IDLE_THRESHOLD_MINUTES ? (
-                        <span className="text-xs text-ember">
-                          ⏳ Sin actividad hace {idleMinutes} min
-                        </span>
-                      ) : null
-                    })()}
-                  <form
-                    action={closeTableSession}
-                    onSubmit={(e) => {
-                      const warning =
-                        table.pendingCents > 0
-                          ? `Quedan ${formatPrice(table.pendingCents, currency)} sin cobrar por la app en la mesa ${table.label} (puede que ya se haya cobrado en efectivo o con datáfono). ¿Cerrar de todas formas?`
-                          : `¿Cerrar la mesa ${table.label}? Los clientes conectados tendrán que volver a escanear el código QR.`
-                      if (!confirm(warning)) {
-                        e.preventDefault()
-                      }
-                    }}
-                  >
-                    <input type="hidden" name="table_id" value={table.id} />
-                    <button type="submit" className="text-xs text-bronze underline">
-                      Cerrar
-                    </button>
-                  </form>
-                </>
-              ) : (
-                <span className="rounded-full bg-sage px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
-                  Libre
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={() => setExpandedTableId((current) => (current === table.id ? null : table.id))}
-                className="text-xs text-bronze underline"
-              >
-                Pedido asistido
-              </button>
-            </div>
-            {expandedTableId === table.id && (
-              <AssistedOrderForm tableId={table.id} currency={currency} menuItems={menuItems} />
-            )}
-          </li>
-        ))}
-      </ul>
+            Lista
+          </button>
+          <button
+            type="button"
+            onClick={() => setView('plan')}
+            className={`rounded-full px-3 py-1 ${view === 'plan' ? 'bg-ink text-white' : 'text-bronze'}`}
+          >
+            Plano
+          </button>
+        </div>
+      </div>
+
+      {view === 'list' ? (
+        <ul className="flex flex-wrap gap-3">
+          {tables.map((table) => (
+            <li
+              key={table.id}
+              className="flex flex-col gap-2 rounded-xl border border-marble-3 bg-white px-4 py-3 text-sm"
+            >
+              <TableRowContent
+                table={table}
+                currency={currency}
+                now={now}
+                menuItems={menuItems}
+                expanded={expandedTableId === table.id}
+                onToggleAssisted={() =>
+                  setExpandedTableId((current) => (current === table.id ? null : table.id))
+                }
+              />
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <FloorPlan
+          tables={tables}
+          currency={currency}
+          now={now}
+          menuItems={menuItems}
+          expandedTableId={expandedTableId}
+          onToggleAssisted={setExpandedTableId}
+          onPositionChange={handlePositionChange}
+        />
+      )}
     </section>
   )
 }

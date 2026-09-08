@@ -93,6 +93,23 @@ export async function deleteTable(
   revalidatePath('/admin/tables')
 }
 
+// Called directly from client code on drop (not a <form> submit), so it
+// takes plain arguments instead of FormData. Position is a 0-100 percent
+// of the floor-plan canvas rather than pixels, so it stays correct
+// however wide the screen viewing it is.
+export async function updateTablePosition(id: string, posX: number, posY: number) {
+  const { restaurant } = await getCurrentRestaurant()
+  const supabase = await createClient()
+
+  await supabase
+    .from('tables')
+    .update({ pos_x: posX, pos_y: posY })
+    .eq('id', id)
+    .eq('restaurant_id', restaurant.id)
+
+  revalidatePath('/admin/floor')
+}
+
 export async function toggleTableActive(formData: FormData) {
   const { restaurant } = await getCurrentRestaurant()
   const id = String(formData.get('id') ?? '')
