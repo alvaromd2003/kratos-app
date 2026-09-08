@@ -17,6 +17,7 @@ export default async function KitchenPage() {
     getRestaurantOrders(supabase, restaurant.id, {
       statuses: ['pending', 'preparing'],
       ascending: true,
+      openSessionsOnly: true,
     }),
     getRestaurantOrders(supabase, restaurant.id, { since: startOfTodayIso() }).then((orders) =>
       orders.filter((o) => o.status === 'delivered')

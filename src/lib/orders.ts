@@ -37,6 +37,16 @@ export async function getRestaurantOrders(
     /** Keyset pagination cursor: only orders strictly before this timestamp. */
     before?: string
     limit?: number
+    /**
+     * Drop orders whose table session has since been closed. Without this,
+     * closing a table (e.g. to free it up for the next customer) left any
+     * order that was still 'pending'/'preparing'/'ready' permanently stuck
+     * on the kitchen/floor boards — closing a session doesn't change an
+     * order's status, only whether it should still show as something staff
+     * need to act on. History intentionally leaves this off: a past order
+     * should stay visible there even after its table closes.
+     */
+    openSessionsOnly?: boolean
   }
 ): Promise<OrderDetail[]> {
   let query = supabase
@@ -62,14 +72,14 @@ export async function getRestaurantOrders(
   }
 
   const { data: orders } = await query
-  const orderList = orders ?? []
+  let orderList = orders ?? []
   if (orderList.length === 0) return []
 
   const sessionIds = [...new Set(orderList.map((o) => o.table_session_id))]
   const orderIds = orderList.map((o) => o.id)
 
   const [{ data: sessions }, { data: orderItems }] = await Promise.all([
-    supabase.from('table_sessions').select('id, table_id').in('id', sessionIds),
+    supabase.from('table_sessions').select('id, table_id, status').in('id', sessionIds),
     supabase
       .from('order_items')
       .select('id, order_id, quantity, menu_item_id, participant_id, note')
@@ -77,6 +87,13 @@ export async function getRestaurantOrders(
   ])
 
   const sessionList = sessions ?? []
+  if (options?.openSessionsOnly) {
+    const openSessionIds = new Set(
+      sessionList.filter((s) => s.status === 'open').map((s) => s.id)
+    )
+    orderList = orderList.filter((o) => openSessionIds.has(o.table_session_id))
+    if (orderList.length === 0) return []
+  }
   const tableIds = [...new Set(sessionList.map((s) => s.table_id))]
   const itemList = orderItems ?? []
   const menuItemIds = [...new Set(itemList.map((i) => i.menu_item_id))]

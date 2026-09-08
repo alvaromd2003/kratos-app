@@ -145,4 +145,5 @@ export async function closeTableSession(formData: FormData) {
 
   revalidatePath('/admin/tables')
   revalidatePath('/admin/floor')
+  revalidatePath('/admin/kitchen')
 }

@@ -19,7 +19,11 @@ export default async function FloorPage() {
 
   const [readyOrders, { data: tables }, { data: openSessions }, { data: menuItems }] =
     await Promise.all([
-      getRestaurantOrders(supabase, restaurant.id, { statuses: ['ready'], ascending: true }),
+      getRestaurantOrders(supabase, restaurant.id, {
+        statuses: ['ready'],
+        ascending: true,
+        openSessionsOnly: true,
+      }),
       supabase
         .from('tables')
         .select('id, label')
