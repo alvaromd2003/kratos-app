@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-export type AuthFormState = { error?: string } | undefined
+export type AuthFormState = { errorCode?: string; errorMessage?: string } | undefined
 
 export async function signup(
   _prevState: AuthFormState,
@@ -16,16 +16,16 @@ export async function signup(
   const acceptedTerms = formData.get('accepted_terms') === 'on'
 
   if (!email || !password) {
-    return { error: 'Introduce un email y una contraseña.' }
+    return { errorCode: 'EMPTY_EMAIL_PASSWORD' }
   }
   if (password.length < 8) {
-    return { error: 'La contraseña debe tener al menos 8 caracteres.' }
+    return { errorCode: 'PASSWORD_TOO_SHORT' }
   }
   if (!accessCode) {
-    return { error: 'Introduce el código de acceso.' }
+    return { errorCode: 'ENTER_ACCESS_CODE' }
   }
   if (!acceptedTerms) {
-    return { error: 'Tienes que aceptar los términos y la política de privacidad para continuar.' }
+    return { errorCode: 'MUST_ACCEPT_TERMS' }
   }
 
   // Keeps /signup from being wide open to anyone who finds the URL — only
@@ -42,10 +42,10 @@ export async function signup(
     .maybeSingle()
 
   if (!codeRow) {
-    return { error: 'Código de acceso incorrecto.' }
+    return { errorCode: 'INVALID_ACCESS_CODE' }
   }
   if (!codeRow.is_generic && codeRow.used_at) {
-    return { error: 'Este código de acceso ya se ha utilizado.' }
+    return { errorCode: 'ACCESS_CODE_USED' }
   }
 
   const supabase = await createClient()
@@ -67,7 +67,7 @@ export async function signup(
   })
 
   if (error) {
-    return { error: error.message }
+    return { errorCode: 'SIGNUP_FAILED', errorMessage: error.message }
   }
 
   // Single-use codes are consumed now, not when onboarding finishes —
@@ -95,7 +95,7 @@ export async function login(
   const { error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error) {
-    return { error: 'Email o contraseña incorrectos.' }
+    return { errorCode: 'INVALID_LOGIN' }
   }
 
   redirect('/admin')
@@ -107,7 +107,7 @@ export async function requestPasswordReset(
 ): Promise<AuthFormState> {
   const email = String(formData.get('email') ?? '').trim()
   if (!email) {
-    return { error: 'Introduce tu email.' }
+    return { errorCode: 'EMPTY_EMAIL' }
   }
 
   const supabase = await createClient()
