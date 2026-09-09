@@ -19,34 +19,70 @@ export function AssistedOrderForm({
 }) {
   const [addState, addAction, addPending] = useActionState(addStaffItem, undefined)
   const [sendState, sendAction, sendPending] = useActionState(sendStaffOrder, undefined)
+  const [selectedId, setSelectedId] = useState(menuItems[0]?.id ?? '')
   const [quantity, setQuantity] = useState(1)
+  const [note, setNote] = useState('')
 
   if (menuItems.length === 0) return null
 
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-marble-3 bg-marble p-4">
-      <form action={addAction} className="flex flex-wrap items-center gap-2.5">
+      <div className="flex max-h-56 flex-col gap-1.5 overflow-y-auto rounded-lg border border-marble-3 bg-white p-1.5">
+        {menuItems.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => setSelectedId(item.id)}
+            className={`flex items-center justify-between gap-3 rounded-lg px-4 py-3 text-left text-sm font-medium transition-colors ${
+              selectedId === item.id ? 'bg-ink text-white' : 'text-ink hover:bg-marble-2'
+            }`}
+          >
+            <span>{item.name}</span>
+            <span className="font-mono">{formatPrice(item.price_cents, currency)}</span>
+          </button>
+        ))}
+      </div>
+
+      <form
+        action={addAction}
+        className="flex flex-wrap items-center gap-2.5"
+        onSubmit={() => {
+          // Deferred so the current values still make it into this
+          // submission's FormData before the fields reset for next time.
+          setTimeout(() => {
+            setQuantity(1)
+            setNote('')
+          }, 0)
+        }}
+      >
         <input type="hidden" name="table_id" value={tableId} />
-        <select
-          name="menu_item_id"
-          className="min-w-40 rounded-lg border border-marble-3 bg-white px-3 py-2.5 text-sm text-ink"
-        >
-          {menuItems.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.name} — {formatPrice(item.price_cents, currency)}
-            </option>
-          ))}
-        </select>
-        <input
-          type="number"
-          name="quantity"
-          min={1}
-          value={quantity}
-          onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))}
-          className="w-16 rounded-lg border border-marble-3 bg-white px-3 py-2.5 text-sm text-ink"
-        />
+        <input type="hidden" name="menu_item_id" value={selectedId} />
+        <input type="hidden" name="quantity" value={quantity} />
+
+        <div className="flex items-center overflow-hidden rounded-lg border border-marble-3 bg-white">
+          <button
+            type="button"
+            onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+            className="px-4 py-2.5 text-lg font-semibold text-bronze"
+            aria-label="Menos cantidad"
+          >
+            −
+          </button>
+          <span className="w-8 text-center text-base font-semibold text-ink">{quantity}</span>
+          <button
+            type="button"
+            onClick={() => setQuantity((q) => Math.min(20, q + 1))}
+            className="px-4 py-2.5 text-lg font-semibold text-bronze"
+            aria-label="Más cantidad"
+          >
+            +
+          </button>
+        </div>
+
         <input
           type="text"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
           name="note"
           placeholder="Nota (opcional, ej. sin cebolla)"
           maxLength={140}
@@ -54,8 +90,8 @@ export function AssistedOrderForm({
         />
         <button
           type="submit"
-          disabled={addPending}
-          className="rounded-lg border border-marble-3 bg-white px-4 py-2.5 text-sm font-medium text-bronze disabled:opacity-50"
+          disabled={addPending || !selectedId}
+          className="rounded-lg bg-ember px-5 py-2.5 text-sm font-semibold text-ink disabled:opacity-50"
         >
           {addPending ? 'Añadiendo…' : 'Añadir'}
         </button>
@@ -67,7 +103,7 @@ export function AssistedOrderForm({
         <button
           type="submit"
           disabled={sendPending}
-          className="rounded-lg bg-ink px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50"
+          className="w-full rounded-lg bg-ink px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50"
         >
           {sendPending ? 'Enviando…' : 'Enviar a cocina'}
         </button>
