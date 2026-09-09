@@ -3,6 +3,9 @@ import { requireManagerRole } from '@/lib/restaurant'
 import { syncStripeOnboardingStatus } from '@/app/actions/stripe-connect'
 import { getRequestOrigin } from '@/lib/payments'
 import { stripe } from '@/lib/stripe'
+import { getStaffLocale } from '@/lib/i18n/server'
+import { interpolate } from '@/lib/i18n/config'
+import { staffDict } from '@/lib/i18n/dictionaries/staff'
 import { SettingsForm } from './settings-form'
 import { StripeConnectSection } from './stripe-connect-section'
 
@@ -12,6 +15,7 @@ export default async function SettingsPage({
   searchParams: Promise<{ stripe?: string }>
 }) {
   const { restaurant } = await requireManagerRole()
+  const t = staffDict[await getStaffLocale()]
   const { stripe: stripeReturn } = await searchParams
 
   let onboardingComplete = restaurant.stripe_onboarding_complete
@@ -38,7 +42,7 @@ export default async function SettingsPage({
 
   return (
     <div className="flex flex-col gap-8">
-      <h1 className="text-2xl font-display text-ink">Ajustes — {restaurant.name}</h1>
+      <h1 className="text-2xl font-display text-ink">{interpolate(t['settings.title'], { name: restaurant.name })}</h1>
       <SettingsForm
         name={restaurant.name}
         currency={restaurant.currency}

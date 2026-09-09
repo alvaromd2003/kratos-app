@@ -9,6 +9,7 @@ import {
 } from '@/app/actions/menu'
 import { useActionSuccess } from '@/lib/use-action-success'
 import { DIETARY_TAGS } from '@/lib/dietary-tags'
+import { useLocale } from '@/lib/i18n/provider'
 
 type Category = { id: string; name: string }
 type Item = {
@@ -40,12 +41,13 @@ export function ItemRow({
   isFirst: boolean
   isLast: boolean
 }) {
+  const { t } = useLocale()
   const [state, action, pending] = useActionState(updateMenuItem, undefined)
   const [deleteState, deleteAction] = useActionState(deleteMenuItem, undefined)
 
   // Inputs keep whatever the user typed either way (they're uncontrolled),
   // so without this there's no visible sign a save actually happened.
-  const showSaved = useActionSuccess(pending, Boolean(state?.error))
+  const showSaved = useActionSuccess(pending, Boolean(state?.errorCode))
   const visibleTags = DIETARY_TAGS.filter((tag) => enabledTags.includes(tag.value))
 
   return (
@@ -98,7 +100,7 @@ export function ItemRow({
               defaultValue={item.category_id ?? ''}
               className="rounded-lg border border-marble-3 px-2 py-1 text-sm focus:border-ember focus:outline-none"
             >
-              <option value="">Sin categoría</option>
+              <option value="">{t('menu.noCategory')}</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -110,7 +112,7 @@ export function ItemRow({
         <input
           name="description"
           defaultValue={item.description ?? ''}
-          placeholder="Descripción (opcional)"
+          placeholder={t('menu.description')}
           className="rounded-lg border border-marble-3 px-2 py-1 text-sm focus:border-ember focus:outline-none"
         />
         <div className="flex flex-wrap gap-3">
@@ -122,13 +124,13 @@ export function ItemRow({
                 value={tag.value}
                 defaultChecked={item.dietary_tags.includes(tag.value)}
               />
-              {tag.label}
+              {t(`dietary.${tag.value}`)}
             </label>
           ))}
         </div>
         <div className="flex flex-wrap gap-3">
           <label className="flex items-center gap-1 text-xs text-bronze">
-            Desde
+            {t('menu.from')}
             <input
               name="available_from"
               type="time"
@@ -137,7 +139,7 @@ export function ItemRow({
             />
           </label>
           <label className="flex items-center gap-1 text-xs text-bronze">
-            Hasta
+            {t('menu.until')}
             <input
               name="available_until"
               type="time"
@@ -149,7 +151,7 @@ export function ItemRow({
         {otherItems.length > 0 && (
           <div className="flex flex-col gap-1">
             <label htmlFor={`recommend-${item.id}`} className="text-xs text-bronze">
-              Recomendar junto con (opcional)
+              {t('menu.recommendWith')}
             </label>
             <select
               id={`recommend-${item.id}`}
@@ -157,7 +159,7 @@ export function ItemRow({
               defaultValue={item.recommended_item_id ?? ''}
               className="rounded-lg border border-marble-3 px-2 py-1 text-sm focus:border-ember focus:outline-none"
             >
-              <option value="">Ninguno</option>
+              <option value="">{t('menu.none')}</option>
               {otherItems.map((i) => (
                 <option key={i.id} value={i.id}>
                   {i.name}
@@ -167,20 +169,20 @@ export function ItemRow({
           </div>
         )}
         <label className="text-xs text-bronze">
-          Cambiar foto (opcional)
+          {t('menu.changePhoto')}
           <input name="image" type="file" accept="image/*" className="mt-1 block text-xs" />
         </label>
-        {state?.error && <p className="text-xs text-rust">{state.error}</p>}
+        {state?.errorCode && <p className="text-xs text-rust">{t(`error.${state.errorCode}`)}</p>}
         <div className="flex items-center gap-3">
           <button
             disabled={pending}
             type="submit"
             className="rounded-lg bg-ink px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
           >
-            {pending ? 'Guardando…' : 'Guardar cambios'}
+            {pending ? t('common.saving') : t('common.saveChanges')}
           </button>
-          {showSaved && <span className="text-xs text-sage">Guardado ✓</span>}
-          {!item.is_available && <span className="text-xs text-bronze/70">(oculto)</span>}
+          {showSaved && <span className="text-xs text-sage">{t('common.saved')}</span>}
+          {!item.is_available && <span className="text-xs text-bronze/70">{t('menu.hidden')}</span>}
           {item.available_from && item.available_until && (
             <span className="text-xs text-bronze/70">
               🕒 {item.available_from.slice(0, 5)}–{item.available_until.slice(0, 5)}
@@ -194,24 +196,24 @@ export function ItemRow({
             <input type="hidden" name="id" value={item.id} />
             <input type="hidden" name="is_available" value={String(item.is_available)} />
             <button type="submit" className="text-xs text-bronze underline">
-              {item.is_available ? 'Ocultar' : 'Mostrar'}
+              {item.is_available ? t('menu.hide') : t('menu.show')}
             </button>
           </form>
           <form
             action={deleteAction}
             onSubmit={(e) => {
-              if (!confirm(`¿Eliminar "${item.name}"? Esto no se puede deshacer.`)) {
+              if (!confirm(t('menu.deleteItemConfirm', { name: item.name }))) {
                 e.preventDefault()
               }
             }}
           >
             <input type="hidden" name="id" value={item.id} />
             <button type="submit" className="text-xs text-rust underline">
-              Eliminar
+              {t('common.delete')}
             </button>
           </form>
         </div>
-        {deleteState?.error && <p className="text-xs text-rust">{deleteState.error}</p>}
+        {deleteState?.errorCode && <p className="text-xs text-rust">{t(`error.${deleteState.errorCode}`)}</p>}
       </div>
     </li>
   )

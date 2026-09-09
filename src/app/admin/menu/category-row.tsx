@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react'
 import { updateCategory, deleteCategory, moveCategory } from '@/app/actions/menu'
+import { useLocale } from '@/lib/i18n/provider'
 
 export function CategoryRow({
   id,
@@ -16,6 +17,7 @@ export function CategoryRow({
   isFirst: boolean
   isLast: boolean
 }) {
+  const { t } = useLocale()
   const [state, action, pending] = useActionState(updateCategory, undefined)
 
   return (
@@ -49,18 +51,18 @@ export function CategoryRow({
           defaultValue={station}
           className="rounded-lg border border-marble-3 px-2 py-1 text-sm focus:border-ember focus:outline-none"
         >
-          <option value="kitchen">Cocina</option>
-          <option value="bar">Barra</option>
+          <option value="kitchen">{t('station.kitchen')}</option>
+          <option value="bar">{t('station.bar')}</option>
         </select>
         <button disabled={pending} type="submit" className="text-xs text-bronze underline">
-          {pending ? 'Guardando…' : 'Guardar'}
+          {pending ? t('common.saving') : t('common.save')}
         </button>
       </form>
-      {state?.error && <p className="text-xs text-rust">{state.error}</p>}
+      {state?.errorCode && <p className="text-xs text-rust">{t(`error.${state.errorCode}`)}</p>}
       <form action={deleteCategory}>
         <input type="hidden" name="id" value={id} />
         <button type="submit" className="text-xs text-rust underline">
-          Eliminar
+          {t('common.delete')}
         </button>
       </form>
     </li>

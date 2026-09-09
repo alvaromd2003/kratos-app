@@ -2,6 +2,8 @@ import { requireManagerRole } from '@/lib/restaurant'
 import { createClient } from '@/lib/supabase/server'
 import { getRestaurantOrders } from '@/lib/orders'
 import { formatDateTime } from '@/lib/format'
+import { getStaffLocale } from '@/lib/i18n/server'
+import { staffDict } from '@/lib/i18n/dictionaries/staff'
 
 const BOM = String.fromCharCode(0xfeff)
 
@@ -15,20 +17,21 @@ function csvEscape(value: string | number): string {
 
 export async function GET() {
   const { restaurant } = await requireManagerRole()
+  const t = staffDict[await getStaffLocale()]
 
   const supabase = await createClient()
   const orders = await getRestaurantOrders(supabase, restaurant.id)
 
   const header = [
-    'Fecha',
-    'Mesa',
-    'Estado del pedido',
-    'Plato',
-    'Cantidad',
-    'Precio unitario',
-    'Total línea',
-    'Cliente',
-    'Nota',
+    t['csv.date'],
+    t['csv.table'],
+    t['csv.orderStatus'],
+    t['csv.dish'],
+    t['csv.quantity'],
+    t['csv.unitPrice'],
+    t['csv.lineTotal'],
+    t['csv.customer'],
+    t['csv.note'],
   ]
 
   const rows = orders.flatMap((order) =>
@@ -36,7 +39,7 @@ export async function GET() {
       [
         formatDateTime(order.createdAt),
         order.tableLabel,
-        order.status,
+        t[`orderStatus.${order.status}`] ?? order.status,
         item.dishName,
         item.quantity,
         (item.priceCents / 100).toFixed(2),

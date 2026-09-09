@@ -4,6 +4,9 @@ import { createClient } from '@/lib/supabase/server'
 import { getRestaurantOrders } from '@/lib/orders'
 import { getTableBillSummary } from '@/lib/payments'
 import { currentTimeInZone, isWithinTimeWindow } from '@/lib/timezone'
+import { getStaffLocale } from '@/lib/i18n/server'
+import { interpolate } from '@/lib/i18n/config'
+import { staffDict } from '@/lib/i18n/dictionaries/staff'
 import { TableStatus } from './table-status'
 import { HelpAlerts } from './help-alerts'
 import { ReadyOrders } from './ready-orders'
@@ -15,6 +18,7 @@ export default async function FloorPage() {
     redirect('/admin/kitchen')
   }
 
+  const t = staffDict[await getStaffLocale()]
   const supabase = await createClient()
 
   const [readyOrders, { data: tables }, { data: openSessions }, { data: menuItems }] =
@@ -137,7 +141,7 @@ export default async function FloorPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <h1 className="text-2xl font-display text-ink">Barra — {restaurant.name}</h1>
+      <h1 className="text-2xl font-display text-ink">{interpolate(t['floor.title'], { name: restaurant.name })}</h1>
 
       <HelpAlerts
         restaurantId={restaurant.id}

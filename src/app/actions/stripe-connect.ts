@@ -7,7 +7,7 @@ import { getCurrentRestaurant } from '@/lib/restaurant'
 import { getRequestOrigin } from '@/lib/payments'
 import { stripe } from '@/lib/stripe'
 
-export type StripeConnectFormState = { error?: string } | undefined
+export type StripeConnectFormState = { errorCode?: string; errorMessage?: string } | undefined
 
 // Creates the restaurant's Stripe Express account on first use (Kratos is
 // the platform; the restaurant is the connected account funds settle to),
@@ -27,8 +27,8 @@ export async function startStripeOnboarding(): Promise<StripeConnectFormState> {
         email: user.email ?? undefined,
       })
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Error desconocido'
-      return { error: `No se pudo crear la cuenta de Stripe: ${message}` }
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      return { errorCode: 'STRIPE_CREATE_ACCOUNT_FAILED', errorMessage: message }
     }
     accountId = account.id
 
@@ -38,7 +38,7 @@ export async function startStripeOnboarding(): Promise<StripeConnectFormState> {
       .update({ stripe_account_id: accountId })
       .eq('id', restaurant.id)
     if (error) {
-      return { error: 'No se pudo guardar la cuenta de Stripe. Inténtalo de nuevo.' }
+      return { errorCode: 'COULD_NOT_SAVE_STRIPE_ACCOUNT' }
     }
   }
 
@@ -51,8 +51,8 @@ export async function startStripeOnboarding(): Promise<StripeConnectFormState> {
       return_url: `${origin}/admin/settings?stripe=return`,
     })
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Error desconocido'
-    return { error: `No se pudo iniciar la conexión con Stripe: ${message}` }
+    const message = err instanceof Error ? err.message : 'Unknown error'
+    return { errorCode: 'STRIPE_LINK_FAILED', errorMessage: message }
   }
 
   revalidatePath('/admin/settings')
@@ -80,14 +80,14 @@ export async function syncStripeOnboardingStatus(restaurantId: string, stripeAcc
 export async function openStripeDashboard(): Promise<StripeConnectFormState> {
   const { restaurant } = await getCurrentRestaurant()
   if (!restaurant.stripe_account_id) {
-    return { error: 'Todavía no has conectado una cuenta de Stripe.' }
+    return { errorCode: 'STRIPE_NOT_CONNECTED' }
   }
 
   let link
   try {
     link = await stripe.accounts.createLoginLink(restaurant.stripe_account_id)
   } catch {
-    return { error: 'No se pudo abrir el panel de Stripe. Inténtalo de nuevo.' }
+    return { errorCode: 'STRIPE_DASHBOARD_FAILED' }
   }
 
   redirect(link.url)

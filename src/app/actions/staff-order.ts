@@ -10,7 +10,7 @@ import {
 } from '@/lib/ordering'
 import { currentTimeInZone, isWithinTimeWindow } from '@/lib/timezone'
 
-export type StaffOrderFormState = { error?: string } | undefined
+export type StaffOrderFormState = { errorCode?: string } | undefined
 
 export async function addStaffItem(
   _prevState: StaffOrderFormState,
@@ -18,7 +18,7 @@ export async function addStaffItem(
 ): Promise<StaffOrderFormState> {
   const { restaurant, role } = await getCurrentRestaurant()
   if (role !== 'owner' && role !== 'admin' && role !== 'waiter') {
-    return { error: 'No tienes permiso.' }
+    return { errorCode: 'NO_PERMISSION' }
   }
 
   const tableId = String(formData.get('table_id') ?? '')
@@ -35,7 +35,7 @@ export async function addStaffItem(
     .eq('restaurant_id', restaurant.id)
     .maybeSingle()
   if (!table) {
-    return { error: 'Mesa no encontrada.' }
+    return { errorCode: 'TABLE_NOT_FOUND' }
   }
 
   const { data: menuItem } = await admin
@@ -46,24 +46,24 @@ export async function addStaffItem(
     .eq('is_available', true)
     .maybeSingle()
   if (!menuItem) {
-    return { error: 'Este plato ya no está disponible.' }
+    return { errorCode: 'ITEM_UNAVAILABLE' }
   }
   if (
     menuItem.available_from &&
     menuItem.available_until &&
     !isWithinTimeWindow(menuItem.available_from, menuItem.available_until, currentTimeInZone())
   ) {
-    return { error: 'Este plato no está disponible a esta hora.' }
+    return { errorCode: 'ITEM_TIME_WINDOW' }
   }
 
   const sessionId = await getOrCreateOpenSession(admin, table)
   if (!sessionId) {
-    return { error: 'No se pudo abrir la mesa. Inténtalo de nuevo.' }
+    return { errorCode: 'COULD_NOT_OPEN_TABLE' }
   }
 
   const participantId = await getOrCreateStaffParticipant(admin, sessionId)
   if (!participantId) {
-    return { error: 'No se pudo registrar el pedido. Inténtalo de nuevo.' }
+    return { errorCode: 'COULD_NOT_REGISTER_ORDER' }
   }
 
   for (let i = 0; i < quantity; i++) {
@@ -74,7 +74,7 @@ export async function addStaffItem(
       p_price_cents: menuItem.price_cents,
     })
     if (error) {
-      return { error: 'No se pudo añadir el plato. Inténtalo de nuevo.' }
+      return { errorCode: 'COULD_NOT_ADD_ITEM' }
     }
   }
 
@@ -101,7 +101,7 @@ export async function sendStaffOrder(
 ): Promise<StaffOrderFormState> {
   const { restaurant, role } = await getCurrentRestaurant()
   if (role !== 'owner' && role !== 'admin' && role !== 'waiter') {
-    return { error: 'No tienes permiso.' }
+    return { errorCode: 'NO_PERMISSION' }
   }
 
   const tableId = String(formData.get('table_id') ?? '')
@@ -115,7 +115,7 @@ export async function sendStaffOrder(
     .eq('status', 'open')
     .maybeSingle()
   if (!session) {
-    return { error: 'Esta mesa no tiene ningún pedido abierto.' }
+    return { errorCode: 'NO_OPEN_ORDER' }
   }
 
   const result = await sendSessionOrderToKitchen(admin, session.id, restaurant.id)
@@ -123,14 +123,11 @@ export async function sendStaffOrder(
   revalidatePath('/admin/floor')
   revalidatePath('/admin/kitchen')
 
-  // sendSessionOrderToKitchen returns a locale-agnostic code (shared with
-  // the diner-facing flow's own translation) — mapped to Spanish here
-  // until the staff panel gets the same i18n treatment as the diner side.
-  if (result.errorCode === 'EMPTY_CART') {
-    return { error: 'No hay nada en el carrito para enviar.' }
-  }
-  if (result.errorCode === 'COULD_NOT_SEND_ORDER') {
-    return { error: 'No se pudo enviar el pedido. Inténtalo de nuevo.' }
+  // sendSessionOrderToKitchen returns a locale-agnostic code, shared with
+  // the diner-facing flow — the staff dictionary's error.* namespace
+  // carries the same codes (EMPTY_CART, COULD_NOT_SEND_ORDER).
+  if (result.errorCode) {
+    return { errorCode: result.errorCode }
   }
   return undefined
 }

@@ -4,13 +4,9 @@ import { useActionState } from 'react'
 import { updateRestaurantProfile } from '@/app/actions/restaurant'
 import { DIETARY_TAGS } from '@/lib/dietary-tags'
 import { OPTIONAL_PAYMENT_METHODS } from '@/lib/payment-methods'
+import { useLocale } from '@/lib/i18n/provider'
 
-const CURRENCIES = [
-  { code: 'EUR', label: 'Euro (€)' },
-  { code: 'GBP', label: 'Libra (£)' },
-  { code: 'USD', label: 'Dólar ($)' },
-  { code: 'AED', label: 'Dirham EAU (AED)' },
-]
+const CURRENCIES = ['EUR', 'GBP', 'USD', 'AED']
 
 export function SettingsForm({
   name,
@@ -25,6 +21,7 @@ export function SettingsForm({
   enabledPaymentMethods: string[]
   googleReviewUrl: string | null
 }) {
+  const { t } = useLocale()
   const [state, action, pending] = useActionState(updateRestaurantProfile, undefined)
 
   return (
@@ -33,7 +30,7 @@ export function SettingsForm({
       className="flex max-w-sm flex-col gap-4 rounded-xl border border-marble-3 bg-white p-5"
     >
       <div className="flex flex-col gap-1">
-        <label htmlFor="name">Nombre del restaurante</label>
+        <label htmlFor="name">{t('settings.restaurantName')}</label>
         <input
           id="name"
           name="name"
@@ -43,22 +40,22 @@ export function SettingsForm({
         />
       </div>
       <div className="flex flex-col gap-1">
-        <label htmlFor="currency">Moneda</label>
+        <label htmlFor="currency">{t('settings.currency')}</label>
         <select
           id="currency"
           name="currency"
           defaultValue={currency}
           className="rounded-lg border border-marble-3 px-3 py-2 focus:border-ember focus:outline-none"
         >
-          {CURRENCIES.map((c) => (
-            <option key={c.code} value={c.code}>
-              {c.label}
+          {CURRENCIES.map((code) => (
+            <option key={code} value={code}>
+              {t(`currency.${code}`)}
             </option>
           ))}
         </select>
       </div>
       <div className="flex flex-col gap-1">
-        <span className="text-sm">Etiquetas de alérgenos/dieta que usáis</span>
+        <span className="text-sm">{t('settings.dietaryTagsLabel')}</span>
         <div className="flex flex-wrap gap-3">
           {DIETARY_TAGS.map((tag) => (
             <label key={tag.value} className="flex items-center gap-1 text-sm">
@@ -68,16 +65,16 @@ export function SettingsForm({
                 value={tag.value}
                 defaultChecked={enabledDietaryTags.includes(tag.value)}
               />
-              {tag.label}
+              {t(`dietary.${tag.value}`)}
             </label>
           ))}
         </div>
         <span className="text-xs text-bronze">
-          Solo las que marques aquí aparecerán al crear/editar platos y para que el cliente filtre.
+          {t('settings.dietaryHint')}
         </span>
       </div>
       <div className="flex flex-col gap-1">
-        <span className="text-sm">Métodos de pago (además de tarjeta, siempre activa)</span>
+        <span className="text-sm">{t('settings.paymentMethodsLabel')}</span>
         <div className="flex flex-wrap gap-3">
           {OPTIONAL_PAYMENT_METHODS.filter((m) => !m.euroOnly || currency === 'EUR').map((method) => (
             <label key={method.value} className="flex items-center gap-1 text-sm">
@@ -93,7 +90,7 @@ export function SettingsForm({
         </div>
       </div>
       <div className="flex flex-col gap-1">
-        <label htmlFor="google-review-url">Enlace de reseña de Google (opcional)</label>
+        <label htmlFor="google-review-url">{t('settings.googleReviewUrl')}</label>
         <input
           id="google-review-url"
           name="google_review_url"
@@ -103,16 +100,16 @@ export function SettingsForm({
           className="rounded-lg border border-marble-3 px-3 py-2 focus:border-ember focus:outline-none"
         />
         <span className="text-xs text-bronze">
-          Se lo mostramos a los clientes que puntúen su experiencia con 4-5 estrellas tras pagar.
+          {t('settings.googleReviewHint')}
         </span>
       </div>
-      {state?.error && <p className="text-sm text-rust">{state.error}</p>}
+      {state?.errorCode && <p className="text-sm text-rust">{t(`error.${state.errorCode}`)}</p>}
       <button
         disabled={pending}
         type="submit"
         className="self-start rounded-lg bg-ink px-4 py-2.5 font-medium text-white disabled:opacity-50"
       >
-        {pending ? 'Guardando…' : 'Guardar cambios'}
+        {pending ? t('common.saving') : t('common.saveChanges')}
       </button>
     </form>
   )

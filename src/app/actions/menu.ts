@@ -16,7 +16,7 @@ function readDietaryTags(formData: FormData): string[] {
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024 // 5 MB
 
-export type MenuFormState = { error?: string } | undefined
+export type MenuFormState = { errorCode?: string } | undefined
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
 
@@ -77,7 +77,7 @@ export async function createCategory(
   const name = String(formData.get('name') ?? '').trim()
   const station = formData.get('station') === 'bar' ? 'bar' : 'kitchen'
   if (!name) {
-    return { error: 'Escribe un nombre de categoría.' }
+    return { errorCode: 'EMPTY_CATEGORY_NAME' }
   }
 
   const supabase = await createClient()
@@ -87,7 +87,7 @@ export async function createCategory(
     .insert({ restaurant_id: restaurant.id, name, sort_order: sortOrder, station })
 
   if (error) {
-    return { error: 'No se pudo crear la categoría.' }
+    return { errorCode: 'COULD_NOT_CREATE_CATEGORY' }
   }
 
   revalidatePath('/admin/menu')
@@ -103,7 +103,7 @@ export async function updateCategory(
   const station = formData.get('station') === 'bar' ? 'bar' : 'kitchen'
 
   if (!name) {
-    return { error: 'Escribe un nombre de categoría.' }
+    return { errorCode: 'EMPTY_CATEGORY_NAME' }
   }
 
   const supabase = await createClient()
@@ -114,7 +114,7 @@ export async function updateCategory(
     .eq('restaurant_id', restaurant.id)
 
   if (error) {
-    return { error: 'No se pudo actualizar la categoría.' }
+    return { errorCode: 'COULD_NOT_UPDATE_CATEGORY' }
   }
 
   revalidatePath('/admin/menu')
@@ -162,12 +162,12 @@ export async function createMenuItem(
   const availableUntil = String(formData.get('available_until') ?? '') || null
 
   if (!name) {
-    return { error: 'Escribe un nombre de plato.' }
+    return { errorCode: 'EMPTY_ITEM_NAME' }
   }
 
   const priceNumber = Number(priceRaw.replace(',', '.'))
   if (!priceRaw || Number.isNaN(priceNumber) || priceNumber < 0) {
-    return { error: 'Introduce un precio válido, por ejemplo 9.50.' }
+    return { errorCode: 'INVALID_PRICE' }
   }
   const priceCents = Math.round(priceNumber * 100)
 
@@ -176,10 +176,10 @@ export async function createMenuItem(
   let imageUrl: string | null = null
   if (imageFile instanceof File && imageFile.size > 0) {
     if (imageFile.size > MAX_IMAGE_BYTES) {
-      return { error: 'La foto pesa demasiado (máximo 5MB).' }
+      return { errorCode: 'IMAGE_TOO_LARGE' }
     }
     if (!imageFile.type.startsWith('image/')) {
-      return { error: 'El archivo tiene que ser una imagen.' }
+      return { errorCode: 'FILE_MUST_BE_IMAGE' }
     }
 
     const extension = imageFile.name.split('.').pop()?.toLowerCase() || 'jpg'
@@ -190,7 +190,7 @@ export async function createMenuItem(
       .upload(path, imageFile, { contentType: imageFile.type })
 
     if (uploadError) {
-      return { error: 'No se pudo subir la foto. Inténtalo de nuevo.' }
+      return { errorCode: 'COULD_NOT_UPLOAD_IMAGE' }
     }
 
     imageUrl = supabase.storage.from('menu-images').getPublicUrl(path).data.publicUrl
@@ -212,7 +212,7 @@ export async function createMenuItem(
   })
 
   if (error) {
-    return { error: 'No se pudo crear el plato.' }
+    return { errorCode: 'COULD_NOT_CREATE_ITEM' }
   }
 
   revalidatePath('/admin/menu')
@@ -237,15 +237,15 @@ export async function updateMenuItem(
   const availableUntil = String(formData.get('available_until') ?? '') || null
 
   if (!id) {
-    return { error: 'Falta el identificador del plato.' }
+    return { errorCode: 'MISSING_ITEM_ID' }
   }
   if (!name) {
-    return { error: 'Escribe un nombre de plato.' }
+    return { errorCode: 'EMPTY_ITEM_NAME' }
   }
 
   const priceNumber = Number(priceRaw.replace(',', '.'))
   if (!priceRaw || Number.isNaN(priceNumber) || priceNumber < 0) {
-    return { error: 'Introduce un precio válido, por ejemplo 9.50.' }
+    return { errorCode: 'INVALID_PRICE' }
   }
   const priceCents = Math.round(priceNumber * 100)
 
@@ -276,10 +276,10 @@ export async function updateMenuItem(
 
   if (imageFile instanceof File && imageFile.size > 0) {
     if (imageFile.size > MAX_IMAGE_BYTES) {
-      return { error: 'La foto pesa demasiado (máximo 5MB).' }
+      return { errorCode: 'IMAGE_TOO_LARGE' }
     }
     if (!imageFile.type.startsWith('image/')) {
-      return { error: 'El archivo tiene que ser una imagen.' }
+      return { errorCode: 'FILE_MUST_BE_IMAGE' }
     }
 
     const { data: existing } = await supabase
@@ -300,7 +300,7 @@ export async function updateMenuItem(
       .upload(path, imageFile, { contentType: imageFile.type })
 
     if (uploadError) {
-      return { error: 'No se pudo subir la foto. Inténtalo de nuevo.' }
+      return { errorCode: 'COULD_NOT_UPLOAD_IMAGE' }
     }
 
     updates.image_url = supabase.storage.from('menu-images').getPublicUrl(path).data.publicUrl
@@ -313,7 +313,7 @@ export async function updateMenuItem(
     .eq('restaurant_id', restaurant.id)
 
   if (error) {
-    return { error: 'No se pudo actualizar el plato.' }
+    return { errorCode: 'COULD_NOT_UPDATE_ITEM' }
   }
 
   if (oldImagePath) {
@@ -358,12 +358,9 @@ export async function deleteMenuItem(
 
   if (error) {
     if (error.code === '23503') {
-      return {
-        error:
-          'Este plato ya tiene pedidos registrados, así que no se puede eliminar del todo. Usa "Ocultar" para quitarlo del menú sin perder ese historial.',
-      }
+      return { errorCode: 'ITEM_HAS_ORDERS' }
     }
-    return { error: 'No se pudo eliminar el plato.' }
+    return { errorCode: 'COULD_NOT_DELETE_ITEM' }
   }
 
   if (existing?.image_url) {

@@ -1,5 +1,8 @@
 import { requireManagerRole } from '@/lib/restaurant'
 import { createClient } from '@/lib/supabase/server'
+import { getStaffLocale } from '@/lib/i18n/server'
+import { interpolate } from '@/lib/i18n/config'
+import { staffDict } from '@/lib/i18n/dictionaries/staff'
 import { AddCategoryForm } from './add-category-form'
 import { AddItemForm } from './add-item-form'
 import { CategoryRow } from './category-row'
@@ -7,6 +10,7 @@ import { ItemRow } from './item-row'
 
 export default async function MenuPage() {
   const { restaurant } = await requireManagerRole()
+  const t = staffDict[await getStaffLocale()]
   const supabase = await createClient()
 
   const [{ data: categories }, { data: items }] = await Promise.all([
@@ -31,10 +35,10 @@ export default async function MenuPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <h1 className="text-2xl font-display text-ink">Menú — {restaurant.name}</h1>
+      <h1 className="text-2xl font-display text-ink">{interpolate(t['menu.title'], { name: restaurant.name })}</h1>
 
       <section className="flex flex-col gap-3">
-        <h2 className="font-display text-lg text-ink">Categorías</h2>
+        <h2 className="font-display text-lg text-ink">{t['menu.categories']}</h2>
         {categoryList.length > 0 && (
           <ul className="flex flex-wrap gap-2">
             {categoryList.map((c, index) => (
@@ -53,7 +57,7 @@ export default async function MenuPage() {
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="font-display text-lg text-ink">Platos</h2>
+        <h2 className="font-display text-lg text-ink">{t['menu.dishes']}</h2>
         {itemList.length > 0 && (
           <ul className="flex flex-col gap-2">
             {itemList.map((item, index) => (

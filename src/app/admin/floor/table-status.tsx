@@ -5,7 +5,8 @@ import { createClient } from '@/lib/supabase/client'
 import { useWakeLock } from '@/lib/use-wake-lock'
 import { updateTablePosition } from '@/app/actions/tables'
 import { formatPrice } from '@/lib/format'
-import { TABLE_ZONES, TABLE_ZONE_LABELS, type TableZone } from '@/lib/table-zones'
+import { useLocale } from '@/lib/i18n/provider'
+import { TABLE_ZONES, type TableZone } from '@/lib/table-zones'
 import { TableRowContent, IDLE_THRESHOLD_MINUTES, type FloorTable } from './table-row-content'
 import { FloorPlan } from './floor-plan'
 
@@ -68,6 +69,7 @@ export function TableStatus({
   currency: string
   menuItems: { id: string; name: string; price_cents: number }[]
 }) {
+  const { t } = useLocale()
   const [tables, setTables] = useState(initialTables)
   // Starts null (identical on server and on the client's first render) and
   // is only ever set from an effect, which runs client-side alone — a
@@ -204,21 +206,21 @@ export function TableStatus({
   return (
     <section className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <h2 className="font-display text-lg text-ink">Mesas</h2>
+        <h2 className="font-display text-lg text-ink">{t('floor.tablesHeading')}</h2>
         <div className="flex gap-1 rounded-full border border-marble-3 bg-white p-0.5 text-xs">
           <button
             type="button"
             onClick={() => setView('list')}
             className={`rounded-full px-3 py-1 ${view === 'list' ? 'bg-ink text-white' : 'text-bronze'}`}
           >
-            Lista
+            {t('floor.viewList')}
           </button>
           <button
             type="button"
             onClick={() => setView('plan')}
             className={`rounded-full px-3 py-1 ${view === 'plan' ? 'bg-ink text-white' : 'text-bronze'}`}
           >
-            Plano
+            {t('floor.viewPlan')}
           </button>
         </div>
       </div>
@@ -232,7 +234,7 @@ export function TableStatus({
               zoneFilter === 'all' ? 'bg-ink text-white' : 'text-bronze hover:bg-marble-2'
             }`}
           >
-            Todas
+            {t('floor.zoneAll')}
           </button>
           {TABLE_ZONES.map((zone) => (
             <button
@@ -243,7 +245,7 @@ export function TableStatus({
                 zoneFilter === zone ? 'bg-ink text-white' : 'text-bronze hover:bg-marble-2'
               }`}
             >
-              {TABLE_ZONE_LABELS[zone]}
+              {t(`zone.${zone}`)}
             </button>
           ))}
         </div>
@@ -269,10 +271,10 @@ export function TableStatus({
                           : 'border-marble-3 bg-white hover:bg-marble'
                       }`}
                     >
-                      <span className="font-display text-lg text-ink">Mesa {table.label}</span>
+                      <span className="font-display text-lg text-ink">{t('common.table', { label: table.label })}</span>
                       <div className="flex flex-wrap items-center gap-2">
                         {idleMinutes !== null && idleMinutes >= IDLE_THRESHOLD_MINUTES && (
-                          <span className="text-sm text-ember">⏳ {idleMinutes} min</span>
+                          <span className="text-sm text-ember">{t('floor.idleMinutes', { n: idleMinutes })}</span>
                         )}
                         {table.pendingCents > 0 && (
                           <span className="font-mono text-sm text-ember">
@@ -284,7 +286,7 @@ export function TableStatus({
                             table.occupied ? 'bg-rust' : 'bg-sage'
                           }`}
                         >
-                          {table.occupied ? 'Ocupada' : 'Libre'}
+                          {table.occupied ? t('floor.occupied') : t('floor.free')}
                         </span>
                       </div>
                     </button>
@@ -306,14 +308,14 @@ export function TableStatus({
           <div className="flex flex-col gap-3 rounded-xl border border-marble-3 bg-white p-5 lg:sticky lg:top-4 lg:w-96">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium uppercase tracking-wide text-bronze">
-                Mesa seleccionada
+                {t('floor.selectedTable')}
               </span>
               <button
                 type="button"
                 onClick={() => setSelectedTableId(null)}
                 className="text-sm text-bronze underline"
               >
-                Cerrar
+                {t('floor.close')}
               </button>
             </div>
             <TableRowContent

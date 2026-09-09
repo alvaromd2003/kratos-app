@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext } from 'react'
-import type { Locale } from './config'
+import { interpolate, type Locale } from './config'
 
 type Dict = Record<string, string>
 type Vars = Record<string, string | number>
@@ -25,11 +25,7 @@ export function LocaleProvider({
   children: React.ReactNode
 }) {
   function t(key: string, vars?: Vars): string {
-    const template = dict[key] ?? key
-    if (!vars) return template
-    return template.replace(/\{(\w+)\}/g, (match, name) =>
-      name in vars ? String(vars[name]) : match
-    )
+    return interpolate(dict[key] ?? key, vars)
   }
   return <LocaleContext.Provider value={{ locale, t }}>{children}</LocaleContext.Provider>
 }

@@ -1,6 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
+import { getStaffLocale } from '@/lib/i18n/server'
+import { staffDict } from '@/lib/i18n/dictionaries/staff'
 
 export default async function TrialExpiredPage() {
+  const t = staffDict[await getStaffLocale()]
   const supabase = await createClient()
   const {
     data: { user },
@@ -22,11 +25,10 @@ export default async function TrialExpiredPage() {
 
   return (
     <div className="mx-auto flex max-w-md flex-col items-center gap-4 py-16 text-center">
-      <h1 className="font-display text-2xl text-ink">Tu prueba gratuita ha terminado</h1>
+      <h1 className="font-display text-2xl text-ink">{t['trial.title']}</h1>
       <p className="text-sm text-bronze">
         {restaurantName ? `${restaurantName}, ` : ''}
-        el mes de prueba gratis de Kratos ha llegado a su fin. Para seguir usando la app,
-        ponte en contacto con nosotros y te ayudamos a continuar.
+        {t['trial.body']}
       </p>
       <a
         href="mailto:hola@kratosystems.com"

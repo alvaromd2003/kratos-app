@@ -2,15 +2,17 @@
 
 import { useActionState } from 'react'
 import { createCategory } from '@/app/actions/menu'
+import { useLocale } from '@/lib/i18n/provider'
 
 export function AddCategoryForm() {
+  const { t } = useLocale()
   const [state, action, pending] = useActionState(createCategory, undefined)
 
   return (
     <form action={action} className="flex flex-wrap items-end gap-2">
       <div className="flex flex-col gap-1">
         <label htmlFor="cat-name" className="text-sm">
-          Nueva categoría
+          {t('menu.newCategory')}
         </label>
         <input
           id="cat-name"
@@ -21,7 +23,7 @@ export function AddCategoryForm() {
       </div>
       <div className="flex flex-col gap-1">
         <label htmlFor="cat-station" className="text-sm">
-          Va a
+          {t('menu.goesTo')}
         </label>
         <select
           id="cat-station"
@@ -29,8 +31,8 @@ export function AddCategoryForm() {
           defaultValue="kitchen"
           className="rounded-lg border border-marble-3 px-3 py-2 focus:border-ember focus:outline-none"
         >
-          <option value="kitchen">Cocina</option>
-          <option value="bar">Barra</option>
+          <option value="kitchen">{t('station.kitchen')}</option>
+          <option value="bar">{t('station.bar')}</option>
         </select>
       </div>
       <button
@@ -38,9 +40,9 @@ export function AddCategoryForm() {
         type="submit"
         className="rounded-lg bg-ink px-4 py-2.5 font-medium text-white disabled:opacity-50"
       >
-        {pending ? 'Añadiendo…' : 'Añadir'}
+        {pending ? t('common.adding') : t('common.add')}
       </button>
-      {state?.error && <p className="text-sm text-rust">{state.error}</p>}
+      {state?.errorCode && <p className="text-sm text-rust">{t(`error.${state.errorCode}`)}</p>}
     </form>
   )
 }

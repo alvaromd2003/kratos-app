@@ -6,7 +6,7 @@ import { getCurrentRestaurant } from '@/lib/restaurant'
 import { TABLE_ZONES, type TableZone } from '@/lib/table-zones'
 import { TABLE_SHAPES, type TableShape } from '@/lib/table-shapes'
 
-export type TableFormState = { error?: string } | undefined
+export type TableFormState = { errorCode?: string } | undefined
 
 function readZone(formData: FormData): TableZone | null {
   const raw = String(formData.get('zone') ?? '')
@@ -26,7 +26,7 @@ export async function createTable(
   const label = String(formData.get('label') ?? '').trim()
 
   if (!label) {
-    return { error: 'Escribe un nombre o número de mesa.' }
+    return { errorCode: 'EMPTY_TABLE_LABEL' }
   }
 
   const supabase = await createClient()
@@ -35,7 +35,7 @@ export async function createTable(
     .insert({ restaurant_id: restaurant.id, label, zone: readZone(formData), shape: readShape(formData) })
 
   if (error) {
-    return { error: 'No se pudo crear la mesa.' }
+    return { errorCode: 'COULD_NOT_CREATE_TABLE' }
   }
 
   revalidatePath('/admin/tables')
@@ -51,7 +51,7 @@ export async function updateTable(
   const label = String(formData.get('label') ?? '').trim()
 
   if (!label) {
-    return { error: 'Escribe un nombre o número de mesa.' }
+    return { errorCode: 'EMPTY_TABLE_LABEL' }
   }
 
   const supabase = await createClient()
@@ -62,7 +62,7 @@ export async function updateTable(
     .eq('restaurant_id', restaurant.id)
 
   if (error) {
-    return { error: 'No se pudo actualizar la mesa.' }
+    return { errorCode: 'COULD_NOT_UPDATE_TABLE' }
   }
 
   revalidatePath('/admin/tables')
@@ -88,10 +88,7 @@ export async function deleteTable(
     .eq('restaurant_id', restaurant.id)
 
   if ((count ?? 0) > 0) {
-    return {
-      error:
-        'Esta mesa ya tiene pedidos en su historial, así que no se puede eliminar del todo. Usa "Desactivar" para quitarla de servicio sin perder ese historial.',
-    }
+    return { errorCode: 'TABLE_HAS_HISTORY' }
   }
 
   const { error } = await supabase
@@ -101,7 +98,7 @@ export async function deleteTable(
     .eq('restaurant_id', restaurant.id)
 
   if (error) {
-    return { error: 'No se pudo eliminar la mesa.' }
+    return { errorCode: 'COULD_NOT_DELETE_TABLE' }
   }
 
   revalidatePath('/admin/tables')

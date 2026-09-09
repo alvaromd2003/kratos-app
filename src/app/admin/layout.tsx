@@ -3,7 +3,12 @@ import Image from 'next/image'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { logout } from '@/app/actions/auth'
+import { getStaffLocale } from '@/lib/i18n/server'
+import { dirFor } from '@/lib/i18n/config'
+import { staffDict } from '@/lib/i18n/dictionaries/staff'
+import { LocaleProvider } from '@/lib/i18n/provider'
 import { AdminNav } from './admin-nav'
+import { StaffLanguageSwitcher } from './staff-language-switcher'
 
 export default async function AdminLayout({
   children,
@@ -19,6 +24,8 @@ export default async function AdminLayout({
     redirect('/login')
   }
 
+  const locale = await getStaffLocale()
+
   // Best-effort only — no redirect here even if there's no membership yet,
   // since this layout also wraps /admin/onboarding itself.
   const { data: membership } = await supabase
@@ -32,30 +39,36 @@ export default async function AdminLayout({
   // Each operational role gets exactly one screen — the one matching what
   // that job actually does. Owner/admin see everything.
   const homeHref = role === 'kitchen_staff' ? '/admin/kitchen' : role === 'waiter' ? '/admin/floor' : '/admin'
+  const dict = staffDict[locale]
 
   return (
-    <div className="min-h-screen bg-marble">
-      <header className="bg-gradient-to-b from-ink to-ink-2">
-        <div className="flex items-center justify-between px-6 py-3">
-          <Link href={homeHref} className="flex items-center">
-            <Image
-              src="/kratos-mark-light.png"
-              alt="Kratos"
-              width={743}
-              height={338}
-              priority
-              className="h-6 w-auto"
-            />
-          </Link>
-          <form action={logout}>
-            <button type="submit" className="text-sm text-cream-dim underline hover:text-marble-2">
-              Salir
-            </button>
-          </form>
-        </div>
-        <AdminNav role={role} />
-      </header>
-      <main className="p-6">{children}</main>
+    <div dir={dirFor(locale)} lang={locale} className="min-h-screen bg-marble">
+      <LocaleProvider locale={locale} dict={dict}>
+        <header className="bg-gradient-to-b from-ink to-ink-2">
+          <div className="flex items-center justify-between gap-4 px-6 py-3">
+            <Link href={homeHref} className="flex items-center">
+              <Image
+                src="/kratos-mark-light.png"
+                alt="Kratos"
+                width={743}
+                height={338}
+                priority
+                className="h-6 w-auto"
+              />
+            </Link>
+            <div className="flex items-center gap-4">
+              <StaffLanguageSwitcher />
+              <form action={logout}>
+                <button type="submit" className="text-sm text-cream-dim underline hover:text-marble-2">
+                  {dict['nav.logout']}
+                </button>
+              </form>
+            </div>
+          </div>
+          <AdminNav role={role} />
+        </header>
+        <main className="p-6">{children}</main>
+      </LocaleProvider>
     </div>
   )
 }

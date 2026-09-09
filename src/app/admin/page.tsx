@@ -1,10 +1,13 @@
 import Link from 'next/link'
 import { requireManagerRole } from '@/lib/restaurant'
 import { createClient } from '@/lib/supabase/server'
+import { getStaffLocale } from '@/lib/i18n/server'
+import { staffDict } from '@/lib/i18n/dictionaries/staff'
 
 export default async function AdminHome() {
   const { restaurant } = await requireManagerRole()
   const supabase = await createClient()
+  const t = staffDict[await getStaffLocale()]
 
   const [{ count: menuItemCount }, { count: tableCount }, { count: staffCount }] =
     await Promise.all([
@@ -23,14 +26,14 @@ export default async function AdminHome() {
     ])
 
   const steps = [
-    { label: 'Configura tu menú', done: (menuItemCount ?? 0) > 0, href: '/admin/menu' },
-    { label: 'Añade tus mesas', done: (tableCount ?? 0) > 0, href: '/admin/tables' },
+    { label: t['home.stepMenu'], done: (menuItemCount ?? 0) > 0, href: '/admin/menu' },
+    { label: t['home.stepTables'], done: (tableCount ?? 0) > 0, href: '/admin/tables' },
     {
-      label: 'Conecta Stripe para cobrar',
+      label: t['home.stepStripe'],
       done: restaurant.stripe_onboarding_complete,
       href: '/admin/settings',
     },
-    { label: 'Invita a tu personal', done: (staffCount ?? 0) > 1, href: '/admin/staff' },
+    { label: t['home.stepStaff'], done: (staffCount ?? 0) > 1, href: '/admin/staff' },
   ]
   const pendingSteps = steps.filter((s) => !s.done)
 
@@ -40,7 +43,7 @@ export default async function AdminHome() {
 
       {pendingSteps.length > 0 && (
         <section className="flex flex-col gap-3 rounded-xl border border-marble-3 bg-white p-5">
-          <h2 className="font-display text-lg text-ink">Primeros pasos</h2>
+          <h2 className="font-display text-lg text-ink">{t['home.firstSteps']}</h2>
           <ul className="flex flex-col gap-2 text-sm">
             {steps.map((step) => (
               <li key={step.label} className="flex items-center gap-2.5">
@@ -65,12 +68,11 @@ export default async function AdminHome() {
       )}
 
       <p className="text-bronze">
-        Usa el menú de arriba para gestionar tu carta o tus mesas. ¿Dudas sobre cómo configurar
-        algo? Consulta la{' '}
+        {t['home.helpBefore']}
         <Link href="/admin/help" className="text-ink underline underline-offset-2">
-          Ayuda
+          {t['nav.help']}
         </Link>
-        .
+        {t['home.helpAfter']}
       </p>
     </div>
   )

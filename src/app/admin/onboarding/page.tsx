@@ -1,5 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getStaffLocale } from '@/lib/i18n/server'
+import { staffDict } from '@/lib/i18n/dictionaries/staff'
 import { OnboardingForm } from './onboarding-form'
 
 export default async function OnboardingPage() {
@@ -36,9 +38,11 @@ export default async function OnboardingPage() {
   // with no code at all, bypassing the gate entirely.
   const needsAccessCode = !user.user_metadata?.signup_access_code
 
+  const t = staffDict[await getStaffLocale()]
+
   return (
     <div className="mx-auto max-w-sm">
-      <h1 className="mb-4 text-2xl font-display text-ink">Crea tu restaurante</h1>
+      <h1 className="mb-4 text-2xl font-display text-ink">{t['onboarding.title']}</h1>
       <OnboardingForm needsAccessCode={needsAccessCode} />
     </div>
   )

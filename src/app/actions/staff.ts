@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCurrentRestaurant } from '@/lib/restaurant'
 
-export type StaffFormState = { error?: string } | undefined
+export type StaffFormState = { errorCode?: string } | undefined
 
 const INVITABLE_ROLES = ['admin', 'kitchen_staff', 'waiter'] as const
 
@@ -16,17 +16,17 @@ export async function inviteStaffMember(
   const { restaurant, role: callerRole } = await getCurrentRestaurant()
 
   if (callerRole !== 'owner' && callerRole !== 'admin') {
-    return { error: 'No tienes permiso para invitar personal.' }
+    return { errorCode: 'NO_PERMISSION_INVITE' }
   }
 
   const email = String(formData.get('email') ?? '').trim()
   const role = String(formData.get('role') ?? '')
 
   if (!email) {
-    return { error: 'Introduce un email.' }
+    return { errorCode: 'EMPTY_EMAIL' }
   }
   if (!INVITABLE_ROLES.includes(role as (typeof INVITABLE_ROLES)[number])) {
-    return { error: 'Elige un rol válido.' }
+    return { errorCode: 'INVALID_ROLE' }
   }
 
   const admin = createAdminClient()
@@ -35,7 +35,7 @@ export async function inviteStaffMember(
   })
 
   if (inviteError || !data.user) {
-    return { error: 'No se pudo invitar a esta persona (puede que ya tenga cuenta).' }
+    return { errorCode: 'COULD_NOT_INVITE' }
   }
 
   const supabase = await createClient()
@@ -46,7 +46,7 @@ export async function inviteStaffMember(
   })
 
   if (membershipError) {
-    return { error: 'La invitación se envió, pero no se pudo asignar al restaurante.' }
+    return { errorCode: 'INVITED_NOT_ASSIGNED' }
   }
 
   revalidatePath('/admin/staff')

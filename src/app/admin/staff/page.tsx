@@ -1,18 +1,15 @@
 import { requireManagerRole } from '@/lib/restaurant'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getStaffLocale } from '@/lib/i18n/server'
+import { interpolate } from '@/lib/i18n/config'
+import { staffDict } from '@/lib/i18n/dictionaries/staff'
 import { RemoveStaffButton } from './remove-staff-button'
 import { InviteForm } from './invite-form'
 
-const ROLE_LABELS: Record<string, string> = {
-  owner: 'Propietario',
-  admin: 'Administrador',
-  kitchen_staff: 'Cocina',
-  waiter: 'Camarero',
-}
-
 export default async function StaffPage() {
   const { user, restaurant, role } = await requireManagerRole()
+  const t = staffDict[await getStaffLocale()]
   const supabase = await createClient()
 
   const { data: members } = await supabase
@@ -29,7 +26,7 @@ export default async function StaffPage() {
     const entries = await Promise.all(
       memberList.map(async (m) => {
         const { data } = await admin.auth.admin.getUserById(m.user_id)
-        return [m.user_id, data.user?.email ?? '(desconocido)'] as const
+        return [m.user_id, data.user?.email ?? t['staff.unknown']] as const
       })
     )
     emailsById = Object.fromEntries(entries)
@@ -39,7 +36,7 @@ export default async function StaffPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-display text-ink">Personal — {restaurant.name}</h1>
+      <h1 className="text-2xl font-display text-ink">{interpolate(t['staff.title'], { name: restaurant.name })}</h1>
 
       <ul className="flex flex-col gap-2">
         {memberList.map((m) => (
@@ -49,7 +46,7 @@ export default async function StaffPage() {
           >
             <div>
               <p className="font-medium text-ink">{emailsById[m.user_id]}</p>
-              <p className="text-sm text-bronze">{ROLE_LABELS[m.role] ?? m.role}</p>
+              <p className="text-sm text-bronze">{t[`role.${m.role}`] ?? m.role}</p>
             </div>
             {canManage && m.user_id !== user.id && (
               <RemoveStaffButton id={m.id} label={emailsById[m.user_id]} />

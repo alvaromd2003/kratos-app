@@ -6,6 +6,7 @@ import { resolveHelpRequest } from '@/app/actions/kitchen'
 import { formatTime } from '@/lib/format'
 import { playAlertSound } from '@/lib/alert-sound'
 import { setBadgeCount, clearBadgeCount } from '@/lib/tab-badge'
+import { useLocale } from '@/lib/i18n/provider'
 
 type HelpRequest = {
   id: string
@@ -49,6 +50,7 @@ export function HelpAlerts({
   initialRequests: HelpRequest[]
   tableLabelBySessionId: Record<string, string>
 }) {
+  const { t } = useLocale()
   const [requests, setRequests] = useState(initialRequests)
   const hasConnectedBefore = useRef(false)
 
@@ -120,12 +122,14 @@ export function HelpAlerts({
 
   return (
     <section className="flex flex-col gap-3 rounded-xl border border-rust/40 bg-rust-bg p-4">
-      <h2 className="font-display text-base text-ink">🔔 Avisos de mesas</h2>
+      <h2 className="font-display text-base text-ink">{t('floor.helpAlertsTitle')}</h2>
       <ul className="flex flex-col gap-2">
         {requests.map((req) => (
           <li key={req.id} className="flex items-center justify-between gap-3 text-sm">
             <span className="text-ink">
-              <span className="font-medium">Mesa {req.tableLabel}</span> pide ayuda —{' '}
+              <span className="font-medium">
+                {t('floor.askingHelp', { table: t('common.table', { label: req.tableLabel }) })}
+              </span>{' '}
               <span className="font-mono">{formatTime(req.createdAt)}</span>
             </span>
             <form action={resolveHelpRequest}>
@@ -134,7 +138,7 @@ export function HelpAlerts({
                 type="submit"
                 className="rounded-lg bg-rust px-3 py-1.5 text-xs font-medium text-white"
               >
-                Atendido
+                {t('floor.resolved')}
               </button>
             </form>
           </li>

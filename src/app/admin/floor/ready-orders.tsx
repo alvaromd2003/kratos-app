@@ -7,6 +7,7 @@ import { updateOrderStatus } from '@/app/actions/kitchen'
 import type { OrderDetail } from '@/lib/orders'
 import { playAlertSound } from '@/lib/alert-sound'
 import { setBadgeCount, clearBadgeCount } from '@/lib/tab-badge'
+import { useLocale } from '@/lib/i18n/provider'
 
 type OrderRow = { id: string; table_session_id: string; status: OrderDetail['status']; created_at: string }
 
@@ -98,6 +99,7 @@ export function ReadyOrders({
   restaurantId: string
   initialOrders: OrderDetail[]
 }) {
+  const { t } = useLocale()
   const [orders, setOrders] = useState(initialOrders)
   const hasConnectedBefore = useRef(false)
 
@@ -173,9 +175,9 @@ export function ReadyOrders({
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="font-display text-lg text-ink">Listos para servir</h2>
+      <h2 className="font-display text-lg text-ink">{t('floor.readyTitle')}</h2>
       {orders.length === 0 ? (
-        <p className="text-sm text-bronze">Nada esperando para servir ahora mismo.</p>
+        <p className="text-sm text-bronze">{t('floor.readyEmpty')}</p>
       ) : (
         <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {orders.map((order) => (
@@ -183,7 +185,7 @@ export function ReadyOrders({
               key={order.id}
               className="flex flex-col gap-3 rounded-xl border border-sage bg-sage-bg p-4"
             >
-              <h3 className="font-display text-base text-ink">Mesa {order.tableLabel}</h3>
+              <h3 className="font-display text-base text-ink">{t('common.table', { label: order.tableLabel })}</h3>
               <ul className="flex flex-col gap-1 text-sm">
                 {order.items.map((item) => (
                   <li key={item.id} className="text-ink">
@@ -200,7 +202,7 @@ export function ReadyOrders({
                   type="submit"
                   className="rounded-lg bg-sage px-3 py-1.5 text-xs font-medium text-white"
                 >
-                  Marcar como entregado
+                  {t('floor.markDelivered')}
                 </button>
               </form>
             </li>

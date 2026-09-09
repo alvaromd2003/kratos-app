@@ -6,6 +6,7 @@ import { confirmCashPayment, rejectCashPayment } from '@/app/actions/kitchen'
 import { formatPrice, formatTime } from '@/lib/format'
 import { playAlertSound } from '@/lib/alert-sound'
 import { setBadgeCount, clearBadgeCount } from '@/lib/tab-badge'
+import { useLocale } from '@/lib/i18n/provider'
 
 type CashRequest = {
   id: string
@@ -56,6 +57,7 @@ export function CashPaymentAlerts({
   tableLabelBySessionId: Record<string, string>
   currency: string
 }) {
+  const { t } = useLocale()
   const [requests, setRequests] = useState(initialRequests)
   const hasConnectedBefore = useRef(false)
 
@@ -142,12 +144,12 @@ export function CashPaymentAlerts({
 
   return (
     <section className="flex flex-col gap-3 rounded-xl border border-ember/40 bg-ember/10 p-4">
-      <h2 className="font-display text-base text-ink">💵 Pagos en efectivo pendientes de confirmar</h2>
+      <h2 className="font-display text-base text-ink">{t('floor.cashAlertsTitle')}</h2>
       <ul className="flex flex-col gap-2">
         {requests.map((req) => (
           <li key={req.id} className="flex items-center justify-between gap-3 text-sm">
             <span className="text-ink">
-              <span className="font-medium">Mesa {req.tableLabel}</span> —{' '}
+              <span className="font-medium">{t('common.table', { label: req.tableLabel })}</span> —{' '}
               <span className="font-mono">{formatPrice(req.amountCents, currency)}</span> —{' '}
               <span className="font-mono">{formatTime(req.createdAt)}</span>
             </span>
@@ -158,7 +160,7 @@ export function CashPaymentAlerts({
                   type="submit"
                   className="rounded-lg bg-ember px-3 py-1.5 text-xs font-medium text-ink"
                 >
-                  Confirmar cobro
+                  {t('floor.confirmCash')}
                 </button>
               </form>
               <form action={rejectCashPayment}>
@@ -167,7 +169,7 @@ export function CashPaymentAlerts({
                   type="submit"
                   className="rounded-lg border border-marble-3 bg-white px-3 py-1.5 text-xs text-bronze"
                 >
-                  Rechazar
+                  {t('floor.reject')}
                 </button>
               </form>
             </span>

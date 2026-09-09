@@ -2,11 +2,15 @@ import { requireManagerRole } from '@/lib/restaurant'
 import { createClient } from '@/lib/supabase/server'
 import { getTableBillSummary } from '@/lib/payments'
 import { generateTableQrDataUrl } from '@/lib/qr'
+import { getStaffLocale } from '@/lib/i18n/server'
+import { interpolate } from '@/lib/i18n/config'
+import { staffDict } from '@/lib/i18n/dictionaries/staff'
 import { AddTableForm } from './add-table-form'
 import { TableCard } from './table-card'
 
 export default async function TablesPage() {
   const { restaurant } = await requireManagerRole()
+  const t = staffDict[await getStaffLocale()]
   const supabase = await createClient()
 
   const { data: tables } = await supabase
@@ -65,7 +69,7 @@ export default async function TablesPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <h1 className="text-2xl font-display text-ink">Mesas — {restaurant.name}</h1>
+      <h1 className="text-2xl font-display text-ink">{interpolate(t['tables.title'], { name: restaurant.name })}</h1>
 
       <AddTableForm />
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { useLocale } from '@/lib/i18n/provider'
 import type { FloorTable } from './table-row-content'
 
 // Tables that have never been dragged onto the plan (pos_x/pos_y still
@@ -26,6 +27,7 @@ export function FloorPlan({
   onSelect: (id: string | null) => void
   onPositionChange: (id: string, x: number, y: number) => void
 }) {
+  const { t } = useLocale()
   const [editMode, setEditMode] = useState(false)
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null)
@@ -94,7 +96,7 @@ export function FloorPlan({
           editMode ? 'bg-ember text-ink' : 'border border-marble-3 text-bronze'
         }`}
       >
-        {editMode ? 'Terminar de editar' : 'Editar plano (arrastrar mesas)'}
+        {editMode ? t('floor.finishEditing') : t('floor.editPlan')}
       </button>
 
       <div
@@ -138,7 +140,7 @@ export function FloorPlan({
 
       {editMode && (
         <p className="text-sm text-bronze">
-          Arrastra cada mesa a su sitio en la sala. Se guarda sola al soltarla.
+          {t('floor.dragHint')}
         </p>
       )}
     </div>

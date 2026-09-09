@@ -1,8 +1,11 @@
 'use client'
 
+'use client'
+
 import { closeTableSession } from '@/app/actions/tables'
 import { recordManualPayment } from '@/app/actions/kitchen'
 import { formatPrice } from '@/lib/format'
+import { useLocale } from '@/lib/i18n/provider'
 import type { TableZone } from '@/lib/table-zones'
 import type { TableShape } from '@/lib/table-shapes'
 import { AssistedOrderForm } from './assisted-order-form'
@@ -36,26 +39,30 @@ export function TableRowContent({
   now: number | null
   menuItems: { id: string; name: string; price_cents: number }[]
 }) {
+  const { t } = useLocale()
   return (
     <>
       <div className="flex flex-wrap items-center gap-3">
-        <span className="font-display text-xl text-ink">Mesa {table.label}</span>
+        <span className="font-display text-xl text-ink">{t('common.table', { label: table.label })}</span>
         {table.occupied ? (
           <>
             <span className="rounded-full bg-rust px-3 py-1 text-sm font-bold uppercase tracking-wide text-white">
-              Ocupada
+              {t('floor.occupied')}
             </span>
             {table.pendingCents > 0 && (
               <>
                 <span className="font-mono text-sm text-ember">
-                  Pendiente: {formatPrice(table.pendingCents, currency)}
+                  {t('floor.pending', { amount: formatPrice(table.pendingCents, currency) })}
                 </span>
                 <form
                   action={recordManualPayment}
                   onSubmit={(e) => {
                     if (
                       !confirm(
-                        `¿Confirmas que ya has cobrado ${formatPrice(table.pendingCents, currency)} en efectivo o con datáfono en la mesa ${table.label}? Esto marca la cuenta como pagada — útil cuando nadie en la mesa ha usado el QR.`
+                        t('floor.cashCollectedConfirm', {
+                          amount: formatPrice(table.pendingCents, currency),
+                          label: table.label,
+                        })
                       )
                     ) {
                       e.preventDefault()
@@ -64,7 +71,7 @@ export function TableRowContent({
                 >
                   <input type="hidden" name="table_id" value={table.id} />
                   <button type="submit" className="text-sm text-bronze underline">
-                    Cobrado en efectivo/datáfono
+                    {t('floor.cashCollected')}
                   </button>
                 </form>
               </>
@@ -77,7 +84,7 @@ export function TableRowContent({
                 )
                 return idleMinutes >= IDLE_THRESHOLD_MINUTES ? (
                   <span className="text-sm text-ember">
-                    ⏳ Sin actividad hace {idleMinutes} min
+                    {t('floor.idleSinceMinutes', { n: idleMinutes })}
                   </span>
                 ) : null
               })()}
@@ -86,8 +93,11 @@ export function TableRowContent({
               onSubmit={(e) => {
                 const warning =
                   table.pendingCents > 0
-                    ? `Quedan ${formatPrice(table.pendingCents, currency)} sin cobrar por la app en la mesa ${table.label} (puede que ya se haya cobrado en efectivo o con datáfono). ¿Cerrar de todas formas?`
-                    : `¿Cerrar la mesa ${table.label}? Los clientes conectados tendrán que volver a escanear el código QR.`
+                    ? t('floor.closeConfirmPending', {
+                        amount: formatPrice(table.pendingCents, currency),
+                        label: table.label,
+                      })
+                    : t('floor.closeConfirmEmpty', { label: table.label })
                 if (!confirm(warning)) {
                   e.preventDefault()
                 }
@@ -95,17 +105,17 @@ export function TableRowContent({
             >
               <input type="hidden" name="table_id" value={table.id} />
               <button type="submit" className="text-sm text-bronze underline">
-                Cerrar
+                {t('floor.close')}
               </button>
             </form>
           </>
         ) : (
           <span className="rounded-full bg-sage px-3 py-1 text-sm font-bold uppercase tracking-wide text-white">
-            Libre
+            {t('floor.free')}
           </span>
         )}
       </div>
-      <p className="mt-3 font-display text-base text-ink">Pedido asistido</p>
+      <p className="mt-3 font-display text-base text-ink">{t('floor.assistedOrder')}</p>
       <AssistedOrderForm tableId={table.id} currency={currency} menuItems={menuItems} />
     </>
   )

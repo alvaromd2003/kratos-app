@@ -9,6 +9,7 @@ import type { OrderDetail } from '@/lib/orders'
 import { playAlertSound, playWarningSound } from '@/lib/alert-sound'
 import { setBadgeCount, clearBadgeCount } from '@/lib/tab-badge'
 import { useWakeLock } from '@/lib/use-wake-lock'
+import { useLocale } from '@/lib/i18n/provider'
 
 type OrderStatus = OrderDetail['status']
 type OrderRow = {
@@ -22,13 +23,6 @@ type OrderRow = {
 const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
   pending: 'preparing',
   preparing: 'ready',
-}
-
-const STATUS_LABEL: Record<OrderStatus, string> = {
-  pending: 'Pendiente',
-  preparing: 'En preparación',
-  ready: 'Lista',
-  delivered: 'Entregada',
 }
 
 async function loadFullOrder(
@@ -134,6 +128,7 @@ export function KitchenBoard({
   initialOrders: OrderDetail[]
   initialDeliveredToday: OrderDetail[]
 }) {
+  const { t } = useLocale()
   const [orders, setOrders] = useState(initialOrders)
   const [deliveredToday, setDeliveredToday] = useState(initialDeliveredToday)
   const hasConnectedBefore = useRef(false)
@@ -250,7 +245,7 @@ export function KitchenBoard({
   return (
     <div className="flex flex-col gap-6">
       {orders.length === 0 ? (
-        <p className="text-bronze">No hay pedidos pendientes ahora mismo.</p>
+        <p className="text-bronze">{t('kitchen.noPending')}</p>
       ) : (
         <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {orders.map((order) => (
@@ -263,8 +258,8 @@ export function KitchenBoard({
               }`}
             >
               <div className="flex items-center justify-between">
-                <h2 className="font-display text-base text-ink">Mesa {order.tableLabel}</h2>
-                <span className="text-xs text-bronze">{STATUS_LABEL[order.status]}</span>
+                <h2 className="font-display text-base text-ink">{t('common.table', { label: order.tableLabel })}</h2>
+                <span className="text-xs text-bronze">{t(`orderStatus.${order.status}`)}</span>
               </div>
               <ul className="flex flex-col gap-1 text-sm">
                 {order.items
@@ -282,7 +277,7 @@ export function KitchenBoard({
               {order.cancellationRequestedAt ? (
                 <div className="flex flex-col gap-2">
                   <p className="text-sm font-bold text-rust">
-                    ⚠ El cliente pide cancelar este pedido
+                    {t('kitchen.cancelRequested')}
                   </p>
                   <div className="flex items-center gap-3">
                     <form action={cancelOrderAsStaff}>
@@ -291,13 +286,13 @@ export function KitchenBoard({
                         type="submit"
                         className="rounded-lg bg-rust px-3 py-1.5 text-xs font-medium text-white"
                       >
-                        Confirmar cancelación
+                        {t('kitchen.confirmCancellation')}
                       </button>
                     </form>
                     <form action={rejectCancelOrder}>
                       <input type="hidden" name="id" value={order.id} />
                       <button type="submit" className="text-xs text-bronze underline">
-                        Rechazar (seguir preparándolo)
+                        {t('kitchen.rejectKeepPreparing')}
                       </button>
                     </form>
                   </div>
@@ -312,7 +307,7 @@ export function KitchenBoard({
                         type="submit"
                         className="rounded-lg bg-ink px-3 py-1.5 text-xs font-medium text-white"
                       >
-                        Marcar como {STATUS_LABEL[NEXT_STATUS[order.status]!].toLowerCase()}
+                        {t('kitchen.markAs', { status: t(`orderStatus.${NEXT_STATUS[order.status]!}`).toLowerCase() })}
                       </button>
                     </form>
                   )}
@@ -320,14 +315,14 @@ export function KitchenBoard({
                     <form
                       action={cancelOrderAsStaff}
                       onSubmit={(e) => {
-                        if (!confirm(`¿Cancelar el pedido de la mesa ${order.tableLabel}? Los platos volverán al carrito del cliente.`)) {
+                        if (!confirm(t('kitchen.cancelConfirm', { label: order.tableLabel }))) {
                           e.preventDefault()
                         }
                       }}
                     >
                       <input type="hidden" name="id" value={order.id} />
                       <button type="submit" className="text-xs text-rust underline">
-                        Cancelar
+                        {t('kitchen.cancel')}
                       </button>
                     </form>
                   )}
@@ -340,16 +335,16 @@ export function KitchenBoard({
 
       <details className="rounded-xl border border-marble-3 bg-white p-4">
         <summary className="cursor-pointer text-sm font-medium text-ink">
-          Entregados hoy ({deliveredToday.length})
+          {t('kitchen.deliveredToday', { n: deliveredToday.length })}
         </summary>
         {deliveredToday.length === 0 ? (
-          <p className="mt-2 text-sm text-bronze">Todavía no se ha entregado nada hoy.</p>
+          <p className="mt-2 text-sm text-bronze">{t('kitchen.noneDeliveredToday')}</p>
         ) : (
           <ul className="mt-3 flex flex-col gap-3">
             {deliveredToday.map((order) => (
               <li key={order.id} className="text-sm">
                 <p className="font-medium text-ink">
-                  Mesa {order.tableLabel} ·{' '}
+                  {t('common.table', { label: order.tableLabel })} ·{' '}
                   <span className="font-mono">{formatTime(order.createdAt)}</span>
                 </p>
                 <ul className="ml-4 text-xs text-bronze">

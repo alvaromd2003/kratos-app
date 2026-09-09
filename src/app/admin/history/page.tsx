@@ -2,13 +2,9 @@ import { requireManagerRole } from '@/lib/restaurant'
 import { createClient } from '@/lib/supabase/server'
 import { getRestaurantOrders } from '@/lib/orders'
 import { formatPrice, formatDateTime } from '@/lib/format'
-
-const STATUS_LABEL: Record<string, string> = {
-  pending: 'Pendiente',
-  preparing: 'En preparación',
-  ready: 'Lista',
-  delivered: 'Entregada',
-}
+import { getStaffLocale } from '@/lib/i18n/server'
+import { interpolate } from '@/lib/i18n/config'
+import { staffDict } from '@/lib/i18n/dictionaries/staff'
 
 const PAGE_SIZE = 50
 
@@ -18,6 +14,7 @@ export default async function HistoryPage({
   searchParams: Promise<{ before?: string }>
 }) {
   const { restaurant } = await requireManagerRole()
+  const t = staffDict[await getStaffLocale()]
   const { before } = await searchParams
 
   const supabase = await createClient()
@@ -33,20 +30,20 @@ export default async function HistoryPage({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-display text-ink">Historial de pedidos — {restaurant.name}</h1>
+        <h1 className="text-2xl font-display text-ink">{interpolate(t['history.title'], { name: restaurant.name })}</h1>
         {(orders.length > 0 || before) && (
           <a
             href="/admin/history/export"
             className="rounded-lg border border-marble-3 px-3 py-1.5 text-sm text-bronze underline"
           >
-            Exportar CSV
+            {t['history.exportCsv']}
           </a>
         )}
       </div>
 
       {orders.length === 0 ? (
         <p className="text-bronze">
-          {before ? 'No hay más pedidos.' : 'Todavía no se ha enviado ningún pedido.'}
+          {before ? t['history.noMoreOrders'] : t['history.noOrdersYet']}
         </p>
       ) : (
         <ul className="flex flex-col gap-4">
@@ -62,11 +59,11 @@ export default async function HistoryPage({
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <p className="font-medium text-ink">Mesa {order.tableLabel}</p>
+                    <p className="font-medium text-ink">{interpolate(t['common.table'], { label: order.tableLabel })}</p>
                     <p className="font-mono text-xs text-bronze">{formatDateTime(order.createdAt)}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-bronze">{STATUS_LABEL[order.status]}</p>
+                    <p className="text-xs text-bronze">{t[`orderStatus.${order.status}`]}</p>
                     <p className="font-mono text-sm font-semibold text-ink">
                       {formatPrice(total, restaurant.currency)}
                     </p>
@@ -92,7 +89,7 @@ export default async function HistoryPage({
           href={`/admin/history?before=${encodeURIComponent(nextCursor)}`}
           className="self-start rounded-lg border border-marble-3 px-4 py-2 text-sm text-bronze underline"
         >
-          Cargar más
+          {t['history.loadMore']}
         </a>
       )}
     </div>

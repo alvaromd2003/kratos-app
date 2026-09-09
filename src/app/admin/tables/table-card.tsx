@@ -4,8 +4,9 @@ import { useActionState } from 'react'
 import { updateTable, deleteTable, closeTableSession, toggleTableActive } from '@/app/actions/tables'
 import { recordManualPayment } from '@/app/actions/kitchen'
 import { formatPrice } from '@/lib/format'
-import { TABLE_ZONES, TABLE_ZONE_LABELS, type TableZone } from '@/lib/table-zones'
-import { TABLE_SHAPES, TABLE_SHAPE_LABELS, type TableShape } from '@/lib/table-shapes'
+import { useLocale } from '@/lib/i18n/provider'
+import { TABLE_ZONES, type TableZone } from '@/lib/table-zones'
+import { TABLE_SHAPES, type TableShape } from '@/lib/table-shapes'
 
 export function TableCard({
   id,
@@ -32,6 +33,7 @@ export function TableCard({
   pendingCents: number
   currency: string
 }) {
+  const { t } = useLocale()
   const [state, action, pending] = useActionState(updateTable, undefined)
   const [deleteState, deleteAction] = useActionState(deleteTable, undefined)
 
@@ -52,10 +54,10 @@ export function TableCard({
           defaultValue={zone ?? ''}
           className="w-28 rounded-lg border border-marble-3 px-2 py-1 text-center text-sm focus:border-ember focus:outline-none"
         >
-          <option value="">Sin zona</option>
+          <option value="">{t('tables.noZone')}</option>
           {TABLE_ZONES.map((z) => (
             <option key={z} value={z}>
-              {TABLE_ZONE_LABELS[z]}
+              {t(`zone.${z}`)}
             </option>
           ))}
         </select>
@@ -67,50 +69,50 @@ export function TableCard({
         >
           {TABLE_SHAPES.map((s) => (
             <option key={s} value={s}>
-              {TABLE_SHAPE_LABELS[s]}
+              {t(`shape.${s}`)}
             </option>
           ))}
         </select>
         <button disabled={pending} type="submit" className="text-xs text-bronze underline">
-          {pending ? 'Guardando…' : 'Guardar'}
+          {pending ? t('common.saving') : t('common.save')}
         </button>
       </form>
-      {state?.error && <p className="text-xs text-rust">{state.error}</p>}
+      {state?.errorCode && <p className="text-xs text-rust">{t(`error.${state.errorCode}`)}</p>}
       <div className="rounded-lg border border-marble-3 p-2">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={qrDataUrl} alt={`Código QR de ${label}`} width={200} height={200} />
+        <img src={qrDataUrl} alt={t('tables.qrAlt', { label })} width={200} height={200} />
       </div>
       <a
         href={qrDataUrl}
         download={`mesa-${label}-kratos.png`}
         className="text-xs text-bronze underline"
       >
-        Descargar QR en alta resolución
+        {t('tables.downloadQr')}
       </a>
       <p className="break-all text-xs text-bronze">{url}</p>
 
       {!active && (
         <span className="rounded-full bg-bronze px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
-          Desactivada
+          {t('floor.deactivated')}
         </span>
       )}
 
       {occupied ? (
         <div className="flex flex-col items-center gap-2">
           <span className="rounded-full bg-rust px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
-            Ocupada ({participantCount} {participantCount === 1 ? 'persona' : 'personas'})
+            {t('floor.occupied')} ({participantCount} {participantCount === 1 ? t('common.person') : t('common.people')})
           </span>
           {pendingCents > 0 && (
             <>
               <span className="font-mono text-xs text-ember">
-                Pendiente: {formatPrice(pendingCents, currency)}
+                {t('floor.pending', { amount: formatPrice(pendingCents, currency) })}
               </span>
               <form
                 action={recordManualPayment}
                 onSubmit={(e) => {
                   if (
                     !confirm(
-                      `¿Confirmas que ya has cobrado ${formatPrice(pendingCents, currency)} en efectivo o con datáfono en la mesa ${label}? Esto marca la cuenta como pagada — útil cuando nadie en la mesa ha usado el QR.`
+                      t('floor.cashCollectedConfirm', { amount: formatPrice(pendingCents, currency), label })
                     )
                   ) {
                     e.preventDefault()
@@ -119,7 +121,7 @@ export function TableCard({
               >
                 <input type="hidden" name="table_id" value={id} />
                 <button type="submit" className="text-xs text-bronze underline">
-                  Cobrado en efectivo/datáfono
+                  {t('floor.cashCollected')}
                 </button>
               </form>
             </>
@@ -129,8 +131,8 @@ export function TableCard({
             onSubmit={(e) => {
               const warning =
                 pendingCents > 0
-                  ? `Quedan ${formatPrice(pendingCents, currency)} sin cobrar por la app en la mesa ${label} (puede que ya se haya cobrado en efectivo o con datáfono). ¿Cerrar de todas formas?`
-                  : `¿Cerrar la mesa ${label}? Los clientes conectados tendrán que volver a escanear el código QR.`
+                  ? t('floor.closeConfirmPending', { amount: formatPrice(pendingCents, currency), label })
+                  : t('floor.closeConfirmEmpty', { label })
               if (!confirm(warning)) {
                 e.preventDefault()
               }
@@ -138,14 +140,14 @@ export function TableCard({
           >
             <input type="hidden" name="table_id" value={id} />
             <button type="submit" className="text-xs text-bronze underline">
-              Cerrar mesa
+              {t('tables.closeTable')}
             </button>
           </form>
         </div>
       ) : (
         active && (
           <span className="rounded-full bg-sage px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
-            Libre
+            {t('floor.free')}
           </span>
         )
       )}
@@ -154,24 +156,24 @@ export function TableCard({
         <input type="hidden" name="id" value={id} />
         <input type="hidden" name="active" value={String(active)} />
         <button type="submit" className="text-xs text-bronze underline">
-          {active ? 'Desactivar' : 'Reactivar'}
+          {active ? t('tables.deactivate') : t('tables.reactivate')}
         </button>
       </form>
 
       <form
         action={deleteAction}
         onSubmit={(e) => {
-          if (!confirm(`¿Eliminar la mesa ${label}? Esto no se puede deshacer.`)) {
+          if (!confirm(t('tables.deleteTableConfirm', { label }))) {
             e.preventDefault()
           }
         }}
       >
         <input type="hidden" name="id" value={id} />
         <button type="submit" className="text-xs text-rust underline">
-          Eliminar mesa
+          {t('tables.deleteTable')}
         </button>
       </form>
-      {deleteState?.error && <p className="text-xs text-rust">{deleteState.error}</p>}
+      {deleteState?.errorCode && <p className="text-xs text-rust">{t(`error.${deleteState.errorCode}`)}</p>}
     </li>
   )
 }

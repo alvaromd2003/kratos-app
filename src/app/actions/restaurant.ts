@@ -9,7 +9,7 @@ import { getCurrentRestaurant } from '@/lib/restaurant'
 import { DIETARY_TAGS } from '@/lib/dietary-tags'
 import { OPTIONAL_PAYMENT_METHODS } from '@/lib/payment-methods'
 
-export type OnboardingFormState = { error?: string } | undefined
+export type OnboardingFormState = { errorCode?: string } | undefined
 
 const ALLOWED_CURRENCIES = ['EUR', 'GBP', 'USD', 'AED']
 const VALID_DIETARY_TAGS = new Set<string>(DIETARY_TAGS.map((t) => t.value))
@@ -28,7 +28,7 @@ export async function createRestaurant(
 ): Promise<OnboardingFormState> {
   const name = String(formData.get('name') ?? '').trim()
   if (!name) {
-    return { error: 'Escribe el nombre de tu restaurante.' }
+    return { errorCode: 'EMPTY_RESTAURANT_NAME' }
   }
 
   const supabase = await createClient()
@@ -68,7 +68,7 @@ export async function createRestaurant(
     // new restaurant for free, bypassing the gate entirely.
     const accessCode = String(formData.get('access_code') ?? '').trim()
     if (!accessCode) {
-      return { error: 'Introduce el código de acceso.' }
+      return { errorCode: 'ENTER_ACCESS_CODE' }
     }
     const { data: codeRow } = await admin
       .from('access_codes')
@@ -76,10 +76,10 @@ export async function createRestaurant(
       .eq('code', accessCode)
       .maybeSingle()
     if (!codeRow) {
-      return { error: 'Código de acceso incorrecto.' }
+      return { errorCode: 'INVALID_ACCESS_CODE' }
     }
     if (!codeRow.is_generic && codeRow.used_at) {
-      return { error: 'Este código de acceso ya se ha utilizado.' }
+      return { errorCode: 'ACCESS_CODE_USED' }
     }
     isGenericCode = codeRow.is_generic
     if (!codeRow.is_generic) {
@@ -99,7 +99,7 @@ export async function createRestaurant(
     .insert({ id: restaurantId, name, slug, trial_ends_at: trialEndsAt })
 
   if (restaurantError) {
-    return { error: 'No se pudo crear el restaurante. Inténtalo de nuevo.' }
+    return { errorCode: 'COULD_NOT_CREATE_RESTAURANT' }
   }
 
   const { error: membershipError } = await supabase
@@ -107,7 +107,7 @@ export async function createRestaurant(
     .insert({ restaurant_id: restaurantId, user_id: user.id, role: 'owner' })
 
   if (membershipError) {
-    return { error: 'No se pudo asignarte como propietario. Inténtalo de nuevo.' }
+    return { errorCode: 'COULD_NOT_ASSIGN_OWNER' }
   }
 
   redirect('/admin')
@@ -130,15 +130,15 @@ export async function updateRestaurantProfile(
   const googleReviewUrl = String(formData.get('google_review_url') ?? '').trim() || null
 
   if (!name) {
-    return { error: 'Escribe el nombre de tu restaurante.' }
+    return { errorCode: 'EMPTY_RESTAURANT_NAME' }
   }
   if (!ALLOWED_CURRENCIES.includes(currency)) {
-    return { error: 'Elige una moneda válida.' }
+    return { errorCode: 'INVALID_CURRENCY' }
   }
   // It's rendered straight into an <a href> for every diner who rates
   // 4-5 stars — only http(s) allowed, never e.g. a javascript: URI.
   if (googleReviewUrl && !/^https?:\/\//i.test(googleReviewUrl)) {
-    return { error: 'El enlace de reseña debe empezar por http:// o https://' }
+    return { errorCode: 'INVALID_REVIEW_URL' }
   }
 
   const supabase = await createClient()
@@ -154,7 +154,7 @@ export async function updateRestaurantProfile(
     .eq('id', restaurant.id)
 
   if (error) {
-    return { error: 'No se pudo actualizar el restaurante.' }
+    return { errorCode: 'COULD_NOT_UPDATE_RESTAURANT' }
   }
 
   revalidatePath('/admin/settings')

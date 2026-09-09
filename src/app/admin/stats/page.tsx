@@ -3,12 +3,15 @@ import { createClient } from '@/lib/supabase/server'
 import { getRestaurantOrders } from '@/lib/orders'
 import { formatPrice } from '@/lib/format'
 import { daysAgoIso } from '@/lib/timezone'
+import { getStaffLocale } from '@/lib/i18n/server'
+import { interpolate } from '@/lib/i18n/config'
+import { staffDict } from '@/lib/i18n/dictionaries/staff'
 
 const RANGES = [
-  { value: '7', label: '7 días', days: 7 },
-  { value: '30', label: '30 días', days: 30 },
-  { value: '90', label: '90 días', days: 90 },
-  { value: 'all', label: 'Todo', days: null },
+  { value: '7', key: 'stats.range7', days: 7 },
+  { value: '30', key: 'stats.range30', days: 30 },
+  { value: '90', key: 'stats.range90', days: 90 },
+  { value: 'all', key: 'stats.rangeAll', days: null },
 ] as const
 
 function madridHour(isoDate: string): number {
@@ -25,6 +28,7 @@ export default async function StatsPage({
   searchParams: Promise<{ range?: string }>
 }) {
   const { restaurant } = await requireManagerRole()
+  const t = staffDict[await getStaffLocale()]
   const { range: rangeParam } = await searchParams
 
   const range = RANGES.find((r) => r.value === rangeParam) ?? RANGES[1]
@@ -60,7 +64,7 @@ export default async function StatsPage({
             r.value === range.value ? 'border-ember bg-ember text-ink' : 'border-marble-3 text-bronze'
           }`}
         >
-          {r.label}
+          {t[r.key]}
         </a>
       ))}
     </div>
@@ -70,10 +74,10 @@ export default async function StatsPage({
     return (
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-display text-ink">Estadísticas — {restaurant.name}</h1>
+          <h1 className="text-2xl font-display text-ink">{interpolate(t['stats.title'], { name: restaurant.name })}</h1>
           {rangeSelector}
         </div>
-        <p className="text-bronze">No hay pedidos en este rango de fechas.</p>
+        <p className="text-bronze">{t['stats.noOrders']}</p>
       </div>
     )
   }
@@ -115,49 +119,49 @@ export default async function StatsPage({
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-display text-ink">Estadísticas — {restaurant.name}</h1>
+        <h1 className="text-2xl font-display text-ink">{interpolate(t['stats.title'], { name: restaurant.name })}</h1>
         {rangeSelector}
       </div>
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border border-marble-3 bg-white p-5">
-          <p className="text-xs font-semibold uppercase tracking-wider text-bronze">Ingresos totales</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-bronze">{t['stats.totalRevenue']}</p>
           <p className="mt-1 font-mono text-2xl text-ink">
             {formatPrice(totalRevenue, restaurant.currency)}
           </p>
         </div>
         <div className="rounded-xl border border-marble-3 bg-white p-5">
           <p className="text-xs font-semibold uppercase tracking-wider text-bronze">
-            Ticket medio por pedido
+            {t['stats.avgTicket']}
           </p>
           <p className="mt-1 font-mono text-2xl text-ink">
             {formatPrice(averageTicket, restaurant.currency)}
           </p>
         </div>
         <div className="rounded-xl border border-marble-3 bg-white p-5">
-          <p className="text-xs font-semibold uppercase tracking-wider text-bronze">Hora punta</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-bronze">{t['stats.peakHour']}</p>
           <p className="mt-1 font-mono text-2xl text-ink">
             {busiestHour !== null ? `${busiestHour}:00–${busiestHour + 1}:00` : '—'}
           </p>
         </div>
         <div className="rounded-xl border border-marble-3 bg-white p-5">
           <p className="text-xs font-semibold uppercase tracking-wider text-bronze">
-            Valoración media
+            {t['stats.avgRating']}
           </p>
           <p className="mt-1 font-mono text-2xl text-ink">
             {averageRating !== null ? `${averageRating.toFixed(1)}★` : '—'}
           </p>
           {ratings.length > 0 && (
             <p className="mt-0.5 text-xs text-bronze">
-              {ratings.length} valoraciones
-              {lowRatingCount > 0 && `, ${lowRatingCount} de 3★ o menos`}
+              {interpolate(t['stats.ratingsCount'], { n: ratings.length })}
+              {lowRatingCount > 0 && interpolate(t['stats.lowRatingsSuffix'], { n: lowRatingCount })}
             </p>
           )}
         </div>
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="font-display text-lg text-ink">Platos más vendidos</h2>
+        <h2 className="font-display text-lg text-ink">{t['stats.topDishes']}</h2>
         <ul className="flex flex-col gap-2">
           {topDishes.map((dish) => (
             <li
@@ -166,7 +170,7 @@ export default async function StatsPage({
             >
               <span className="text-ink">{dish.name}</span>
               <span className="font-mono text-bronze">
-                {dish.quantity} vendidos — {formatPrice(dish.revenue, restaurant.currency)}
+                {interpolate(t['stats.sold'], { n: dish.quantity, amount: formatPrice(dish.revenue, restaurant.currency) })}
               </span>
             </li>
           ))}
