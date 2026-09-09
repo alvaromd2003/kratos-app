@@ -1,12 +1,10 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
-import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
-import { createClient } from '@/lib/supabase/client'
 import { formatPrice, formatTime } from '@/lib/format'
 import { DIETARY_TAGS, dietaryTagLabel } from '@/lib/dietary-tags'
-import { requestCancelOrder } from '@/app/actions/ordering'
+import { requestCancelOrder, getTableSessionSnapshot } from '@/app/actions/ordering'
 import { AddItemButton } from './add-item-button'
 import { CartItemRow } from './cart-item-row'
 import { SendOrderButton } from './send-order-button'
@@ -59,34 +57,12 @@ const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   delivered: 'Entregado',
 }
 
-function applyChange<T extends { id: string }>(
-  current: T[],
-  payload: RealtimePostgresChangesPayload<T>
-): T[] {
-  if (payload.eventType === 'INSERT') {
-    const row = payload.new as T
-    if (current.some((r) => r.id === row.id)) return current
-    return [...current, row]
-  }
-  if (payload.eventType === 'UPDATE') {
-    const row = payload.new as T
-    return current.map((r) => (r.id === row.id ? row : r))
-  }
-  if (payload.eventType === 'DELETE') {
-    const old = payload.old as Partial<T>
-    return current.filter((r) => r.id !== old.id)
-  }
-  return current
-}
-
 export function LiveTable({
   qrToken,
   tableLabel,
   restaurantName,
   currency,
   enabledTags,
-  restaurantId,
-  tableSessionId,
   participantId,
   categories,
   items,
@@ -109,8 +85,6 @@ export function LiveTable({
   restaurantName: string
   currency: string
   enabledTags: string[]
-  restaurantId: string
-  tableSessionId: string
   participantId: string
   categories: Category[]
   items: MenuItem[]
@@ -141,139 +115,38 @@ export function LiveTable({
   )
   const [paymentShares, setPaymentShares] = useState(initialPaymentShares)
   const [activeTags, setActiveTags] = useState<Set<string>>(new Set())
-  const hasConnectedBefore = useRef(false)
 
+  // Polls a verified snapshot of this table's own session instead of
+  // subscribing directly to Supabase Realtime with the anon key — the
+  // browser is never authenticated as a specific diner, so an anon-key
+  // Realtime/SELECT policy broad enough to power a live subscription had
+  // no way to check WHICH session the caller belonged to, and ended up
+  // readable by anyone on the internet for every restaurant (see the
+  // migration removing those policies). getTableSessionSnapshot re-derives
+  // and re-verifies the caller's own session from their cookie, the same
+  // way every write already does, so only this table's own data can ever
+  // come back. A few seconds of lag instead of instant push, in exchange
+  // for closing that leak.
   useEffect(() => {
-    const supabase = createClient()
+    let cancelled = false
 
-    async function resync() {
-      const [
-        { data: freshOrderItems },
-        { data: freshParticipants },
-        { data: freshOrders },
-        { data: freshActive },
-        { data: freshPaymentShares },
-      ] = await Promise.all([
-        supabase
-          .from('order_items')
-          .select('id, menu_item_id, participant_id, quantity, order_id, note')
-          .eq('table_session_id', tableSessionId),
-        supabase
-          .from('session_participants')
-          .select('id, name')
-          .eq('table_session_id', tableSessionId),
-        supabase
-          .from('orders')
-          .select('id, status, created_at, cancellation_requested_at')
-          .eq('table_session_id', tableSessionId),
-        supabase
-          .from('orders')
-          .select('id, status, created_at')
-          .eq('restaurant_id', restaurantId)
-          .in('status', ['pending', 'preparing']),
-        supabase
-          .from('payment_shares')
-          .select('id, participant_id, mode, amount_cents, status')
-          .eq('table_session_id', tableSessionId),
-      ])
-      if (freshOrderItems) setOrderItems(freshOrderItems)
-      if (freshParticipants) setParticipants(freshParticipants)
-      if (freshOrders) setOrders(freshOrders)
-      if (freshActive) setRestaurantActiveOrders(freshActive)
-      if (freshPaymentShares) setPaymentShares(freshPaymentShares)
+    async function poll() {
+      const snapshot = await getTableSessionSnapshot(qrToken)
+      if (cancelled || !snapshot) return
+      setOrderItems(snapshot.orderItems)
+      setParticipants(snapshot.participants)
+      setOrders(snapshot.orders)
+      setPaymentShares(snapshot.paymentShares)
+      setRestaurantActiveOrders(snapshot.restaurantActiveOrders)
     }
 
-    const channel = supabase
-      .channel(`table-session-${tableSessionId}`)
-      .on<OrderItemRow>(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'order_items',
-          filter: `table_session_id=eq.${tableSessionId}`,
-        },
-        (payload) => setOrderItems((current) => applyChange(current, payload))
-      )
-      .on<Participant>(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'session_participants',
-          filter: `table_session_id=eq.${tableSessionId}`,
-        },
-        (payload) => setParticipants((current) => applyChange(current, payload))
-      )
-      .on<OrderRow>(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'orders',
-          filter: `table_session_id=eq.${tableSessionId}`,
-        },
-        (payload) => setOrders((current) => applyChange(current, payload))
-      )
-      .on<PaymentShareRow>(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'payment_shares',
-          filter: `table_session_id=eq.${tableSessionId}`,
-        },
-        (payload) => setPaymentShares((current) => applyChange(current, payload))
-      )
-      .subscribe((status) => {
-        if (status !== 'SUBSCRIBED') return
-        if (!hasConnectedBefore.current) {
-          hasConnectedBefore.current = true
-          return
-        }
-        // Reconnected after a drop (spotty wifi is common in a dining
-        // room) — postgres_changes doesn't replay what was missed, so
-        // pull a fresh snapshot instead of silently going stale.
-        resync()
-      })
-
-    // Separate channel: every other table's orders, just enough to know
-    // "how many are ahead of mine in the kitchen queue" — restaurant-wide,
-    // not scoped to this table.
-    const queueChannel = supabase
-      .channel(`restaurant-queue-${restaurantId}`)
-      .on<ActiveOrderRow>(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'orders',
-          filter: `restaurant_id=eq.${restaurantId}`,
-        },
-        (payload) => {
-          if (payload.eventType === 'DELETE') {
-            const old = payload.old as Partial<ActiveOrderRow>
-            setRestaurantActiveOrders((current) => current.filter((o) => o.id !== old.id))
-            return
-          }
-          const row = payload.new as ActiveOrderRow
-          const isActive = row.status === 'pending' || row.status === 'preparing'
-          setRestaurantActiveOrders((current) => {
-            if (!isActive) return current.filter((o) => o.id !== row.id)
-            if (current.some((o) => o.id === row.id)) {
-              return current.map((o) => (o.id === row.id ? row : o))
-            }
-            return [...current, row]
-          })
-        }
-      )
-      .subscribe()
-
+    poll()
+    const interval = setInterval(poll, 3000)
     return () => {
-      supabase.removeChannel(channel)
-      supabase.removeChannel(queueChannel)
+      cancelled = true
+      clearInterval(interval)
     }
-  }, [tableSessionId, restaurantId])
+  }, [qrToken])
 
   const itemsById = new Map(items.map((item) => [item.id, item]))
   const participantsById = new Map(participants.map((p) => [p.id, p]))

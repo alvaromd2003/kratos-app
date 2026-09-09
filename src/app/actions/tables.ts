@@ -39,6 +39,7 @@ export async function createTable(
   }
 
   revalidatePath('/admin/tables')
+  revalidatePath('/admin/floor')
 }
 
 export async function updateTable(
@@ -65,6 +66,7 @@ export async function updateTable(
   }
 
   revalidatePath('/admin/tables')
+  revalidatePath('/admin/floor')
 }
 
 export async function deleteTable(
@@ -103,6 +105,7 @@ export async function deleteTable(
   }
 
   revalidatePath('/admin/tables')
+  revalidatePath('/admin/floor')
 }
 
 // Called directly from client code on drop (not a <form> submit), so it
@@ -146,6 +149,7 @@ export async function toggleTableActive(formData: FormData) {
     .eq('restaurant_id', restaurant.id)
 
   revalidatePath('/admin/tables')
+  revalidatePath('/admin/floor')
 }
 
 // Ends the group currently seated at this table so the next QR scan starts

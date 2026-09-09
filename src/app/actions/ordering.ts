@@ -229,6 +229,63 @@ export async function requestCancelOrder(formData: FormData) {
     .eq('status', 'pending')
 }
 
+// Powers the diner-facing page's live view. Deliberately NOT read via the
+// browser's own (anon-key) Supabase client anymore — see the migration
+// dropping the old "anyone can view an open session" policies for why:
+// those policies had no way to check WHICH session the caller belonged to,
+// so anyone on the internet could read every restaurant's live orders,
+// diner names, and payment amounts. This re-derives and re-verifies the
+// caller's own session the same way every diner-facing write already does,
+// then reads with the service-role client, so only this table's own data
+// is ever returned. Polled on an interval client-side instead of pushed
+// via Realtime — a few seconds of lag instead of instant, in exchange for
+// closing that leak without a bigger identity-on-the-client overhaul.
+export async function getTableSessionSnapshot(qrToken: string) {
+  const table = await getActiveTableByQrToken(qrToken)
+  const verified = table ? await getVerifiedParticipant(qrToken) : null
+  if (!table || !verified) return null
+
+  const admin = createAdminClient()
+
+  const [
+    { data: orderItems },
+    { data: participants },
+    { data: orders },
+    { data: paymentShares },
+    { data: restaurantActiveOrders },
+  ] = await Promise.all([
+    admin
+      .from('order_items')
+      .select('id, menu_item_id, participant_id, quantity, order_id, note')
+      .eq('table_session_id', verified.tableSessionId),
+    admin
+      .from('session_participants')
+      .select('id, name')
+      .eq('table_session_id', verified.tableSessionId),
+    admin
+      .from('orders')
+      .select('id, status, created_at, cancellation_requested_at')
+      .eq('table_session_id', verified.tableSessionId),
+    admin
+      .from('payment_shares')
+      .select('id, participant_id, mode, amount_cents, status')
+      .eq('table_session_id', verified.tableSessionId),
+    admin
+      .from('orders')
+      .select('id, status, created_at')
+      .eq('restaurant_id', table.restaurant_id)
+      .in('status', ['pending', 'preparing']),
+  ])
+
+  return {
+    orderItems: orderItems ?? [],
+    participants: participants ?? [],
+    orders: orders ?? [],
+    paymentShares: paymentShares ?? [],
+    restaurantActiveOrders: restaurantActiveOrders ?? [],
+  }
+}
+
 export async function requestHelp(
   _prevState: OrderingFormState,
   formData: FormData

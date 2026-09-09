@@ -182,8 +182,6 @@ export default async function TableOrderPage({
       restaurantName={restaurant.name}
       currency={restaurant.currency}
       enabledTags={restaurant.enabled_dietary_tags}
-      restaurantId={table.restaurant_id}
-      tableSessionId={verified.session.id}
       participantId={verified.participant.id}
       categories={categories ?? []}
       items={visibleItems}

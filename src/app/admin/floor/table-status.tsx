@@ -179,7 +179,7 @@ export function TableStatus({
   const hasAnyZone = tables.some((t) => t.zone !== null)
   const visibleTables =
     zoneFilter === 'all' ? tables : tables.filter((t) => t.zone === zoneFilter)
-  const selectedTable = tables.find((t) => t.id === selectedTableId) ?? null
+  const selectedTable = visibleTables.find((t) => t.id === selectedTableId) ?? null
 
   function toggleSelected(id: string) {
     setSelectedTableId((current) => (current === id ? null : id))
@@ -301,6 +301,7 @@ export function TableStatus({
               </button>
             </div>
             <TableRowContent
+              key={selectedTable.id}
               table={selectedTable}
               currency={currency}
               now={now}

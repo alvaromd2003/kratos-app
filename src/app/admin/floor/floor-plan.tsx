@@ -72,6 +72,16 @@ export function FloorPlan({
     setDragPos(null)
   }
 
+  // A touch-device gesture (edge-swipe back, palm rejection, an
+  // interrupting system alert) can fire pointercancel instead of
+  // pointerup — without this, draggingId/dragPos never clear and the
+  // table stays rendered at the last raw pointer position instead of its
+  // real saved one, even after leaving edit mode.
+  function handlePointerCancel() {
+    setDraggingId(null)
+    setDragPos(null)
+  }
+
   return (
     <div className="flex flex-col gap-3">
       <button
@@ -106,6 +116,7 @@ export function FloorPlan({
               onPointerDown={(e) => handlePointerDown(e, table.id)}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerCancel}
               onClick={() => {
                 if (editMode) return
                 onSelect(selectedId === table.id ? null : table.id)
