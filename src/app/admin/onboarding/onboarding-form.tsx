@@ -3,7 +3,7 @@
 import { useActionState } from 'react'
 import { createRestaurant } from '@/app/actions/restaurant'
 
-export function OnboardingForm() {
+export function OnboardingForm({ needsAccessCode }: { needsAccessCode: boolean }) {
   const [state, action, pending] = useActionState(createRestaurant, undefined)
 
   return (
@@ -18,6 +18,19 @@ export function OnboardingForm() {
           className="rounded-lg border border-marble-3 px-3 py-2 focus:border-ember focus:outline-none"
         />
       </div>
+      {needsAccessCode && (
+        <div className="flex flex-col gap-1">
+          <label htmlFor="access_code">Código de acceso</label>
+          <input
+            id="access_code"
+            name="access_code"
+            type="text"
+            required
+            className="rounded-lg border border-marble-3 px-3 py-2 focus:border-ember focus:outline-none"
+          />
+          <span className="text-xs text-bronze">Te lo facilita Kratos.</span>
+        </div>
+      )}
       {state?.error && <p className="text-sm text-rust">{state.error}</p>}
       <button
         disabled={pending}

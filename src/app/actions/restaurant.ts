@@ -48,17 +48,48 @@ export async function createRestaurant(
 
   // The generic testing code (see access_codes/signup) never starts a
   // trial countdown — everything else does, 30 days from right now.
+  const admin = createAdminClient()
   const signupCode = user.user_metadata?.signup_access_code as string | undefined
   let isGenericCode = false
+
   if (signupCode) {
-    const admin = createAdminClient()
+    // Already validated and consumed back at signup — just look up
+    // whether it was the generic one.
     const { data: codeRow } = await admin
       .from('access_codes')
       .select('is_generic')
       .eq('code', signupCode)
       .maybeSingle()
     isGenericCode = codeRow?.is_generic ?? false
+  } else {
+    // No code on file for this account at all — either it predates the
+    // access-code gate, or it's an old account whose restaurant was
+    // deleted. Without this check, that account could create a brand
+    // new restaurant for free, bypassing the gate entirely.
+    const accessCode = String(formData.get('access_code') ?? '').trim()
+    if (!accessCode) {
+      return { error: 'Introduce el código de acceso.' }
+    }
+    const { data: codeRow } = await admin
+      .from('access_codes')
+      .select('id, is_generic, used_at')
+      .eq('code', accessCode)
+      .maybeSingle()
+    if (!codeRow) {
+      return { error: 'Código de acceso incorrecto.' }
+    }
+    if (!codeRow.is_generic && codeRow.used_at) {
+      return { error: 'Este código de acceso ya se ha utilizado.' }
+    }
+    isGenericCode = codeRow.is_generic
+    if (!codeRow.is_generic) {
+      await admin
+        .from('access_codes')
+        .update({ used_at: new Date().toISOString() })
+        .eq('id', codeRow.id)
+    }
   }
+
   const trialEndsAt = isGenericCode
     ? null
     : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()

@@ -30,10 +30,16 @@ export default async function OnboardingPage() {
     redirect('/admin')
   }
 
+  // Accounts created before the access-code gate existed (or one whose
+  // restaurant was later deleted) have no signup_access_code in their
+  // metadata — without this, they could create a restaurant for free
+  // with no code at all, bypassing the gate entirely.
+  const needsAccessCode = !user.user_metadata?.signup_access_code
+
   return (
     <div className="mx-auto max-w-sm">
       <h1 className="mb-4 text-2xl font-display text-ink">Crea tu restaurante</h1>
-      <OnboardingForm />
+      <OnboardingForm needsAccessCode={needsAccessCode} />
     </div>
   )
 }
