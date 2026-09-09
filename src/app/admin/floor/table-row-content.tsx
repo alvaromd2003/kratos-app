@@ -21,36 +21,33 @@ export type FloorTable = {
   posY: number | null
 }
 
-// The badge/actions/assisted-order block for one table — shared by the
-// plain list and the floor-plan popover so the two views can never drift
-// out of sync with each other.
+// The full detail view for one table — badges, actions, and the
+// assisted-order form — shown in the shared side panel once a table is
+// selected, from either the list or the floor plan, so the two views
+// can never drift out of sync with each other.
 export function TableRowContent({
   table,
   currency,
   now,
   menuItems,
-  expanded,
-  onToggleAssisted,
 }: {
   table: FloorTable
   currency: string
   now: number | null
   menuItems: { id: string; name: string; price_cents: number }[]
-  expanded: boolean
-  onToggleAssisted: () => void
 }) {
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="font-medium text-ink">Mesa {table.label}</span>
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="font-display text-xl text-ink">Mesa {table.label}</span>
         {table.occupied ? (
           <>
-            <span className="rounded-full bg-rust px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
+            <span className="rounded-full bg-rust px-3 py-1 text-sm font-bold uppercase tracking-wide text-white">
               Ocupada
             </span>
             {table.pendingCents > 0 && (
               <>
-                <span className="font-mono text-xs text-ember">
+                <span className="font-mono text-sm text-ember">
                   Pendiente: {formatPrice(table.pendingCents, currency)}
                 </span>
                 <form
@@ -66,7 +63,7 @@ export function TableRowContent({
                   }}
                 >
                   <input type="hidden" name="table_id" value={table.id} />
-                  <button type="submit" className="text-xs text-bronze underline">
+                  <button type="submit" className="text-sm text-bronze underline">
                     Cobrado en efectivo/datáfono
                   </button>
                 </form>
@@ -79,7 +76,9 @@ export function TableRowContent({
                   (now - new Date(table.lastActivityAt).getTime()) / 60_000
                 )
                 return idleMinutes >= IDLE_THRESHOLD_MINUTES ? (
-                  <span className="text-xs text-ember">⏳ Sin actividad hace {idleMinutes} min</span>
+                  <span className="text-sm text-ember">
+                    ⏳ Sin actividad hace {idleMinutes} min
+                  </span>
                 ) : null
               })()}
             <form
@@ -95,21 +94,19 @@ export function TableRowContent({
               }}
             >
               <input type="hidden" name="table_id" value={table.id} />
-              <button type="submit" className="text-xs text-bronze underline">
+              <button type="submit" className="text-sm text-bronze underline">
                 Cerrar
               </button>
             </form>
           </>
         ) : (
-          <span className="rounded-full bg-sage px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
+          <span className="rounded-full bg-sage px-3 py-1 text-sm font-bold uppercase tracking-wide text-white">
             Libre
           </span>
         )}
-        <button type="button" onClick={onToggleAssisted} className="text-xs text-bronze underline">
-          Pedido asistido
-        </button>
       </div>
-      {expanded && <AssistedOrderForm tableId={table.id} currency={currency} menuItems={menuItems} />}
+      <p className="mt-3 font-display text-base text-ink">Pedido asistido</p>
+      <AssistedOrderForm tableId={table.id} currency={currency} menuItems={menuItems} />
     </>
   )
 }

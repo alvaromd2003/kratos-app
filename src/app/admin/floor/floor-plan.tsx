@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { TableRowContent, type FloorTable } from './table-row-content'
+import type { FloorTable } from './table-row-content'
 
 // Tables that have never been dragged onto the plan (pos_x/pos_y still
 // null — true for every table right after the feature ships) get a
@@ -17,23 +17,16 @@ function fallbackPosition(index: number): { x: number; y: number } {
 
 export function FloorPlan({
   tables,
-  currency,
-  now,
-  menuItems,
-  expandedTableId,
-  onToggleAssisted,
+  selectedId,
+  onSelect,
   onPositionChange,
 }: {
   tables: FloorTable[]
-  currency: string
-  now: number | null
-  menuItems: { id: string; name: string; price_cents: number }[]
-  expandedTableId: string | null
-  onToggleAssisted: (id: string | null) => void
+  selectedId: string | null
+  onSelect: (id: string | null) => void
   onPositionChange: (id: string, x: number, y: number) => void
 }) {
   const [editMode, setEditMode] = useState(false)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
@@ -79,17 +72,15 @@ export function FloorPlan({
     setDragPos(null)
   }
 
-  const selectedTable = tables.find((t) => t.id === selectedId) ?? null
-
   return (
     <div className="flex flex-col gap-3">
       <button
         type="button"
         onClick={() => {
           setEditMode((current) => !current)
-          setSelectedId(null)
+          onSelect(null)
         }}
-        className={`self-start rounded-lg px-3 py-1.5 text-xs font-medium ${
+        className={`self-start rounded-lg px-4 py-2 text-sm font-medium ${
           editMode ? 'bg-ember text-ink' : 'border border-marble-3 text-bronze'
         }`}
       >
@@ -117,7 +108,7 @@ export function FloorPlan({
               onPointerUp={handlePointerUp}
               onClick={() => {
                 if (editMode) return
-                setSelectedId((current) => (current === table.id ? null : table.id))
+                onSelect(selectedId === table.id ? null : table.id)
               }}
               className={`absolute flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center text-xs font-bold text-white shadow-md transition-transform ${
                 table.shape === 'square' ? 'rounded-lg' : 'rounded-full'
@@ -135,34 +126,9 @@ export function FloorPlan({
       </div>
 
       {editMode && (
-        <p className="text-xs text-bronze">
+        <p className="text-sm text-bronze">
           Arrastra cada mesa a su sitio en la sala. Se guarda sola al soltarla.
         </p>
-      )}
-
-      {!editMode && selectedTable && (
-        <div className="flex flex-col gap-2 rounded-xl border border-marble-3 bg-white p-4 text-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-bronze">Mesa seleccionada</span>
-            <button
-              type="button"
-              onClick={() => setSelectedId(null)}
-              className="text-xs text-bronze underline"
-            >
-              Cerrar panel
-            </button>
-          </div>
-          <TableRowContent
-            table={selectedTable}
-            currency={currency}
-            now={now}
-            menuItems={menuItems}
-            expanded={expandedTableId === selectedTable.id}
-            onToggleAssisted={() =>
-              onToggleAssisted(expandedTableId === selectedTable.id ? null : selectedTable.id)
-            }
-          />
-        </div>
       )}
     </div>
   )

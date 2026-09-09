@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useWakeLock } from '@/lib/use-wake-lock'
 import { updateTablePosition } from '@/app/actions/tables'
+import { formatPrice } from '@/lib/format'
 import { TABLE_ZONES, TABLE_ZONE_LABELS, type TableZone } from '@/lib/table-zones'
-import { TableRowContent, type FloorTable } from './table-row-content'
+import { TableRowContent, IDLE_THRESHOLD_MINUTES, type FloorTable } from './table-row-content'
 import { FloorPlan } from './floor-plan'
 
 type SessionRow = { table_id: string; status: 'open' | 'closed' }
@@ -76,7 +77,7 @@ export function TableStatus({
   // would differ between them, which React reports as a hydration crash
   // rather than just a stale number (seen intermittently in testing).
   const [now, setNow] = useState<number | null>(null)
-  const [expandedTableId, setExpandedTableId] = useState<string | null>(null)
+  const [selectedTableId, setSelectedTableId] = useState<string | null>(null)
   const [view, setView] = useState<'list' | 'plan'>('list')
   const [zoneFilter, setZoneFilter] = useState<TableZone | 'all'>('all')
   const hasConnectedBefore = useRef(false)
@@ -178,6 +179,11 @@ export function TableStatus({
   const hasAnyZone = tables.some((t) => t.zone !== null)
   const visibleTables =
     zoneFilter === 'all' ? tables : tables.filter((t) => t.zone === zoneFilter)
+  const selectedTable = tables.find((t) => t.id === selectedTableId) ?? null
+
+  function toggleSelected(id: string) {
+    setSelectedTableId((current) => (current === id ? null : id))
+  }
 
   return (
     <section className="flex flex-col gap-3">
@@ -227,37 +233,82 @@ export function TableStatus({
         </div>
       )}
 
-      {view === 'list' ? (
-        <ul className="flex flex-wrap gap-3">
-          {visibleTables.map((table) => (
-            <li
-              key={table.id}
-              className="flex flex-col gap-2 rounded-xl border border-marble-3 bg-white px-4 py-3 text-sm"
-            >
-              <TableRowContent
-                table={table}
-                currency={currency}
-                now={now}
-                menuItems={menuItems}
-                expanded={expandedTableId === table.id}
-                onToggleAssisted={() =>
-                  setExpandedTableId((current) => (current === table.id ? null : table.id))
-                }
-              />
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <FloorPlan
-          tables={visibleTables}
-          currency={currency}
-          now={now}
-          menuItems={menuItems}
-          expandedTableId={expandedTableId}
-          onToggleAssisted={setExpandedTableId}
-          onPositionChange={handlePositionChange}
-        />
-      )}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+        <div className="lg:flex-1">
+          {view === 'list' ? (
+            <ul className="flex flex-col gap-2.5">
+              {visibleTables.map((table) => {
+                const idleMinutes =
+                  table.lastActivityAt && now !== null
+                    ? Math.floor((now - new Date(table.lastActivityAt).getTime()) / 60_000)
+                    : null
+                return (
+                  <li key={table.id}>
+                    <button
+                      type="button"
+                      onClick={() => toggleSelected(table.id)}
+                      className={`flex w-full flex-wrap items-center justify-between gap-3 rounded-xl border p-4 text-left transition-colors ${
+                        selectedTableId === table.id
+                          ? 'border-ink bg-marble'
+                          : 'border-marble-3 bg-white hover:bg-marble'
+                      }`}
+                    >
+                      <span className="font-display text-lg text-ink">Mesa {table.label}</span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {idleMinutes !== null && idleMinutes >= IDLE_THRESHOLD_MINUTES && (
+                          <span className="text-sm text-ember">⏳ {idleMinutes} min</span>
+                        )}
+                        {table.pendingCents > 0 && (
+                          <span className="font-mono text-sm text-ember">
+                            {formatPrice(table.pendingCents, currency)}
+                          </span>
+                        )}
+                        <span
+                          className={`rounded-full px-3 py-1 text-sm font-bold uppercase tracking-wide text-white ${
+                            table.occupied ? 'bg-rust' : 'bg-sage'
+                          }`}
+                        >
+                          {table.occupied ? 'Ocupada' : 'Libre'}
+                        </span>
+                      </div>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          ) : (
+            <FloorPlan
+              tables={visibleTables}
+              selectedId={selectedTableId}
+              onSelect={setSelectedTableId}
+              onPositionChange={handlePositionChange}
+            />
+          )}
+        </div>
+
+        {selectedTable && (
+          <div className="flex flex-col gap-3 rounded-xl border border-marble-3 bg-white p-5 lg:sticky lg:top-4 lg:w-96">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium uppercase tracking-wide text-bronze">
+                Mesa seleccionada
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedTableId(null)}
+                className="text-sm text-bronze underline"
+              >
+                Cerrar
+              </button>
+            </div>
+            <TableRowContent
+              table={selectedTable}
+              currency={currency}
+              now={now}
+              menuItems={menuItems}
+            />
+          </div>
+        )}
+      </div>
     </section>
   )
 }
