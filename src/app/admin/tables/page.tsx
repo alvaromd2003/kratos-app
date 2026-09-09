@@ -1,7 +1,7 @@
-import QRCode from 'qrcode'
 import { requireManagerRole } from '@/lib/restaurant'
 import { createClient } from '@/lib/supabase/server'
 import { getTableBillSummary } from '@/lib/payments'
+import { generateTableQrDataUrl } from '@/lib/qr'
 import { AddTableForm } from './add-table-form'
 import { TableCard } from './table-card'
 
@@ -46,7 +46,7 @@ export default async function TablesPage() {
   const tablesWithQr = await Promise.all(
     tableList.map(async (table) => {
       const url = `https://order.kratosystems.com/t/${table.qr_token}`
-      const qrDataUrl = await QRCode.toDataURL(url, { margin: 1, width: 200 })
+      const qrDataUrl = await generateTableQrDataUrl(url)
       const session = sessionByTableId.get(table.id)
       // Same pending-balance check as /admin/floor's board — closing a
       // table from here must warn about an unpaid balance too, not just

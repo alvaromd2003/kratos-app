@@ -80,6 +80,13 @@ export function TableCard({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={qrDataUrl} alt={`Código QR de ${label}`} width={200} height={200} />
       </div>
+      <a
+        href={qrDataUrl}
+        download={`mesa-${label}-kratos.png`}
+        className="text-xs text-bronze underline"
+      >
+        Descargar QR en alta resolución
+      </a>
       <p className="break-all text-xs text-bronze">{url}</p>
 
       {!active && (
