@@ -10,7 +10,7 @@ export function AuthHeader() {
         width={743}
         height={338}
         priority
-        className="h-20 w-auto sm:h-24"
+        className="h-28 w-auto sm:h-32"
       />
     </Link>
   )
