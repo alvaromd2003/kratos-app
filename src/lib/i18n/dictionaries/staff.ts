@@ -45,6 +45,13 @@ export const staffDict: Record<Locale, Record<string, string>> = {
     'shape.round': 'Redonda',
     'shape.square': 'Cuadrada',
 
+    // Dietary tags
+    'dietary.sin_gluten': 'Sin gluten',
+    'dietary.vegano': 'Vegano',
+    'dietary.vegetariano': 'Vegetariano',
+    'dietary.sin_frutos_secos': 'Sin frutos secos',
+    'dietary.sin_lactosa': 'Sin lactosa',
+
     // Roles
     'role.owner': 'Propietario',
     'role.admin': 'Administrador',
@@ -345,6 +352,13 @@ export const staffDict: Record<Locale, Record<string, string>> = {
     'shape.round': 'Round',
     'shape.square': 'Square',
 
+    // Dietary tags
+    'dietary.sin_gluten': 'Gluten-free',
+    'dietary.vegano': 'Vegan',
+    'dietary.vegetariano': 'Vegetarian',
+    'dietary.sin_frutos_secos': 'Nut-free',
+    'dietary.sin_lactosa': 'Lactose-free',
+
     // Roles
     'role.owner': 'Owner',
     'role.admin': 'Admin',
@@ -644,6 +658,13 @@ export const staffDict: Record<Locale, Record<string, string>> = {
     'zone.barra': 'البار',
     'shape.round': 'دائرية',
     'shape.square': 'مربعة',
+
+    // Dietary tags
+    'dietary.sin_gluten': 'بدون غلوتين',
+    'dietary.vegano': 'نباتي صرف',
+    'dietary.vegetariano': 'نباتي',
+    'dietary.sin_frutos_secos': 'بدون مكسرات',
+    'dietary.sin_lactosa': 'بدون لاكتوز',
 
     // Roles
     'role.owner': 'المالك',
