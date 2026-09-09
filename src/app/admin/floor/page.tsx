@@ -26,7 +26,7 @@ export default async function FloorPage() {
       }),
       supabase
         .from('tables')
-        .select('id, label, zone, pos_x, pos_y')
+        .select('id, label, zone, shape, pos_x, pos_y')
         .eq('restaurant_id', restaurant.id)
         .eq('active', true)
         .order('created_at'),
@@ -96,6 +96,7 @@ export default async function FloorPage() {
       id: t.id,
       label: t.label,
       zone: t.zone,
+      shape: t.shape,
       occupied: sessionId !== undefined,
       pendingCents: sessionId !== undefined ? (pendingCentsBySessionId.get(sessionId) ?? 0) : 0,
       lastActivityAt: sessionId !== undefined ? (lastActivityBySessionId.get(sessionId) ?? null) : null,

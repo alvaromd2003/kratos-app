@@ -24,12 +24,12 @@ export function AssistedOrderForm({
   if (menuItems.length === 0) return null
 
   return (
-    <div className="flex flex-col gap-2.5 rounded-xl border border-marble-3 bg-marble p-3">
-      <form action={addAction} className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-col gap-3 rounded-xl border border-marble-3 bg-marble p-4">
+      <form action={addAction} className="flex flex-wrap items-center gap-2.5">
         <input type="hidden" name="table_id" value={tableId} />
         <select
           name="menu_item_id"
-          className="rounded-lg border border-marble-3 bg-white px-2 py-1.5 text-xs text-ink"
+          className="min-w-40 rounded-lg border border-marble-3 bg-white px-3 py-2.5 text-sm text-ink"
         >
           {menuItems.map((item) => (
             <option key={item.id} value={item.id}>
@@ -43,36 +43,36 @@ export function AssistedOrderForm({
           min={1}
           value={quantity}
           onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))}
-          className="w-14 rounded-lg border border-marble-3 bg-white px-2 py-1.5 text-xs text-ink"
+          className="w-16 rounded-lg border border-marble-3 bg-white px-3 py-2.5 text-sm text-ink"
         />
         <input
           type="text"
           name="note"
           placeholder="Nota (opcional, ej. sin cebolla)"
           maxLength={140}
-          className="min-w-0 flex-1 rounded-lg border border-marble-3 bg-white px-2 py-1.5 text-xs text-ink"
+          className="min-w-0 flex-1 rounded-lg border border-marble-3 bg-white px-3 py-2.5 text-sm text-ink"
         />
         <button
           type="submit"
           disabled={addPending}
-          className="rounded-lg border border-marble-3 bg-white px-3 py-1.5 text-xs text-bronze disabled:opacity-50"
+          className="rounded-lg border border-marble-3 bg-white px-4 py-2.5 text-sm font-medium text-bronze disabled:opacity-50"
         >
           {addPending ? 'Añadiendo…' : 'Añadir'}
         </button>
       </form>
-      {addState?.error && <p className="text-xs text-rust">{addState.error}</p>}
+      {addState?.error && <p className="text-sm text-rust">{addState.error}</p>}
 
       <form action={sendAction}>
         <input type="hidden" name="table_id" value={tableId} />
         <button
           type="submit"
           disabled={sendPending}
-          className="rounded-lg bg-ink px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+          className="rounded-lg bg-ink px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50"
         >
           {sendPending ? 'Enviando…' : 'Enviar a cocina'}
         </button>
       </form>
-      {sendState?.error && <p className="text-xs text-rust">{sendState.error}</p>}
+      {sendState?.error && <p className="text-sm text-rust">{sendState.error}</p>}
     </div>
   )
 }

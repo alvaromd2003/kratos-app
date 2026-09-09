@@ -4,12 +4,18 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentRestaurant } from '@/lib/restaurant'
 import { TABLE_ZONES, type TableZone } from '@/lib/table-zones'
+import { TABLE_SHAPES, type TableShape } from '@/lib/table-shapes'
 
 export type TableFormState = { error?: string } | undefined
 
 function readZone(formData: FormData): TableZone | null {
   const raw = String(formData.get('zone') ?? '')
   return (TABLE_ZONES as readonly string[]).includes(raw) ? (raw as TableZone) : null
+}
+
+function readShape(formData: FormData): TableShape {
+  const raw = String(formData.get('shape') ?? '')
+  return (TABLE_SHAPES as readonly string[]).includes(raw) ? (raw as TableShape) : 'round'
 }
 
 export async function createTable(
@@ -26,7 +32,7 @@ export async function createTable(
   const supabase = await createClient()
   const { error } = await supabase
     .from('tables')
-    .insert({ restaurant_id: restaurant.id, label, zone: readZone(formData) })
+    .insert({ restaurant_id: restaurant.id, label, zone: readZone(formData), shape: readShape(formData) })
 
   if (error) {
     return { error: 'No se pudo crear la mesa.' }
@@ -50,7 +56,7 @@ export async function updateTable(
   const supabase = await createClient()
   const { error } = await supabase
     .from('tables')
-    .update({ label, zone: readZone(formData) })
+    .update({ label, zone: readZone(formData), shape: readShape(formData) })
     .eq('id', id)
     .eq('restaurant_id', restaurant.id)
 

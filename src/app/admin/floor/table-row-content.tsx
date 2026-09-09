@@ -4,6 +4,7 @@ import { closeTableSession } from '@/app/actions/tables'
 import { recordManualPayment } from '@/app/actions/kitchen'
 import { formatPrice } from '@/lib/format'
 import type { TableZone } from '@/lib/table-zones'
+import type { TableShape } from '@/lib/table-shapes'
 import { AssistedOrderForm } from './assisted-order-form'
 
 export const IDLE_THRESHOLD_MINUTES = 30
@@ -12,6 +13,7 @@ export type FloorTable = {
   id: string
   label: string
   zone: TableZone | null
+  shape: TableShape
   occupied: boolean
   pendingCents: number
   lastActivityAt: string | null

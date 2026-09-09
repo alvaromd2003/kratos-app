@@ -5,11 +5,13 @@ import { updateTable, deleteTable, closeTableSession, toggleTableActive } from '
 import { recordManualPayment } from '@/app/actions/kitchen'
 import { formatPrice } from '@/lib/format'
 import { TABLE_ZONES, TABLE_ZONE_LABELS, type TableZone } from '@/lib/table-zones'
+import { TABLE_SHAPES, TABLE_SHAPE_LABELS, type TableShape } from '@/lib/table-shapes'
 
 export function TableCard({
   id,
   label,
   zone,
+  shape,
   url,
   qrDataUrl,
   occupied,
@@ -21,6 +23,7 @@ export function TableCard({
   id: string
   label: string
   zone: TableZone | null
+  shape: TableShape
   url: string
   qrDataUrl: string
   occupied: boolean
@@ -37,12 +40,14 @@ export function TableCard({
       <form action={action} className="flex flex-col items-center gap-2">
         <input type="hidden" name="id" value={id} />
         <input
+          key={`label-${label}`}
           name="label"
           defaultValue={label}
           required
           className="w-28 rounded-lg border border-marble-3 px-2 py-1 text-center text-sm focus:border-ember focus:outline-none"
         />
         <select
+          key={`zone-${zone ?? 'none'}`}
           name="zone"
           defaultValue={zone ?? ''}
           className="w-28 rounded-lg border border-marble-3 px-2 py-1 text-center text-sm focus:border-ember focus:outline-none"
@@ -51,6 +56,18 @@ export function TableCard({
           {TABLE_ZONES.map((z) => (
             <option key={z} value={z}>
               {TABLE_ZONE_LABELS[z]}
+            </option>
+          ))}
+        </select>
+        <select
+          key={`shape-${shape}`}
+          name="shape"
+          defaultValue={shape}
+          className="w-28 rounded-lg border border-marble-3 px-2 py-1 text-center text-sm focus:border-ember focus:outline-none"
+        >
+          {TABLE_SHAPES.map((s) => (
+            <option key={s} value={s}>
+              {TABLE_SHAPE_LABELS[s]}
             </option>
           ))}
         </select>

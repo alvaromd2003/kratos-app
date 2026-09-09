@@ -202,12 +202,12 @@ export function TableStatus({
       </div>
 
       {hasAnyZone && (
-        <div className="flex flex-wrap gap-1.5 text-xs">
+        <div className="flex flex-wrap gap-2 rounded-xl border border-marble-3 bg-white p-2">
           <button
             type="button"
             onClick={() => setZoneFilter('all')}
-            className={`rounded-full px-3 py-1 ${
-              zoneFilter === 'all' ? 'bg-ink text-white' : 'border border-marble-3 text-bronze'
+            className={`rounded-lg px-5 py-2.5 text-sm font-semibold transition-colors ${
+              zoneFilter === 'all' ? 'bg-ink text-white' : 'text-bronze hover:bg-marble-2'
             }`}
           >
             Todas
@@ -217,8 +217,8 @@ export function TableStatus({
               key={zone}
               type="button"
               onClick={() => setZoneFilter(zone)}
-              className={`rounded-full px-3 py-1 ${
-                zoneFilter === zone ? 'bg-ink text-white' : 'border border-marble-3 text-bronze'
+              className={`rounded-lg px-5 py-2.5 text-sm font-semibold transition-colors ${
+                zoneFilter === zone ? 'bg-ink text-white' : 'text-bronze hover:bg-marble-2'
               }`}
             >
               {TABLE_ZONE_LABELS[zone]}

@@ -119,9 +119,11 @@ export function FloorPlan({
                 if (editMode) return
                 setSelectedId((current) => (current === table.id ? null : table.id))
               }}
-              className={`absolute flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full text-xs font-bold text-white shadow-md transition-transform ${
-                table.occupied ? 'bg-rust' : 'bg-sage'
-              } ${editMode ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'} ${
+              className={`absolute flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center text-xs font-bold text-white shadow-md transition-transform ${
+                table.shape === 'square' ? 'rounded-lg' : 'rounded-full'
+              } ${table.occupied ? 'bg-rust' : 'bg-sage'} ${
+                editMode ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
+              } ${
                 selectedId === table.id ? 'ring-4 ring-ember' : ''
               } ${isDragging ? 'scale-110 shadow-lg' : ''}`}
               style={{ left: `${displayX}%`, top: `${displayY}%`, touchAction: 'none' }}

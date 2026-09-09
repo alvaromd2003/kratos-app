@@ -3,6 +3,7 @@
 import { useActionState } from 'react'
 import { createTable } from '@/app/actions/tables'
 import { TABLE_ZONES, TABLE_ZONE_LABELS } from '@/lib/table-zones'
+import { TABLE_SHAPES, TABLE_SHAPE_LABELS } from '@/lib/table-shapes'
 
 export function AddTableForm() {
   const [state, action, pending] = useActionState(createTable, undefined)
@@ -35,6 +36,23 @@ export function AddTableForm() {
           {TABLE_ZONES.map((zone) => (
             <option key={zone} value={zone}>
               {TABLE_ZONE_LABELS[zone]}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="flex flex-col gap-1">
+        <label htmlFor="table-shape" className="text-sm">
+          Forma
+        </label>
+        <select
+          id="table-shape"
+          name="shape"
+          defaultValue="round"
+          className="rounded-lg border border-marble-3 px-3 py-2.5 focus:border-ember focus:outline-none"
+        >
+          {TABLE_SHAPES.map((shape) => (
+            <option key={shape} value={shape}>
+              {TABLE_SHAPE_LABELS[shape]}
             </option>
           ))}
         </select>
