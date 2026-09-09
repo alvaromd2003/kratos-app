@@ -3,10 +3,12 @@
 import { useActionState } from 'react'
 import { requestHelp } from '@/app/actions/ordering'
 import { useActionSuccess } from '@/lib/use-action-success'
+import { useLocale } from '@/lib/i18n/provider'
 
 export function HelpButton({ qrToken }: { qrToken: string }) {
   const [state, action, pending] = useActionState(requestHelp, undefined)
-  const sent = useActionSuccess(pending, Boolean(state?.error), 4000)
+  const sent = useActionSuccess(pending, Boolean(state?.errorCode), 4000)
+  const { t } = useLocale()
 
   return (
     <form action={action} className="flex flex-col items-start gap-1">
@@ -16,9 +18,9 @@ export function HelpButton({ qrToken }: { qrToken: string }) {
         disabled={pending || sent}
         className="self-start rounded-full border border-ember/30 bg-ember/10 px-3.5 py-1.5 text-sm text-ember-bright disabled:opacity-50"
       >
-        {pending ? 'Avisando…' : sent ? 'Camarero avisado ✓' : '🔔 Llamar al camarero'}
+        {pending ? t('table.callingWaiter') : sent ? t('table.waiterCalled') : t('table.callWaiter')}
       </button>
-      {state?.error && <p className="text-xs text-rust">{state.error}</p>}
+      {state?.errorCode && <p className="text-xs text-rust">{t(`error.${state.errorCode}`)}</p>}
     </form>
   )
 }

@@ -8,6 +8,7 @@ import {
   createCollectivePayment,
   requestCashPayment,
 } from '@/app/actions/payments'
+import { useLocale } from '@/lib/i18n/provider'
 import { FeedbackPanel } from './feedback-panel'
 
 export function PaymentPanel({
@@ -37,6 +38,7 @@ export function PaymentPanel({
   loyaltyDiscountPercent: number
   myPaidCents: number
 }) {
+  const { t } = useLocale()
   const [individualState, individualAction, individualPending] = useActionState(
     createIndividualPayment,
     undefined
@@ -70,7 +72,7 @@ export function PaymentPanel({
   if (remainingCents <= 0) {
     return (
       <div className="flex flex-col gap-3 rounded-2xl border border-sage-bg bg-sage-bg p-4">
-        <p className="text-sm font-medium text-sage">✓ Cuenta pagada</p>
+        <p className="text-sm font-medium text-sage">{t('payment.paid')}</p>
         <FeedbackPanel
           qrToken={qrToken}
           hasSubmittedFeedback={hasSubmittedFeedback}
@@ -86,10 +88,11 @@ export function PaymentPanel({
   if (pendingCashAmountCents !== null) {
     return (
       <section className="flex flex-col gap-2 rounded border border-amber-200 bg-amber-50 p-3">
-        <h2 className="font-medium">Pagar la cuenta</h2>
+        <h2 className="font-medium">{t('payment.title')}</h2>
         <p className="text-sm text-amber-800">
-          Avisado al personal para pagar {formatPrice(pendingCashAmountCents, currency)} en
-          efectivo — esperando que confirmen que lo han recibido.
+          {t('payment.cashPendingNotice', {
+            amount: formatPrice(pendingCashAmountCents, currency),
+          })}
         </p>
       </section>
     )
@@ -99,7 +102,7 @@ export function PaymentPanel({
     <>
       {myPaidCents > 0 && (
         <div className="flex flex-col gap-3 rounded-2xl border border-sage-bg bg-sage-bg p-4">
-          <p className="text-sm font-medium text-sage">✓ Ya has pagado tu parte</p>
+          <p className="text-sm font-medium text-sage">{t('payment.myPartPaid')}</p>
           <FeedbackPanel
             qrToken={qrToken}
             hasSubmittedFeedback={hasSubmittedFeedback}
@@ -109,23 +112,21 @@ export function PaymentPanel({
       )}
       <section className="flex flex-col gap-4 rounded-2xl bg-ink px-5 py-5 text-marble-2">
         <div className="flex items-baseline justify-between">
-          <h2 className="font-display text-lg text-white">Pagar la cuenta</h2>
+          <h2 className="font-display text-lg text-white">{t('payment.title')}</h2>
           <p className="font-mono text-sm text-cream-dim">
-            Pendiente: {formatPrice(remainingCents, currency)}
+            {t('payment.pending', { amount: formatPrice(remainingCents, currency) })}
           </p>
         </div>
 
         {paymentResult === 'success' && (
-          <p className="text-sm text-ember-bright">
-            Pago recibido — puede tardar unos segundos en reflejarse aquí.
-          </p>
+          <p className="text-sm text-ember-bright">{t('payment.success')}</p>
         )}
         {paymentResult === 'cancelled' && (
-          <p className="text-sm text-cream-dim">Pago cancelado. Puedes intentarlo de nuevo.</p>
+          <p className="text-sm text-cream-dim">{t('payment.cancelled')}</p>
         )}
 
         <div className="flex items-center gap-2">
-          <span className="text-sm text-cream-dim">Propina:</span>
+          <span className="text-sm text-cream-dim">{t('payment.tip')}</span>
           {[0, 5, 10, 15].map((pct) => (
             <button
               key={pct}
@@ -146,7 +147,7 @@ export function PaymentPanel({
           <input type="hidden" name="qr_token" value={qrToken} />
           <input type="hidden" name="tip_percent" value={tipPercent} />
           <span className="text-sm">
-            Tu parte:{' '}
+            {t('payment.myPart')}{' '}
             <span className="font-mono text-ember-bright">
               {formatPrice(withDiscountAndTip(individualDueCents), currency)}
             </span>
@@ -156,16 +157,18 @@ export function PaymentPanel({
             disabled={individualPending || individualDueCents <= 0}
             className="rounded-lg bg-ember px-3 py-1.5 text-sm font-medium text-ink disabled:opacity-40"
           >
-            {individualPending ? 'Redirigiendo…' : 'Pagar mi parte'}
+            {individualPending ? t('payment.redirecting') : t('payment.payMyPart')}
           </button>
         </form>
-        {individualState?.error && <p className="text-xs text-rust">{individualState.error}</p>}
+        {individualState?.errorCode && (
+          <p className="text-xs text-rust">{t(`error.${individualState.errorCode}`)}</p>
+        )}
 
         <form action={splitAction} className="flex items-center justify-between gap-3 rounded-lg bg-white/5 px-3.5 py-2.5">
           <input type="hidden" name="qr_token" value={qrToken} />
           <input type="hidden" name="tip_percent" value={tipPercent} />
           <label className="flex items-center gap-2 text-sm">
-            Dividir entre
+            {t('payment.splitBetween')}
             <input
               type="number"
               name="share_count"
@@ -181,47 +184,51 @@ export function PaymentPanel({
             className="rounded-lg bg-ember px-3 py-1.5 text-sm font-medium text-ink disabled:opacity-40"
           >
             {splitPending
-              ? 'Redirigiendo…'
+              ? t('payment.redirecting')
               : formatPrice(withDiscountAndTip(Math.ceil(remainingCents / shareCount)), currency)}
           </button>
         </form>
-        {splitState?.error && <p className="text-xs text-rust">{splitState.error}</p>}
+        {splitState?.errorCode && (
+          <p className="text-xs text-rust">{t(`error.${splitState.errorCode}`)}</p>
+        )}
 
         <form action={collectiveAction} className="flex items-center justify-between gap-3 rounded-lg bg-white/5 px-3.5 py-2.5">
           <input type="hidden" name="qr_token" value={qrToken} />
           <input type="hidden" name="tip_percent" value={tipPercent} />
-          <span className="text-sm">Pagar toda la cuenta</span>
+          <span className="text-sm">{t('payment.payWholeBill')}</span>
           <button
             type="submit"
             disabled={collectivePending}
             className="rounded-lg bg-ember px-3 py-1.5 text-sm font-medium text-ink disabled:opacity-40"
           >
-            {collectivePending ? 'Redirigiendo…' : formatPrice(withDiscountAndTip(remainingCents), currency)}
+            {collectivePending ? t('payment.redirecting') : formatPrice(withDiscountAndTip(remainingCents), currency)}
           </button>
         </form>
-        {collectiveState?.error && <p className="text-xs text-rust">{collectiveState.error}</p>}
+        {collectiveState?.errorCode && (
+          <p className="text-xs text-rust">{t(`error.${collectiveState.errorCode}`)}</p>
+        )}
 
         <form action={cashAction} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 px-3.5 py-2.5">
           <input type="hidden" name="qr_token" value={qrToken} />
           <span className="text-sm text-cream-dim">
-            Pagar en efectivo:{' '}
+            {t('payment.payCash')}{' '}
             <span className="font-mono">
               {formatPrice(
                 remainingCents - Math.round((remainingCents * loyaltyDiscountPercent) / 100),
                 currency
               )}
             </span>{' '}
-            (la cuenta completa)
+            {t('payment.payCashNote')}
           </span>
           <button
             type="submit"
             disabled={cashPending}
             className="rounded-lg border border-white/20 px-3 py-1.5 text-sm text-marble-2 disabled:opacity-40"
           >
-            {cashPending ? 'Avisando…' : 'Avisar al personal'}
+            {cashPending ? t('payment.notifying') : t('payment.notifyStaff')}
           </button>
         </form>
-        {cashState?.error && <p className="text-xs text-rust">{cashState.error}</p>}
+        {cashState?.errorCode && <p className="text-xs text-rust">{t(`error.${cashState.errorCode}`)}</p>}
       </section>
     </>
   )

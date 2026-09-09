@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react'
 import { changeItemQuantity, removeItemFromCart, setItemNote } from '@/app/actions/ordering'
+import { useLocale } from '@/lib/i18n/provider'
 
 export function CartItemRow({
   qrToken,
@@ -21,6 +22,8 @@ export function CartItemRow({
   const [decreaseState, decreaseAction] = useActionState(changeItemQuantity, undefined)
   const [increaseState, increaseAction] = useActionState(changeItemQuantity, undefined)
   const [removeState, removeAction] = useActionState(removeItemFromCart, undefined)
+  const { t } = useLocale()
+  const errorCode = decreaseState?.errorCode || increaseState?.errorCode || removeState?.errorCode
 
   return (
     <li className="flex flex-col gap-1.5 border-b border-marble-2 pb-3 text-sm last:border-b-0 last:pb-0">
@@ -56,27 +59,23 @@ export function CartItemRow({
           <input type="hidden" name="qr_token" value={qrToken} />
           <input type="hidden" name="order_item_id" value={orderItemId} />
           <button type="submit" className="text-xs text-rust underline">
-            Quitar
+            {t('cart.remove')}
           </button>
         </form>
       </div>
-      {(decreaseState?.error || increaseState?.error || removeState?.error) && (
-        <p className="text-xs text-rust">
-          {decreaseState?.error || increaseState?.error || removeState?.error}
-        </p>
-      )}
+      {errorCode && <p className="text-xs text-rust">{t(`error.${errorCode}`)}</p>}
       <form action={setItemNote} className="flex items-center gap-1.5 pl-0">
         <input type="hidden" name="qr_token" value={qrToken} />
         <input type="hidden" name="order_item_id" value={orderItemId} />
         <input
           name="note"
           defaultValue={note ?? ''}
-          placeholder="Nota (ej: sin cebolla)"
+          placeholder={t('cart.notePlaceholder')}
           maxLength={140}
           className="w-full rounded-lg border border-marble-3 px-2.5 py-1.5 text-xs text-ink focus:border-ember focus:outline-none"
         />
         <button type="submit" className="text-xs whitespace-nowrap text-bronze underline">
-          Guardar
+          {t('cart.save')}
         </button>
       </form>
     </li>

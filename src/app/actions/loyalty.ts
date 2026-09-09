@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getActiveTableByQrToken, getVerifiedParticipant } from '@/lib/ordering'
 
-export type LoyaltyFormState = { error?: string } | undefined
+export type LoyaltyFormState = { errorCode?: string } | undefined
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -16,13 +16,13 @@ export async function setLoyaltyEmail(
   const email = String(formData.get('email') ?? '').trim().toLowerCase()
 
   if (!EMAIL_PATTERN.test(email)) {
-    return { error: 'Escribe un email válido.' }
+    return { errorCode: 'INVALID_EMAIL' }
   }
 
   const table = await getActiveTableByQrToken(qrToken)
   const verified = table ? await getVerifiedParticipant(qrToken) : null
   if (!table || !verified) {
-    return { error: 'Tu sesión en la mesa caducó. Vuelve a escanear el código QR.' }
+    return { errorCode: 'SESSION_EXPIRED' }
   }
 
   const admin = createAdminClient()
@@ -33,7 +33,7 @@ export async function setLoyaltyEmail(
     .eq('id', verified.participantId)
 
   if (participantError) {
-    return { error: 'No se pudo guardar el email. Inténtalo de nuevo.' }
+    return { errorCode: 'COULD_NOT_SAVE_EMAIL' }
   }
 
   // Upsert without touching stamps if the account already exists —

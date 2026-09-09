@@ -123,5 +123,14 @@ export async function sendStaffOrder(
   revalidatePath('/admin/floor')
   revalidatePath('/admin/kitchen')
 
-  return result.error ? { error: result.error } : undefined
+  // sendSessionOrderToKitchen returns a locale-agnostic code (shared with
+  // the diner-facing flow's own translation) — mapped to Spanish here
+  // until the staff panel gets the same i18n treatment as the diner side.
+  if (result.errorCode === 'EMPTY_CART') {
+    return { error: 'No hay nada en el carrito para enviar.' }
+  }
+  if (result.errorCode === 'COULD_NOT_SEND_ORDER') {
+    return { error: 'No se pudo enviar el pedido. Inténtalo de nuevo.' }
+  }
+  return undefined
 }

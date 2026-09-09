@@ -13,7 +13,7 @@ import {
 import { isOrderItemClaimed, getOrderItemCoverage } from '@/lib/payments'
 import { currentTimeInZone, isWithinTimeWindow } from '@/lib/timezone'
 
-export type OrderingFormState = { error?: string } | undefined
+export type OrderingFormState = { errorCode?: string } | undefined
 
 export async function joinTable(
   _prevState: OrderingFormState,
@@ -22,22 +22,22 @@ export async function joinTable(
   const qrToken = String(formData.get('qr_token') ?? '')
   const name = String(formData.get('name') ?? '').trim()
   if (!name) {
-    return { error: 'Escribe tu nombre.' }
+    return { errorCode: 'EMPTY_NAME' }
   }
   if (name.length > 40) {
-    return { error: 'El nombre es demasiado largo.' }
+    return { errorCode: 'NAME_TOO_LONG' }
   }
 
   const table = await getActiveTableByQrToken(qrToken)
   if (!table) {
-    return { error: 'Esta mesa ya no está disponible.' }
+    return { errorCode: 'TABLE_UNAVAILABLE' }
   }
 
   const admin = createAdminClient()
 
   const sessionId = await getOrCreateOpenSession(admin, table)
   if (!sessionId) {
-    return { error: 'No se pudo abrir la mesa. Inténtalo de nuevo.' }
+    return { errorCode: 'COULD_NOT_OPEN_TABLE' }
   }
 
   const { data: participant, error: participantError } = await admin
@@ -47,7 +47,7 @@ export async function joinTable(
     .single()
 
   if (participantError || !participant) {
-    return { error: 'No se pudo unir a la mesa. Inténtalo de nuevo.' }
+    return { errorCode: 'COULD_NOT_JOIN_TABLE' }
   }
 
   const store = await cookies()
@@ -71,7 +71,7 @@ export async function addItemToCart(
   const table = await getActiveTableByQrToken(qrToken)
   const verified = table ? await getVerifiedParticipant(qrToken) : null
   if (!table || !verified) {
-    return { error: 'Tu sesión en la mesa caducó. Vuelve a escanear el código QR.' }
+    return { errorCode: 'SESSION_EXPIRED' }
   }
 
   const admin = createAdminClient()
@@ -87,7 +87,7 @@ export async function addItemToCart(
     .eq('is_available', true)
     .maybeSingle()
   if (!menuItem) {
-    return { error: 'Este plato ya no está disponible.' }
+    return { errorCode: 'ITEM_UNAVAILABLE' }
   }
   // The menu shown to diners already hides an out-of-window dish, but a
   // request could still be sent directly bypassing that UI — re-checked
@@ -98,7 +98,7 @@ export async function addItemToCart(
     menuItem.available_until &&
     !isWithinTimeWindow(menuItem.available_from, menuItem.available_until, currentTimeInZone())
   ) {
-    return { error: 'Este plato no está disponible a esta hora.' }
+    return { errorCode: 'ITEM_TIME_WINDOW' }
   }
 
   // Adding the same dish again just bumps the quantity on the existing
@@ -113,7 +113,7 @@ export async function addItemToCart(
   })
 
   if (error) {
-    return { error: 'No se pudo añadir el plato. Inténtalo de nuevo.' }
+    return { errorCode: 'COULD_NOT_ADD_ITEM' }
   }
 }
 
@@ -135,7 +135,7 @@ export async function changeItemQuantity(
   // Only matters for a decrease — adding more on top of a paid line is
   // harmless (it's just unpaid food stacked on the same row).
   if (delta < 0 && (await isOrderItemClaimed(admin, orderItemId))) {
-    return { error: 'Ya se ha pagado (parte de) este plato, así que no se puede reducir.' }
+    return { errorCode: 'CANNOT_REDUCE_PAID' }
   }
 
   // A dish added right before its time window closed could otherwise
@@ -160,7 +160,7 @@ export async function changeItemQuantity(
         menuItem.available_until &&
         !isWithinTimeWindow(menuItem.available_from, menuItem.available_until, currentTimeInZone())
       ) {
-        return { error: 'Este plato no está disponible a esta hora.' }
+        return { errorCode: 'ITEM_TIME_WINDOW' }
       }
     }
   }
@@ -207,7 +207,7 @@ export async function removeItemFromCart(
   // Same reasoning as changeItemQuantity — never let an already-paid
   // line just vanish from the cart with nothing to show for it.
   if (await isOrderItemClaimed(admin, orderItemId)) {
-    return { error: 'Ya se ha pagado (parte de) este plato, así que no se puede quitar.' }
+    return { errorCode: 'CANNOT_REMOVE_PAID' }
   }
 
   await admin
@@ -227,14 +227,14 @@ export async function sendOrderToKitchen(
   const table = await getActiveTableByQrToken(qrToken)
   const verified = table ? await getVerifiedParticipant(qrToken) : null
   if (!table || !verified) {
-    return { error: 'Tu sesión en la mesa caducó. Vuelve a escanear el código QR.' }
+    return { errorCode: 'SESSION_EXPIRED' }
   }
 
   const admin = createAdminClient()
 
   const result = await sendSessionOrderToKitchen(admin, verified.tableSessionId, table.restaurant_id)
-  if (result.error) {
-    return { error: result.error }
+  if (result.errorCode) {
+    return { errorCode: result.errorCode }
   }
 }
 
@@ -326,7 +326,7 @@ export async function requestHelp(
   const table = await getActiveTableByQrToken(qrToken)
   const verified = table ? await getVerifiedParticipant(qrToken) : null
   if (!table || !verified) {
-    return { error: 'Tu sesión en la mesa caducó. Vuelve a escanear el código QR.' }
+    return { errorCode: 'SESSION_EXPIRED' }
   }
 
   const admin = createAdminClient()
@@ -346,6 +346,6 @@ export async function requestHelp(
   })
 
   if (error) {
-    return { error: 'No se pudo avisar. Inténtalo de nuevo.' }
+    return { errorCode: 'COULD_NOT_NOTIFY' }
   }
 }

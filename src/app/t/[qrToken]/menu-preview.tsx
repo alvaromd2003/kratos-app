@@ -1,6 +1,9 @@
+'use client'
+
 import Image from 'next/image'
 import { formatPrice } from '@/lib/format'
-import { dietaryTagLabel } from '@/lib/dietary-tags'
+import { useLocale } from '@/lib/i18n/provider'
+import { LanguageSwitcher } from './language-switcher'
 
 type Category = { id: string; name: string }
 type MenuItem = {
@@ -30,6 +33,7 @@ export function MenuPreview({
   categories: Category[]
   items: MenuItem[]
 }) {
+  const { t } = useLocale()
   const itemsByCategory = new Map<string | null, MenuItem[]>()
   for (const item of items) {
     itemsByCategory.set(item.category_id, [...(itemsByCategory.get(item.category_id) ?? []), item])
@@ -38,16 +42,17 @@ export function MenuPreview({
 
   return (
     <main className="mx-auto flex max-w-md flex-col gap-6 px-4 py-6">
+      <LanguageSwitcher />
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-display text-ink">{restaurantName}</h1>
-        <p className="text-sm text-bronze">Mesa {tableLabel} — solo consulta, sin pedir todavía</p>
+        <p className="text-sm text-bronze">{t('preview.subtitle', { label: tableLabel })}</p>
       </div>
 
       <a
         href={`/t/${qrToken}`}
         className="self-start rounded-lg bg-ink px-4 py-2.5 text-sm font-medium text-white"
       >
-        Pedir ahora
+        {t('preview.orderNow')}
       </a>
 
       <section className="flex flex-col gap-6">
@@ -65,14 +70,16 @@ export function MenuPreview({
         })}
         {uncategorized.length > 0 && (
           <div className="flex flex-col gap-3">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-bronze">Otros</h2>
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-bronze">
+              {t('preview.other')}
+            </h2>
             <MenuPreviewList items={uncategorized} currency={currency} enabledTags={enabledTags} />
           </div>
         )}
       </section>
       <p className="flex items-center justify-center gap-1.5 text-center text-[0.68rem] tracking-wide text-bronze/70">
         <Image src="/kratos-badge.png" alt="" width={40} height={40} className="h-3.5 w-3.5 rounded-[3px]" />
-        Con la tecnología de Kratos Systems
+        {t('poweredBy')}
       </p>
     </main>
   )
@@ -87,6 +94,7 @@ function MenuPreviewList({
   currency: string
   enabledTags: string[]
 }) {
+  const { t } = useLocale()
   return (
     <ul className="flex flex-col gap-3">
       {items.map((item) => (
@@ -110,11 +118,11 @@ function MenuPreviewList({
             <p className="text-sm font-medium text-ink">{item.name}</p>
             {item.description && <p className="truncate text-xs text-bronze">{item.description}</p>}
             <p className="font-mono text-xs text-bronze">{formatPrice(item.price_cents, currency)}</p>
-            {item.dietary_tags.filter((t) => enabledTags.includes(t)).length > 0 && (
+            {item.dietary_tags.filter((tag) => enabledTags.includes(tag)).length > 0 && (
               <p className="text-xs text-bronze">
                 {item.dietary_tags
-                  .filter((t) => enabledTags.includes(t))
-                  .map(dietaryTagLabel)
+                  .filter((tag) => enabledTags.includes(tag))
+                  .map((tag) => t(`dietary.${tag}`))
                   .join(' · ')}
               </p>
             )}

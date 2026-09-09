@@ -3,6 +3,7 @@
 import { useActionState, useState } from 'react'
 import { formatPrice } from '@/lib/format'
 import { createItemizedPayment } from '@/app/actions/payments'
+import { useLocale } from '@/lib/i18n/provider'
 
 type PickableItem = {
   id: string
@@ -31,6 +32,7 @@ export function ItemizedPaymentPanel({
   tableParticipants: { id: string; label: string }[]
   currentParticipantId: string
 }) {
+  const { t } = useLocale()
   const [state, action, pending] = useActionState(createItemizedPayment, undefined)
   const [expanded, setExpanded] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -88,7 +90,7 @@ export function ItemizedPaymentPanel({
         onClick={() => setExpanded(true)}
         className="self-start text-sm font-medium text-bronze underline underline-offset-2"
       >
-        Elegir platos concretos
+        {t('payment.chooseItems')}
       </button>
     )
   }
@@ -99,13 +101,13 @@ export function ItemizedPaymentPanel({
       <input type="hidden" name="tip_percent" value={tipPercent} />
 
       <div className="flex items-center justify-between">
-        <h2 className="font-display text-lg text-white">Elegir platos concretos</h2>
+        <h2 className="font-display text-lg text-white">{t('payment.chooseItems')}</h2>
         <button
           type="button"
           onClick={() => setExpanded(false)}
           className="text-xs text-cream-dim underline"
         >
-          Cerrar
+          {t('payment.close')}
         </button>
       </div>
       <ul className="flex flex-col gap-2.5">
@@ -126,25 +128,26 @@ export function ItemizedPaymentPanel({
               <span className="text-white">{item.name}</span>
               <span className="text-cream-dim">— {item.participantLabel}</span>
               <span className="ml-auto font-mono text-cream-dim">
-                Queda: {formatPrice(item.remainingCents, currency)}
+                {t('payment.remaining', { amount: formatPrice(item.remainingCents, currency) })}
               </span>
             </label>
             {item.contributors.length > 0 && (
               <p className="ml-6 text-xs text-cream-dim">
-                Ya pagado:{' '}
-                {item.contributors
-                  .map((c) => `${c.label} ${formatPrice(c.amountCents, currency)}`)
-                  .join(', ')}
+                {t('payment.alreadyPaidBy', {
+                  list: item.contributors
+                    .map((c) => `${c.label} ${formatPrice(c.amountCents, currency)}`)
+                    .join(', '),
+                })}
               </p>
             )}
             {selected.has(item.id) && (
               <div className="ml-6 flex flex-col gap-1.5 text-xs text-cream-dim">
                 {tableParticipants.filter((p) => p.id !== currentParticipantId).length > 0 && (
                   <>
-                    <span>¿Entre quién se divide?</span>
+                    <span>{t('payment.splitWithWho')}</span>
                     <div className="flex flex-wrap gap-1">
                       <span className="rounded-full border border-ember bg-ember px-2 py-0.5 text-ink">
-                        Tú
+                        {t('payment.you')}
                       </span>
                       {tableParticipants
                         .filter((p) => p.id !== currentParticipantId)
@@ -176,9 +179,9 @@ export function ItemizedPaymentPanel({
                 />
                 <span className="font-mono text-ember-bright">
                   {shareCountFor(item.id) > 1
-                    ? `Se divide entre ${shareCountFor(item.id)} personas · `
+                    ? t('payment.splitBetweenN', { n: shareCountFor(item.id) })
                     : ''}
-                  tu parte: {formatPrice(myShareCents(item), currency)}
+                  {t('payment.yourShare', { amount: formatPrice(myShareCents(item), currency) })}
                 </span>
               </div>
             )}
@@ -187,7 +190,7 @@ export function ItemizedPaymentPanel({
       </ul>
 
       <div className="flex items-center gap-2">
-        <span className="text-sm text-cream-dim">Propina:</span>
+        <span className="text-sm text-cream-dim">{t('payment.tip')}</span>
         {[0, 5, 10, 15].map((pct) => (
           <button
             key={pct}
@@ -206,17 +209,17 @@ export function ItemizedPaymentPanel({
 
       <div className="flex items-center justify-between gap-2 border-t border-white/10 pt-3">
         <span className="text-sm">
-          Total: <span className="font-mono text-ember-bright">{formatPrice(totalCents, currency)}</span>
+          {t('payment.total')} <span className="font-mono text-ember-bright">{formatPrice(totalCents, currency)}</span>
         </span>
         <button
           type="submit"
           disabled={pending || selected.size === 0}
           className="rounded-lg bg-ember px-3.5 py-2 text-sm font-medium text-ink disabled:opacity-40"
         >
-          {pending ? 'Redirigiendo…' : 'Pagar estos platos'}
+          {pending ? t('payment.redirecting') : t('payment.payTheseItems')}
         </button>
       </div>
-      {state?.error && <p className="text-xs text-rust">{state.error}</p>}
+      {state?.errorCode && <p className="text-xs text-rust">{t(`error.${state.errorCode}`)}</p>}
     </form>
   )
 }

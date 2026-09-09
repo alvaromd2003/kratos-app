@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import { formatPrice, formatTime } from '@/lib/format'
-import { DIETARY_TAGS, dietaryTagLabel } from '@/lib/dietary-tags'
+import { DIETARY_TAGS } from '@/lib/dietary-tags'
 import { requestCancelOrder, getTableSessionSnapshot } from '@/app/actions/ordering'
+import { useLocale } from '@/lib/i18n/provider'
 import { AddItemButton } from './add-item-button'
 import { CartItemRow } from './cart-item-row'
 import { SendOrderButton } from './send-order-button'
@@ -12,6 +13,7 @@ import { HelpButton } from './help-button'
 import { PaymentPanel } from './payment-panel'
 import { LoyaltyPanel } from './loyalty-panel'
 import { ItemizedPaymentPanel } from './itemized-payment-panel'
+import { LanguageSwitcher } from './language-switcher'
 
 type Category = { id: string; name: string }
 type MenuItem = {
@@ -49,13 +51,6 @@ type PaymentShareRow = {
   mode: PaymentMode
   amount_cents: number
   status: 'pending' | 'succeeded' | 'failed'
-}
-
-const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
-  pending: 'Pendiente',
-  preparing: 'En preparación',
-  ready: 'Lista para servir',
-  delivered: 'Entregado',
 }
 
 export function LiveTable({
@@ -108,6 +103,7 @@ export function LiveTable({
   // dish, not just how much is left.
   orderItemCoverage: Record<string, { participantId: string; amountCents: number }[]>
 }) {
+  const { t } = useLocale()
   const [participants, setParticipants] = useState(initialParticipants)
   const [orderItems, setOrderItems] = useState(initialOrderItems)
   const [orders, setOrders] = useState(initialOrders)
@@ -117,6 +113,13 @@ export function LiveTable({
   const [paymentShares, setPaymentShares] = useState(initialPaymentShares)
   const [orderItemCoverage, setOrderItemCoverage] = useState(initialOrderItemCoverage)
   const [activeTags, setActiveTags] = useState<Set<string>>(new Set())
+
+  const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
+    pending: t('orders.status.pending'),
+    preparing: t('orders.status.preparing'),
+    ready: t('orders.status.ready'),
+    delivered: t('orders.status.delivered'),
+  }
 
   // Polls a verified snapshot of this table's own session instead of
   // subscribing directly to Supabase Realtime with the anon key — the
@@ -210,7 +213,7 @@ export function LiveTable({
   const loyaltyDiscountPercent = loyaltyStamps >= 10 ? 10 : 0
 
   const participantLabel = (id: string) => {
-    if (id === participantId) return 'Tú'
+    if (id === participantId) return t('payment.you')
     return participantsById.get(id)?.name ?? '—'
   }
 
@@ -269,15 +272,17 @@ export function LiveTable({
 
   return (
     <main className="mx-auto flex max-w-md flex-col gap-8 px-4 py-6 pb-56">
+      <LanguageSwitcher />
       <div className="flex flex-col gap-3 rounded-2xl bg-gradient-to-b from-ink to-ink-2 px-5 py-5">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-display text-white">{restaurantName}</h1>
           <p className="text-sm text-cream-dim">
-            Mesa {tableLabel} · {participants.map((p) => participantLabel(p.id)).join(', ')}
+            {t('join.tableLabel', { label: tableLabel })} ·{' '}
+            {participants.map((p) => participantLabel(p.id)).join(', ')}
           </p>
         </div>
         <p className="text-sm font-medium text-marble-2">
-          Total de la mesa:{' '}
+          {t('table.total')}{' '}
           <span className="font-mono">{formatPrice(tableTotal, currency)}</span>
         </p>
         <HelpButton qrToken={qrToken} />
@@ -317,10 +322,10 @@ export function LiveTable({
       {sortedOrders.length > 0 && (
         <section className="flex flex-col gap-3 rounded-xl border border-marble-3 bg-white p-4">
           <div className="flex items-center justify-between">
-            <h2 className="font-display text-base text-ink">Tus pedidos</h2>
+            <h2 className="font-display text-base text-ink">{t('orders.title')}</h2>
             {avgWaitMinutes !== null && (
               <span className="text-xs text-bronze">
-                Tiempo medio de la cocina: ~<span className="font-mono">{avgWaitMinutes}</span> min
+                {t('orders.avgWait', { min: avgWaitMinutes })}
               </span>
             )}
           </div>
@@ -337,24 +342,18 @@ export function LiveTable({
                       {order.status === 'pending' && (
                         <span className="text-bronze">
                           {' '}
-                          ({ahead > 0 ? `${ahead} por delante` : 'el siguiente'})
+                          ({ahead > 0 ? t('orders.aheadInQueue', { n: ahead }) : t('orders.nextUp')})
                         </span>
                       )}
                     </p>
                     {order.status === 'pending' &&
                       (order.cancellation_requested_at ? (
-                        <span className="text-xs text-bronze">
-                          Cancelación solicitada, esperando confirmación
-                        </span>
+                        <span className="text-xs text-bronze">{t('orders.cancelRequested')}</span>
                       ) : (
                         <form
                           action={requestCancelOrder}
                           onSubmit={(e) => {
-                            if (
-                              !confirm(
-                                '¿Pedir a cocina que cancele este pedido? Si ya lo han empezado a preparar, pueden no aceptarlo.'
-                              )
-                            ) {
+                            if (!confirm(t('orders.cancelConfirm'))) {
                               e.preventDefault()
                             }
                           }}
@@ -362,7 +361,7 @@ export function LiveTable({
                           <input type="hidden" name="qr_token" value={qrToken} />
                           <input type="hidden" name="order_id" value={order.id} />
                           <button type="submit" className="text-xs text-rust underline">
-                            Cancelar
+                            {t('orders.cancel')}
                           </button>
                         </form>
                       ))}
@@ -391,7 +390,7 @@ export function LiveTable({
                 : 'border-marble-3 text-bronze hover:border-cream-dim'
             }`}
           >
-            {tag.label}
+            {t(`dietary.${tag.value}`)}
           </button>
         ))}
       </div>
@@ -414,7 +413,7 @@ export function LiveTable({
         })}
         {uncategorized.length > 0 && (
           <MenuSection
-            title="Otros"
+            title={t('preview.other')}
             items={uncategorized}
             qrToken={qrToken}
             currency={currency}
@@ -423,14 +422,14 @@ export function LiveTable({
           />
         )}
         {visibleItems.length === 0 && (
-          <p className="text-sm text-gray-500">Ningún plato coincide con esos filtros.</p>
+          <p className="text-sm text-gray-500">{t('orders.noMatch')}</p>
         )}
       </section>
 
       <section className="fixed inset-x-0 bottom-0 mx-auto flex max-h-64 w-full max-w-md flex-col gap-3 rounded-t-2xl border-t border-marble-3 bg-white px-5 py-4 text-ink shadow-[0_-8px_24px_rgba(11,25,44,0.1)]">
-        <h2 className="font-display text-base text-ink">Carrito de la mesa</h2>
+        <h2 className="font-display text-base text-ink">{t('cart.title')}</h2>
         {cartItems.length === 0 ? (
-          <p className="text-sm text-bronze">Todavía no hay nada en el carrito.</p>
+          <p className="text-sm text-bronze">{t('cart.empty')}</p>
         ) : (
           <ul className="flex flex-col gap-2 overflow-y-auto">
             {cartItems.map((row) => {
@@ -452,14 +451,14 @@ export function LiveTable({
         )}
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm font-semibold text-ink">
-            Total del carrito:{' '}
+            {t('cart.total')}{' '}
             <span className="font-mono">{formatPrice(cartTotal, currency)}</span>
           </p>
           {cartItems.length > 0 && <SendOrderButton qrToken={qrToken} />}
         </div>
         <p className="flex items-center justify-center gap-1.5 text-center text-[0.68rem] tracking-wide text-bronze/70">
           <Image src="/kratos-badge.png" alt="" width={40} height={40} className="h-3.5 w-3.5 rounded-[3px]" />
-          Con la tecnología de Kratos Systems
+          {t('poweredBy')}
         </p>
       </section>
     </main>
@@ -481,6 +480,7 @@ function MenuSection({
   itemsById: Map<string, MenuItem>
   enabledTags: string[]
 }) {
+  const { t } = useLocale()
   return (
     <div className="flex flex-col gap-3">
       <h2 className="text-xs font-semibold uppercase tracking-wider text-bronze">{title}</h2>
@@ -510,11 +510,11 @@ function MenuSection({
               <p className="font-mono text-xs text-bronze">
                 {formatPrice(item.price_cents, currency)}
               </p>
-              {item.dietary_tags.filter((t) => enabledTags.includes(t)).length > 0 && (
+              {item.dietary_tags.filter((tag) => enabledTags.includes(tag)).length > 0 && (
                 <p className="text-xs text-bronze">
                   {item.dietary_tags
-                    .filter((t) => enabledTags.includes(t))
-                    .map(dietaryTagLabel)
+                    .filter((tag) => enabledTags.includes(tag))
+                    .map((tag) => t(`dietary.${tag}`))
                     .join(' · ')}
                 </p>
               )}

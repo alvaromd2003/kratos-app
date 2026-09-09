@@ -121,7 +121,7 @@ export async function sendSessionOrderToKitchen(
   admin: ReturnType<typeof createAdminClient>,
   tableSessionId: string,
   restaurantId: string
-): Promise<{ error?: string }> {
+): Promise<{ errorCode?: string }> {
   const { data: pendingItems } = await admin
     .from('order_items')
     .select('id, menu_item_id')
@@ -129,7 +129,7 @@ export async function sendSessionOrderToKitchen(
     .is('order_id', null)
 
   if (!pendingItems || pendingItems.length === 0) {
-    return { error: 'No hay nada en el carrito para enviar.' }
+    return { errorCode: 'EMPTY_CART' }
   }
 
   const menuItemIds = [...new Set(pendingItems.map((i) => i.menu_item_id))]
@@ -163,7 +163,7 @@ export async function sendSessionOrderToKitchen(
     .single()
 
   if (orderError || !order) {
-    return { error: 'No se pudo enviar el pedido. Inténtalo de nuevo.' }
+    return { errorCode: 'COULD_NOT_SEND_ORDER' }
   }
 
   // Scoped to exactly the ids read above — NOT "whatever is still
@@ -188,7 +188,7 @@ export async function sendSessionOrderToKitchen(
 
   if (updateError) {
     await admin.from('orders').delete().eq('id', order.id)
-    return { error: 'No se pudo enviar el pedido. Inténtalo de nuevo.' }
+    return { errorCode: 'COULD_NOT_SEND_ORDER' }
   }
 
   if (!claimed || claimed.length === 0) {

@@ -16,7 +16,7 @@ import { OPTIONAL_PAYMENT_METHODS } from '@/lib/payment-methods'
 import { getParticipantLoyaltyDiscount, restoreLoyaltyStampsForParticipant } from '@/lib/loyalty'
 import type Stripe from 'stripe'
 
-export type PaymentFormState = { error?: string } | undefined
+export type PaymentFormState = { errorCode?: string } | undefined
 
 type PaymentMode = 'individual' | 'split' | 'collective' | 'items'
 type AdminClient = ReturnType<typeof createAdminClient>
@@ -45,7 +45,7 @@ async function createPaymentCheckout(
   orderItemShares?: Map<string, number>
 ): Promise<PaymentFormState> {
   if (amountCents <= 0) {
-    return { error: 'No hay nada pendiente de pagar.' }
+    return { errorCode: 'NOTHING_TO_PAY' }
   }
 
   const { data: restaurant } = await admin
@@ -55,7 +55,7 @@ async function createPaymentCheckout(
     .maybeSingle()
 
   if (!restaurant?.stripe_onboarding_complete || !restaurant.stripe_account_id) {
-    return { error: 'Este restaurante todavía no acepta pagos por la app.' }
+    return { errorCode: 'PAYMENTS_NOT_ENABLED' }
   }
 
   const discountCents = await getParticipantLoyaltyDiscount(
@@ -89,12 +89,9 @@ async function createPaymentCheckout(
       await restoreLoyaltyStampsForParticipant(admin, verified.participantId, table.restaurant_id)
     }
     if (insertError?.message?.includes('amount_exceeds_remaining')) {
-      return {
-        error:
-          'La cuenta ha cambiado (puede que alguien más acabe de pagar). Actualiza la página e inténtalo de nuevo.',
-      }
+      return { errorCode: 'BILL_CHANGED_RACE' }
     }
-    return { error: 'No se pudo iniciar el pago. Inténtalo de nuevo.' }
+    return { errorCode: 'COULD_NOT_START_PAYMENT' }
   }
   const share = { id: shareId as string }
 
@@ -194,12 +191,9 @@ async function createPaymentCheckout(
     }
     await admin.from('payment_shares').delete().eq('id', share.id)
     if (amountTooSmall) {
-      return {
-        error:
-          'Ese importe es demasiado pequeño para pagarlo por tarjeta/Bizum. Prueba a pagar en efectivo, o júntalo con otro pago (por ejemplo, "Pagar toda la cuenta").',
-      }
+      return { errorCode: 'AMOUNT_TOO_SMALL' }
     }
-    return { error: 'No se pudo conectar con Stripe. Inténtalo de nuevo.' }
+    return { errorCode: 'STRIPE_CONNECTION_ERROR' }
   }
 
   redirect(checkoutUrl)
@@ -220,7 +214,7 @@ export async function createIndividualPayment(
   const table = await getActiveTableByQrToken(qrToken)
   const verified = table ? await getVerifiedParticipant(qrToken) : null
   if (!table || !verified) {
-    return { error: 'Tu sesión en la mesa caducó. Vuelve a escanear el código QR.' }
+    return { errorCode: 'SESSION_EXPIRED' }
   }
 
   const admin = createAdminClient()
@@ -241,7 +235,7 @@ export async function createSplitPayment(
   const table = await getActiveTableByQrToken(qrToken)
   const verified = table ? await getVerifiedParticipant(qrToken) : null
   if (!table || !verified) {
-    return { error: 'Tu sesión en la mesa caducó. Vuelve a escanear el código QR.' }
+    return { errorCode: 'SESSION_EXPIRED' }
   }
 
   const admin = createAdminClient()
@@ -261,7 +255,7 @@ export async function createCollectivePayment(
   const table = await getActiveTableByQrToken(qrToken)
   const verified = table ? await getVerifiedParticipant(qrToken) : null
   if (!table || !verified) {
-    return { error: 'Tu sesión en la mesa caducó. Vuelve a escanear el código QR.' }
+    return { errorCode: 'SESSION_EXPIRED' }
   }
 
   const admin = createAdminClient()
@@ -301,18 +295,18 @@ export async function createItemizedPayment(
   const table = await getActiveTableByQrToken(qrToken)
   const verified = table ? await getVerifiedParticipant(qrToken) : null
   if (!table || !verified) {
-    return { error: 'Tu sesión en la mesa caducó. Vuelve a escanear el código QR.' }
+    return { errorCode: 'SESSION_EXPIRED' }
   }
 
   if (orderItemIds.length === 0) {
-    return { error: 'Selecciona al menos un plato.' }
+    return { errorCode: 'SELECT_AT_LEAST_ONE_ITEM' }
   }
 
   const admin = createAdminClient()
 
   const summary = await getTableBillSummary(admin, verified.tableSessionId)
   if (summary.remainingCents <= 0) {
-    return { error: 'La cuenta ya está pagada.' }
+    return { errorCode: 'BILL_ALREADY_PAID' }
   }
 
   // Re-derive everything from the DB — never trust client-supplied ids
@@ -340,9 +334,7 @@ export async function createItemizedPayment(
   }
 
   if (orderItemShares.size === 0) {
-    return {
-      error: 'Esos platos ya están completamente pagados (puede que ya los haya pagado otra persona).',
-    }
+    return { errorCode: 'ITEMS_ALREADY_PAID' }
   }
 
   // The per-dish "still owed" figures above only look at itemized
@@ -400,14 +392,14 @@ export async function requestCashPayment(
   const table = await getActiveTableByQrToken(qrToken)
   const verified = table ? await getVerifiedParticipant(qrToken) : null
   if (!table || !verified) {
-    return { error: 'Tu sesión en la mesa caducó. Vuelve a escanear el código QR.' }
+    return { errorCode: 'SESSION_EXPIRED' }
   }
 
   const admin = createAdminClient()
   const summary = await getTableBillSummary(admin, verified.tableSessionId)
 
   if (summary.remainingCents <= 0) {
-    return { error: 'No hay nada pendiente de pagar.' }
+    return { errorCode: 'NOTHING_TO_PAY' }
   }
 
   const { data: existing } = await admin
@@ -443,6 +435,6 @@ export async function requestCashPayment(
     if (discountCents > 0) {
       await restoreLoyaltyStampsForParticipant(admin, verified.participantId, table.restaurant_id)
     }
-    return { error: 'No se pudo avisar al personal. Inténtalo de nuevo.' }
+    return { errorCode: 'COULD_NOT_NOTIFY_STAFF' }
   }
 }

@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react'
 import { setLoyaltyEmail } from '@/app/actions/loyalty'
+import { useLocale } from '@/lib/i18n/provider'
 
 const STAMP_THRESHOLD = 10
 
@@ -15,6 +16,7 @@ export function LoyaltyPanel({
   stamps: number
 }) {
   const [state, action, pending] = useActionState(setLoyaltyEmail, undefined)
+  const { t } = useLocale()
 
   if (!loyaltyEmail) {
     return (
@@ -26,7 +28,7 @@ export function LoyaltyPanel({
         <input
           type="email"
           name="email"
-          placeholder="tu@email.com"
+          placeholder={t('loyalty.emailPlaceholder')}
           required
           className="flex-1 rounded-lg border border-marble-3 px-3 py-2 text-sm text-ink focus:border-ember focus:outline-none"
         />
@@ -35,9 +37,9 @@ export function LoyaltyPanel({
           disabled={pending}
           className="whitespace-nowrap rounded-lg bg-ink px-3.5 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
-          {pending ? 'Guardando…' : 'Acumular sellos'}
+          {pending ? t('loyalty.saving') : t('loyalty.join')}
         </button>
-        {state?.error && <p className="text-xs text-rust">{state.error}</p>}
+        {state?.errorCode && <p className="text-xs text-rust">{t(`error.${state.errorCode}`)}</p>}
       </form>
     )
   }
@@ -45,7 +47,7 @@ export function LoyaltyPanel({
   return (
     <div className="flex flex-col gap-2.5 rounded-xl border border-marble-3 bg-white p-4">
       <div className="flex items-center justify-between">
-        <span className="text-sm text-bronze">Sellos acumulados</span>
+        <span className="text-sm text-bronze">{t('loyalty.stampsCollected')}</span>
         <span className="font-mono text-xs text-bronze">
           {stamps}/{STAMP_THRESHOLD}
         </span>
@@ -59,9 +61,7 @@ export function LoyaltyPanel({
         ))}
       </div>
       {stamps >= STAMP_THRESHOLD && (
-        <span className="text-xs font-medium text-sage">
-          🎉 Descuento disponible — se aplicará solo en tu próximo pago
-        </span>
+        <span className="text-xs font-medium text-sage">{t('loyalty.discountAvailable')}</span>
       )}
     </div>
   )
