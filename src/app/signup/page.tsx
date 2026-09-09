@@ -56,6 +56,29 @@ export default function SignupPage() {
             Te lo facilita Kratos — activa 1 mes de prueba gratis.
           </span>
         </div>
+        <label className="flex items-start gap-2 text-sm text-cream-dim">
+          <input
+            name="accepted_terms"
+            type="checkbox"
+            required
+            className="mt-0.5 h-4 w-4 shrink-0 accent-ember"
+          />
+          <span>
+            He leído y acepto los{' '}
+            <Link href="/terminos" target="_blank" className="underline">
+              Términos y condiciones
+            </Link>
+            , la{' '}
+            <Link href="/privacidad" target="_blank" className="underline">
+              Política de privacidad
+            </Link>{' '}
+            y el{' '}
+            <Link href="/tratamiento-datos" target="_blank" className="underline">
+              tratamiento de datos de mis comensales
+            </Link>
+            .
+          </span>
+        </label>
         {state?.error && <p className="text-sm text-rust">{state.error}</p>}
         <button
           disabled={pending}

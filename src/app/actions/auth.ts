@@ -13,6 +13,7 @@ export async function signup(
   const email = String(formData.get('email') ?? '').trim()
   const password = String(formData.get('password') ?? '')
   const accessCode = String(formData.get('access_code') ?? '').trim()
+  const acceptedTerms = formData.get('accepted_terms') === 'on'
 
   if (!email || !password) {
     return { error: 'Introduce un email y una contraseña.' }
@@ -22,6 +23,9 @@ export async function signup(
   }
   if (!accessCode) {
     return { error: 'Introduce el código de acceso.' }
+  }
+  if (!acceptedTerms) {
+    return { error: 'Tienes que aceptar los términos y la política de privacidad para continuar.' }
   }
 
   // Keeps /signup from being wide open to anyone who finds the URL — only
@@ -53,7 +57,13 @@ export async function signup(
   const { error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { signup_access_code: accessCode } },
+    options: {
+      data: {
+        signup_access_code: accessCode,
+        // Kept as a record of consent — when, not just that.
+        terms_accepted_at: new Date().toISOString(),
+      },
+    },
   })
 
   if (error) {
