@@ -41,6 +41,21 @@ export default function SignupPage() {
           />
           <span className="text-xs text-cream-dim">Mínimo 8 caracteres.</span>
         </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor="access_code" className="text-sm text-cream-dim">
+            Código de acceso
+          </label>
+          <input
+            id="access_code"
+            name="access_code"
+            type="text"
+            required
+            className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-white focus:border-ember focus:outline-none"
+          />
+          <span className="text-xs text-cream-dim">
+            Te lo facilita Kratos — activa 1 mes de prueba gratis.
+          </span>
+        </div>
         {state?.error && <p className="text-sm text-rust">{state.error}</p>}
         <button
           disabled={pending}

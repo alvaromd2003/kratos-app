@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getCurrentRestaurant } from '@/lib/restaurant'
 import { DIETARY_TAGS } from '@/lib/dietary-tags'
 import { OPTIONAL_PAYMENT_METHODS } from '@/lib/payment-methods'
@@ -45,9 +46,26 @@ export async function createRestaurant(
   // exists — a chicken-and-egg problem that only shows up under RLS.
   const restaurantId = randomUUID()
 
+  // The generic testing code (see access_codes/signup) never starts a
+  // trial countdown — everything else does, 30 days from right now.
+  const signupCode = user.user_metadata?.signup_access_code as string | undefined
+  let isGenericCode = false
+  if (signupCode) {
+    const admin = createAdminClient()
+    const { data: codeRow } = await admin
+      .from('access_codes')
+      .select('is_generic')
+      .eq('code', signupCode)
+      .maybeSingle()
+    isGenericCode = codeRow?.is_generic ?? false
+  }
+  const trialEndsAt = isGenericCode
+    ? null
+    : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+
   const { error: restaurantError } = await supabase
     .from('restaurants')
-    .insert({ id: restaurantId, name, slug })
+    .insert({ id: restaurantId, name, slug, trial_ends_at: trialEndsAt })
 
   if (restaurantError) {
     return { error: 'No se pudo crear el restaurante. Inténtalo de nuevo.' }
