@@ -33,6 +33,23 @@ export default async function StatsPage({
   const supabase = await createClient()
   const orders = await getRestaurantOrders(supabase, restaurant.id, { since })
 
+  // session_participants has no restaurant_id of its own — filtered via
+  // its table_session's restaurant_id instead, same join Postgres RLS
+  // itself uses to scope staff access to this table.
+  let feedbackQuery = supabase
+    .from('session_participants')
+    .select('feedback_rating, table_sessions!inner(restaurant_id)')
+    .eq('table_sessions.restaurant_id', restaurant.id)
+    .not('feedback_rating', 'is', null)
+  if (since) {
+    feedbackQuery = feedbackQuery.gte('feedback_submitted_at', since)
+  }
+  const { data: feedbackRows } = await feedbackQuery
+
+  const ratings = (feedbackRows ?? []).map((r) => r.feedback_rating as number)
+  const averageRating = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null
+  const lowRatingCount = ratings.filter((r) => r <= 3).length
+
   const rangeSelector = (
     <div className="flex gap-2">
       {RANGES.map((r) => (
@@ -102,7 +119,7 @@ export default async function StatsPage({
         {rangeSelector}
       </div>
 
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border border-marble-3 bg-white p-5">
           <p className="text-xs font-semibold uppercase tracking-wider text-bronze">Ingresos totales</p>
           <p className="mt-1 font-mono text-2xl text-ink">
@@ -122,6 +139,20 @@ export default async function StatsPage({
           <p className="mt-1 font-mono text-2xl text-ink">
             {busiestHour !== null ? `${busiestHour}:00–${busiestHour + 1}:00` : '—'}
           </p>
+        </div>
+        <div className="rounded-xl border border-marble-3 bg-white p-5">
+          <p className="text-xs font-semibold uppercase tracking-wider text-bronze">
+            Valoración media
+          </p>
+          <p className="mt-1 font-mono text-2xl text-ink">
+            {averageRating !== null ? `${averageRating.toFixed(1)}★` : '—'}
+          </p>
+          {ratings.length > 0 && (
+            <p className="mt-0.5 text-xs text-bronze">
+              {ratings.length} valoraciones
+              {lowRatingCount > 0 && `, ${lowRatingCount} de 3★ o menos`}
+            </p>
+          )}
         </div>
       </section>
 
