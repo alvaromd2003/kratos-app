@@ -148,6 +148,22 @@ export function TableStatus({
           )
         }
       )
+      // No restaurant_id filter possible (order_items has no such column
+      // — see fetchTableState's comment), but RLS still only ever
+      // delivers rows this restaurant's staff can actually SELECT, so
+      // this can't leak another tenant's activity. Any new item, from
+      // any table, means "mesa parada" should re-check freshness right
+      // away instead of waiting for the 2-minute poll.
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'order_items' },
+        () => {
+          setTables((current) => {
+            fetchTableState(supabase, restaurantId, current).then(setTables)
+            return current
+          })
+        }
+      )
       .subscribe((status) => {
         if (status !== 'SUBSCRIBED') return
         if (!hasConnectedBefore.current) {

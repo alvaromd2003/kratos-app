@@ -10,7 +10,7 @@ import {
   getVerifiedParticipant,
   sendSessionOrderToKitchen,
 } from '@/lib/ordering'
-import { isOrderItemClaimed } from '@/lib/payments'
+import { isOrderItemClaimed, getOrderItemCoverage } from '@/lib/payments'
 import { currentTimeInZone, isWithinTimeWindow } from '@/lib/timezone'
 
 export type OrderingFormState = { error?: string } | undefined
@@ -305,12 +305,15 @@ export async function getTableSessionSnapshot(qrToken: string) {
       .in('status', ['pending', 'preparing']),
   ])
 
+  const orderItemCoverage = await getOrderItemCoverage(admin, verified.tableSessionId)
+
   return {
     orderItems: orderItems ?? [],
     participants: participants ?? [],
     orders: orders ?? [],
     paymentShares: paymentShares ?? [],
     restaurantActiveOrders: restaurantActiveOrders ?? [],
+    orderItemCoverage: Object.fromEntries(orderItemCoverage),
   }
 }
 

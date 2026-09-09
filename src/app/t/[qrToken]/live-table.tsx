@@ -79,7 +79,7 @@ export function LiveTable({
   loyaltyStamps,
   googleReviewUrl,
   hasSubmittedFeedback,
-  orderItemCoverage,
+  orderItemCoverage: initialOrderItemCoverage,
 }: {
   qrToken: string
   tableLabel: string
@@ -115,6 +115,7 @@ export function LiveTable({
     initialRestaurantActiveOrders
   )
   const [paymentShares, setPaymentShares] = useState(initialPaymentShares)
+  const [orderItemCoverage, setOrderItemCoverage] = useState(initialOrderItemCoverage)
   const [activeTags, setActiveTags] = useState<Set<string>>(new Set())
 
   // Polls a verified snapshot of this table's own session instead of
@@ -139,6 +140,7 @@ export function LiveTable({
       setOrders(snapshot.orders)
       setPaymentShares(snapshot.paymentShares)
       setRestaurantActiveOrders(snapshot.restaurantActiveOrders)
+      setOrderItemCoverage(snapshot.orderItemCoverage)
     }
 
     poll()
