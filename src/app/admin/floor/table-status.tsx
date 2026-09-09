@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useWakeLock } from '@/lib/use-wake-lock'
 import { updateTablePosition } from '@/app/actions/tables'
+import { TABLE_ZONES, TABLE_ZONE_LABELS, type TableZone } from '@/lib/table-zones'
 import { TableRowContent, type FloorTable } from './table-row-content'
 import { FloorPlan } from './floor-plan'
 
@@ -77,6 +78,7 @@ export function TableStatus({
   const [now, setNow] = useState<number | null>(null)
   const [expandedTableId, setExpandedTableId] = useState<string | null>(null)
   const [view, setView] = useState<'list' | 'plan'>('list')
+  const [zoneFilter, setZoneFilter] = useState<TableZone | 'all'>('all')
   const hasConnectedBefore = useRef(false)
 
   useWakeLock()
@@ -173,6 +175,10 @@ export function TableStatus({
 
   if (tables.length === 0) return null
 
+  const hasAnyZone = tables.some((t) => t.zone !== null)
+  const visibleTables =
+    zoneFilter === 'all' ? tables : tables.filter((t) => t.zone === zoneFilter)
+
   return (
     <section className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
@@ -195,9 +201,35 @@ export function TableStatus({
         </div>
       </div>
 
+      {hasAnyZone && (
+        <div className="flex flex-wrap gap-1.5 text-xs">
+          <button
+            type="button"
+            onClick={() => setZoneFilter('all')}
+            className={`rounded-full px-3 py-1 ${
+              zoneFilter === 'all' ? 'bg-ink text-white' : 'border border-marble-3 text-bronze'
+            }`}
+          >
+            Todas
+          </button>
+          {TABLE_ZONES.map((zone) => (
+            <button
+              key={zone}
+              type="button"
+              onClick={() => setZoneFilter(zone)}
+              className={`rounded-full px-3 py-1 ${
+                zoneFilter === zone ? 'bg-ink text-white' : 'border border-marble-3 text-bronze'
+              }`}
+            >
+              {TABLE_ZONE_LABELS[zone]}
+            </button>
+          ))}
+        </div>
+      )}
+
       {view === 'list' ? (
         <ul className="flex flex-wrap gap-3">
-          {tables.map((table) => (
+          {visibleTables.map((table) => (
             <li
               key={table.id}
               className="flex flex-col gap-2 rounded-xl border border-marble-3 bg-white px-4 py-3 text-sm"
@@ -217,7 +249,7 @@ export function TableStatus({
         </ul>
       ) : (
         <FloorPlan
-          tables={tables}
+          tables={visibleTables}
           currency={currency}
           now={now}
           menuItems={menuItems}

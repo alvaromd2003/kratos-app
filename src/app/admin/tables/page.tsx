@@ -11,7 +11,7 @@ export default async function TablesPage() {
 
   const { data: tables } = await supabase
     .from('tables')
-    .select('id, label, qr_token, active')
+    .select('id, label, zone, qr_token, active')
     .eq('restaurant_id', restaurant.id)
     .order('created_at')
 
@@ -76,6 +76,7 @@ export default async function TablesPage() {
               key={table.id}
               id={table.id}
               label={table.label}
+              zone={table.zone}
               url={table.url}
               qrDataUrl={table.qrDataUrl}
               occupied={table.occupied}

@@ -4,10 +4,12 @@ import { useActionState } from 'react'
 import { updateTable, deleteTable, closeTableSession, toggleTableActive } from '@/app/actions/tables'
 import { recordManualPayment } from '@/app/actions/kitchen'
 import { formatPrice } from '@/lib/format'
+import { TABLE_ZONES, TABLE_ZONE_LABELS, type TableZone } from '@/lib/table-zones'
 
 export function TableCard({
   id,
   label,
+  zone,
   url,
   qrDataUrl,
   occupied,
@@ -18,6 +20,7 @@ export function TableCard({
 }: {
   id: string
   label: string
+  zone: TableZone | null
   url: string
   qrDataUrl: string
   occupied: boolean
@@ -31,7 +34,7 @@ export function TableCard({
 
   return (
     <li className="flex w-56 flex-col items-center gap-2.5 rounded-xl border border-marble-3 bg-white p-4 text-center">
-      <form action={action} className="flex items-center gap-2">
+      <form action={action} className="flex flex-col items-center gap-2">
         <input type="hidden" name="id" value={id} />
         <input
           name="label"
@@ -39,6 +42,18 @@ export function TableCard({
           required
           className="w-28 rounded-lg border border-marble-3 px-2 py-1 text-center text-sm focus:border-ember focus:outline-none"
         />
+        <select
+          name="zone"
+          defaultValue={zone ?? ''}
+          className="w-28 rounded-lg border border-marble-3 px-2 py-1 text-center text-sm focus:border-ember focus:outline-none"
+        >
+          <option value="">Sin zona</option>
+          {TABLE_ZONES.map((z) => (
+            <option key={z} value={z}>
+              {TABLE_ZONE_LABELS[z]}
+            </option>
+          ))}
+        </select>
         <button disabled={pending} type="submit" className="text-xs text-bronze underline">
           {pending ? 'Guardando…' : 'Guardar'}
         </button>
