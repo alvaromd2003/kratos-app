@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Work_Sans, Fraunces, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -20,6 +20,15 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Kratos",
   description: "Pide y gestiona pedidos por QR, sin esperar al camarero.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Kratos",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0B192C",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
