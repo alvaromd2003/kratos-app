@@ -13,7 +13,7 @@ import {
 } from '@/lib/payments'
 import { stripe } from '@/lib/stripe'
 import { OPTIONAL_PAYMENT_METHODS } from '@/lib/payment-methods'
-import { getParticipantLoyaltyDiscount } from '@/lib/loyalty'
+import { getParticipantLoyaltyDiscount, restoreLoyaltyStampsForParticipant } from '@/lib/loyalty'
 import type Stripe from 'stripe'
 
 export type PaymentFormState = { error?: string } | undefined
@@ -66,24 +66,37 @@ async function createPaymentCheckout(
   )
   const chargedCents = amountCents - discountCents + tipCents
 
-  const { data: share, error: insertError } = await admin
-    .from('payment_shares')
-    .insert({
-      restaurant_id: table.restaurant_id,
-      table_session_id: verified.tableSessionId,
-      participant_id: verified.participantId,
-      mode,
-      amount_cents: amountCents,
-      tip_cents: tipCents,
-      loyalty_discount_cents: discountCents,
-      charged_cents: chargedCents,
-    })
-    .select('id')
-    .single()
+  // Atomic: re-validates amountCents against a FRESH remaining balance
+  // (computed under an advisory lock, not trusting this function's own
+  // possibly-stale read) before inserting — closes the race where two
+  // diners paying the same table/dish at nearly the same instant could
+  // otherwise both succeed against money that's already spoken for.
+  const { data: shareId, error: insertError } = await admin.rpc('create_payment_share', {
+    p_table_session_id: verified.tableSessionId,
+    p_restaurant_id: table.restaurant_id,
+    p_participant_id: verified.participantId,
+    p_mode: mode,
+    p_amount_cents: amountCents,
+    p_tip_cents: tipCents,
+    p_loyalty_discount_cents: discountCents,
+    p_charged_cents: chargedCents,
+  })
 
-  if (insertError || !share) {
+  if (insertError || !shareId) {
+    // The reserved loyalty discount (if any) is now stranded — this
+    // payment never got created, so give the stamps back.
+    if (discountCents > 0) {
+      await restoreLoyaltyStampsForParticipant(admin, verified.participantId, table.restaurant_id)
+    }
+    if (insertError?.message?.includes('amount_exceeds_remaining')) {
+      return {
+        error:
+          'La cuenta ha cambiado (puede que alguien más acabe de pagar). Actualiza la página e inténtalo de nuevo.',
+      }
+    }
     return { error: 'No se pudo iniciar el pago. Inténtalo de nuevo.' }
   }
+  const share = { id: shareId as string }
 
   if (orderItemShares && orderItemShares.size > 0) {
     await admin.from('payment_share_items').insert(
@@ -176,6 +189,9 @@ async function createPaymentCheckout(
   }
 
   if (!checkoutUrl) {
+    if (discountCents > 0) {
+      await restoreLoyaltyStampsForParticipant(admin, verified.participantId, table.restaurant_id)
+    }
     await admin.from('payment_shares').delete().eq('id', share.id)
     if (amountTooSmall) {
       return {
@@ -300,26 +316,21 @@ export async function createItemizedPayment(
   }
 
   // Re-derive everything from the DB — never trust client-supplied ids
-  // or amounts blindly.
+  // or amounts blindly. price_cents is the snapshot taken when the dish
+  // was added, not a live menu_items join — a price edit after the fact
+  // must never change what's owed on an already-placed order.
   const [{ data: items }, coverage] = await Promise.all([
     admin
       .from('order_items')
-      .select('id, menu_item_id, quantity')
+      .select('id, quantity, price_cents')
       .eq('table_session_id', verified.tableSessionId)
       .in('id', orderItemIds),
     getOrderItemCoverage(admin, verified.tableSessionId),
   ])
 
-  const menuItemIds = [...new Set((items ?? []).map((item) => item.menu_item_id))]
-  const { data: menuItems } =
-    menuItemIds.length > 0
-      ? await admin.from('menu_items').select('id, price_cents').in('id', menuItemIds)
-      : { data: [] }
-  const priceById = new Map((menuItems ?? []).map((m) => [m.id, m.price_cents]))
-
   const orderItemShares = new Map<string, number>()
   for (const item of items ?? []) {
-    const fullCents = (priceById.get(item.menu_item_id) ?? 0) * item.quantity
+    const fullCents = item.price_cents * item.quantity
     const itemRemainingCents = fullCents - totalOrderItemCoverage(coverage.get(item.id))
     if (itemRemainingCents <= 0) continue // fully paid already since the picker loaded — skip it
 
@@ -334,7 +345,32 @@ export async function createItemizedPayment(
     }
   }
 
-  const amountCents = [...orderItemShares.values()].reduce((sum, cents) => sum + cents, 0)
+  // The per-dish "still owed" figures above only look at itemized
+  // (payment_share_items) coverage — they don't know about money already
+  // collected on this same table via individual/split/collective, which
+  // reduces summary.remainingCents without ever touching per-dish
+  // coverage. Cap the total so mixing payment modes can never collect
+  // more than the table genuinely still owes, scaling every dish's share
+  // down proportionally if the uncapped total would exceed it.
+  let amountCents = [...orderItemShares.values()].reduce((sum, cents) => sum + cents, 0)
+  if (amountCents > summary.remainingCents) {
+    const scale = summary.remainingCents / amountCents
+    const entries = [...orderItemShares.entries()]
+    let allocated = 0
+    entries.forEach(([id, cents], index) => {
+      const isLast = index === entries.length - 1
+      const scaledCents = isLast
+        ? summary.remainingCents - allocated
+        : Math.floor(cents * scale)
+      allocated += scaledCents
+      if (scaledCents > 0) {
+        orderItemShares.set(id, scaledCents)
+      } else {
+        orderItemShares.delete(id)
+      }
+    })
+    amountCents = summary.remainingCents
+  }
   const tipCents = tipCentsFromFormData(formData, amountCents)
 
   return createPaymentCheckout(
@@ -392,17 +428,21 @@ export async function requestCashPayment(
     summary.remainingCents
   )
 
-  const { error } = await admin.from('payment_shares').insert({
-    restaurant_id: table.restaurant_id,
-    table_session_id: verified.tableSessionId,
-    participant_id: verified.participantId,
-    mode: 'cash',
-    amount_cents: summary.remainingCents,
-    loyalty_discount_cents: discountCents,
-    charged_cents: summary.remainingCents - discountCents,
+  const { error } = await admin.rpc('create_payment_share', {
+    p_table_session_id: verified.tableSessionId,
+    p_restaurant_id: table.restaurant_id,
+    p_participant_id: verified.participantId,
+    p_mode: 'cash',
+    p_amount_cents: summary.remainingCents,
+    p_tip_cents: 0,
+    p_loyalty_discount_cents: discountCents,
+    p_charged_cents: summary.remainingCents - discountCents,
   })
 
   if (error) {
+    if (discountCents > 0) {
+      await restoreLoyaltyStampsForParticipant(admin, verified.participantId, table.restaurant_id)
+    }
     return { error: 'No se pudo avisar al personal. Inténtalo de nuevo.' }
   }
 }

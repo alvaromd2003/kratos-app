@@ -32,6 +32,7 @@ type OrderItemRow = {
   quantity: number
   order_id: string | null
   note: string | null
+  price_cents: number
 }
 type OrderStatus = 'pending' | 'preparing' | 'ready' | 'delivered'
 type OrderRow = {
@@ -168,10 +169,11 @@ export function LiveTable({
   // not — a diner should never lose track of what the table has spent.
   const cartItems = orderItems.filter((row) => row.order_id === null)
 
-  const lineTotal = (row: OrderItemRow) => {
-    const item = itemsById.get(row.menu_item_id)
-    return item ? item.price_cents * row.quantity : 0
-  }
+  // The price snapshotted when the dish was added — never a live
+  // menu_items lookup, so a later price edit can't change what this
+  // table already owes for it (matches the server-side bill math in
+  // src/lib/payments.ts).
+  const lineTotal = (row: OrderItemRow) => row.price_cents * row.quantity
   const cartTotal = cartItems.reduce((sum, row) => sum + lineTotal(row), 0)
   const tableTotal = orderItems.reduce((sum, row) => sum + lineTotal(row), 0)
 
@@ -440,7 +442,7 @@ export function LiveTable({
                   name={`${item.name} — ${participantLabel(row.participant_id)}`}
                   quantity={row.quantity}
                   note={row.note}
-                  lineTotal={formatPrice(item.price_cents * row.quantity, currency)}
+                  lineTotal={formatPrice(row.price_cents * row.quantity, currency)}
                 />
               )
             })}

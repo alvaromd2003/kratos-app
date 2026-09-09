@@ -40,7 +40,7 @@ export async function addStaffItem(
 
   const { data: menuItem } = await admin
     .from('menu_items')
-    .select('id, available_from, available_until')
+    .select('id, price_cents, available_from, available_until')
     .eq('id', menuItemId)
     .eq('restaurant_id', restaurant.id)
     .eq('is_available', true)
@@ -71,6 +71,7 @@ export async function addStaffItem(
       p_table_session_id: sessionId,
       p_participant_id: participantId,
       p_menu_item_id: menuItemId,
+      p_price_cents: menuItem.price_cents,
     })
     if (error) {
       return { error: 'No se pudo añadir el plato. Inténtalo de nuevo.' }

@@ -31,18 +31,26 @@ export function daysAgoIso(days: number): string {
   return new Date(Date.now() - days * 86400000).toISOString()
 }
 
+// Zero-padded to "HH:MM:SS" — matching from/until's exact format (see
+// below) matters: a shorter "HH:MM" string compares as *less than* an
+// otherwise-equal "HH:MM:SS" one in a plain string comparison, which
+// made a window's exact start minute wrongly read as "not open yet" for
+// a full 60 seconds every day.
 export function currentTimeInZone(timeZone = 'Europe/Madrid'): string {
-  return new Intl.DateTimeFormat('en-GB', {
-    timeZone,
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(new Date())
+  return (
+    new Intl.DateTimeFormat('en-GB', {
+      timeZone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(new Date()) + ':00'
+  )
 }
 
-// from/until are "HH:MM" (or "HH:MM:SS", straight from a Postgres `time`
-// column — comparing as plain strings works either way since they're
-// zero-padded). Handles a window that crosses midnight (e.g. 22:00–02:00).
+// from/until are "HH:MM:SS", straight from a Postgres `time` column —
+// comparing as plain strings works since they're zero-padded and now is
+// formatted to the same "HH:MM:SS" shape above. Handles a window that
+// crosses midnight (e.g. 22:00–02:00).
 export function isWithinTimeWindow(from: string, until: string, now: string): boolean {
   if (from <= until) return now >= from && now <= until
   return now >= from || now <= until

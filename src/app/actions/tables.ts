@@ -170,10 +170,33 @@ export async function closeTableSession(formData: FormData) {
     .maybeSingle()
   if (!table) return
 
+  const { data: session } = await supabase
+    .from('table_sessions')
+    .select('id')
+    .eq('table_id', table.id)
+    .eq('status', 'open')
+    .maybeSingle()
+  if (!session) return
+
+  // Closing used to unconditionally flip the session, regardless of any
+  // order still mid-preparation — every staff board filters orders down
+  // to open sessions only (so closed tables stop cluttering it once
+  // they're truly done), so an order left over from an early close
+  // became permanently invisible to staff, not just to the diner.
+  // Refusing to close while one is still active keeps that order visible
+  // until it's actually finished, matching the existing pending-balance
+  // guard's spirit (surfaced client-side via its own confirm dialog).
+  const { count: activeOrderCount } = await supabase
+    .from('orders')
+    .select('id', { count: 'exact', head: true })
+    .eq('table_session_id', session.id)
+    .in('status', ['pending', 'preparing', 'ready'])
+  if ((activeOrderCount ?? 0) > 0) return
+
   await supabase
     .from('table_sessions')
     .update({ status: 'closed', closed_at: new Date().toISOString() })
-    .eq('table_id', table.id)
+    .eq('id', session.id)
     .eq('status', 'open')
 
   revalidatePath('/admin/tables')

@@ -81,7 +81,7 @@ export async function addItemToCart(
   // dish to the cart.
   const { data: menuItem } = await admin
     .from('menu_items')
-    .select('id, available_from, available_until')
+    .select('id, price_cents, available_from, available_until')
     .eq('id', menuItemId)
     .eq('restaurant_id', table.restaurant_id)
     .eq('is_available', true)
@@ -109,6 +109,7 @@ export async function addItemToCart(
     p_table_session_id: verified.tableSessionId,
     p_participant_id: verified.participantId,
     p_menu_item_id: menuItemId,
+    p_price_cents: menuItem.price_cents,
   })
 
   if (error) {
@@ -135,6 +136,33 @@ export async function changeItemQuantity(
   // harmless (it's just unpaid food stacked on the same row).
   if (delta < 0 && (await isOrderItemClaimed(admin, orderItemId))) {
     return { error: 'Ya se ha pagado (parte de) este plato, así que no se puede reducir.' }
+  }
+
+  // A dish added right before its time window closed could otherwise
+  // keep growing indefinitely afterward via "+" — addItemToCart already
+  // re-checks this for a brand-new line, so an increase on an existing
+  // one must too.
+  if (delta > 0) {
+    const { data: orderItem } = await admin
+      .from('order_items')
+      .select('menu_item_id')
+      .eq('id', orderItemId)
+      .eq('table_session_id', verified.tableSessionId)
+      .maybeSingle()
+    if (orderItem) {
+      const { data: menuItem } = await admin
+        .from('menu_items')
+        .select('available_from, available_until')
+        .eq('id', orderItem.menu_item_id)
+        .maybeSingle()
+      if (
+        menuItem?.available_from &&
+        menuItem.available_until &&
+        !isWithinTimeWindow(menuItem.available_from, menuItem.available_until, currentTimeInZone())
+      ) {
+        return { error: 'Este plato no está disponible a esta hora.' }
+      }
+    }
   }
 
   // Atomic (quantity = quantity + delta, then delete if <=0) instead of a
@@ -256,7 +284,7 @@ export async function getTableSessionSnapshot(qrToken: string) {
   ] = await Promise.all([
     admin
       .from('order_items')
-      .select('id, menu_item_id, participant_id, quantity, order_id, note')
+      .select('id, menu_item_id, participant_id, quantity, order_id, note, price_cents')
       .eq('table_session_id', verified.tableSessionId),
     admin
       .from('session_participants')

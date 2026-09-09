@@ -82,7 +82,7 @@ export async function getRestaurantOrders(
     supabase.from('table_sessions').select('id, table_id, status').in('id', sessionIds),
     supabase
       .from('order_items')
-      .select('id, order_id, quantity, menu_item_id, participant_id, note')
+      .select('id, order_id, quantity, menu_item_id, participant_id, note, price_cents')
       .in('order_id', orderIds),
   ])
 
@@ -141,7 +141,7 @@ export async function getRestaurantOrders(
           id: item.id,
           quantity: item.quantity,
           dishName: menuItem?.name ?? '—',
-          priceCents: menuItem?.price_cents ?? 0,
+          priceCents: item.price_cents,
           participantName: participantNameById.get(item.participant_id) ?? '—',
           station,
           note: item.note,

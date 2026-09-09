@@ -166,13 +166,23 @@ export async function sendSessionOrderToKitchen(
     return { error: 'No se pudo enviar el pedido. Inténtalo de nuevo.' }
   }
 
-  // Guards the same double-send race as elsewhere: if a concurrent call
-  // already claimed everything, this order ends up empty and gets
-  // cleaned up instead of sitting on the kitchen board empty.
+  // Scoped to exactly the ids read above — NOT "whatever is still
+  // unclaimed right now". A dish added between that read and this write
+  // (another diner tapping "+" a moment later, very plausible with
+  // several phones at once) must start its own next round, never get
+  // swept into an order whose kitchen/ready routing was already decided
+  // without it — a drinks-only order already committed as 'ready' could
+  // otherwise silently absorb a kitchen dish and skip the kitchen board
+  // entirely. .is('order_id', null) still guards the same double-send
+  // race as before: if a concurrent send already claimed these same ids,
+  // this update matches nothing and the order below gets cleaned up.
   const { data: claimed, error: updateError } = await admin
     .from('order_items')
     .update({ order_id: order.id })
-    .eq('table_session_id', tableSessionId)
+    .in(
+      'id',
+      pendingItems.map((item) => item.id)
+    )
     .is('order_id', null)
     .select('id')
 

@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { stripe } from '@/lib/stripe'
-import { awardLoyaltyStampsIfFullyPaid, redeemLoyaltyStamps } from '@/lib/loyalty'
+import { awardLoyaltyStampsIfFullyPaid, restoreLoyaltyStamps } from '@/lib/loyalty'
 import type Stripe from 'stripe'
 
 // Needs the raw request body to verify Stripe's signature — must run on
@@ -24,8 +24,11 @@ async function markSucceeded(
     .select('table_session_id, restaurant_id')
     .maybeSingle()
 
+  // No stamp-spending here anymore — getParticipantLoyaltyDiscount
+  // already reserved (spent) the stamps up front when this payment was
+  // created, closing a race where a second payment started before the
+  // first confirmed could see the same not-yet-spent stamp count.
   if (updated) {
-    await redeemLoyaltyStamps(admin, paymentShareId)
     await awardLoyaltyStampsIfFullyPaid(admin, updated.table_session_id, updated.restaurant_id)
   }
 }
@@ -72,11 +75,35 @@ export async function POST(request: Request) {
     const session = event.data.object as Stripe.Checkout.Session
     const paymentShareId = session.metadata?.payment_share_id
     if (paymentShareId) {
-      await admin
+      const { data: failed } = await admin
         .from('payment_shares')
         .update({ status: 'failed' })
         .eq('id', paymentShareId)
         .eq('status', 'pending')
+        .select('id')
+        .maybeSingle()
+      // A definitively failed charge never happened — give back any
+      // loyalty stamps it reserved, or they'd be spent for nothing.
+      if (failed) {
+        await restoreLoyaltyStamps(admin, paymentShareId)
+      }
+    }
+  }
+
+  // A restaurant refunding a diner (dashboard action, or a card-issuer
+  // chargeback) previously left the payment_shares row permanently
+  // 'succeeded' — getTableBillSummary would go on treating that money as
+  // collected forever, with no way to fix it short of manual SQL.
+  if (event.type === 'charge.refunded') {
+    const charge = event.data.object as Stripe.Charge
+    const paymentIntentId =
+      typeof charge.payment_intent === 'string' ? charge.payment_intent : null
+    if (paymentIntentId) {
+      await admin
+        .from('payment_shares')
+        .update({ status: 'refunded' })
+        .eq('stripe_payment_intent_id', paymentIntentId)
+        .eq('status', 'succeeded')
     }
   }
 

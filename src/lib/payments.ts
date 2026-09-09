@@ -26,7 +26,7 @@ export async function getTableBillSummary(
   const [{ data: items }, { data: shares }] = await Promise.all([
     admin
       .from('order_items')
-      .select('participant_id, quantity, menu_item_id')
+      .select('participant_id, quantity, price_cents')
       .eq('table_session_id', tableSessionId),
     admin
       .from('payment_shares')
@@ -36,17 +36,11 @@ export async function getTableBillSummary(
   ])
 
   const itemList = items ?? []
-  const menuItemIds = [...new Set(itemList.map((i) => i.menu_item_id))]
-  const { data: menuItems } =
-    menuItemIds.length > 0
-      ? await admin.from('menu_items').select('id, price_cents').in('id', menuItemIds)
-      : { data: [] }
-  const priceById = new Map((menuItems ?? []).map((m) => [m.id, m.price_cents]))
 
   let totalCents = 0
   const subtotalByParticipant = new Map<string, number>()
   for (const item of itemList) {
-    const lineTotal = (priceById.get(item.menu_item_id) ?? 0) * item.quantity
+    const lineTotal = item.price_cents * item.quantity
     totalCents += lineTotal
     subtotalByParticipant.set(
       item.participant_id,
