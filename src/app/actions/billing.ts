@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getRequestOrigin } from '@/lib/payments'
 import { stripe } from '@/lib/stripe'
-import { getBillingPrices, isFoundingEraActive } from '@/lib/billing'
+import { getStandardPriceId, getFoundingCouponId, isFoundingEraActive } from '@/lib/billing'
 
 export type BillingFormState = { errorCode?: string; checkoutUrl?: string } | undefined
 
@@ -58,23 +58,26 @@ export async function startRestaurantSubscription(
   }
 
   const founding = isFoundingEraActive()
-  const { foundingPriceId, standardPriceId } = await getBillingPrices()
+  const standardPriceId = await getStandardPriceId()
   const origin = await getRequestOrigin()
 
   // The founding price is a time-limited deal, not the permanent price —
-  // Checkout only ever shows the raw "350,00 € / mes" line otherwise, with
-  // nothing telling the restaurant it steps up later. This message sits
-  // right next to the pay button so that's disclosed up front, not
-  // discovered as a surprise on month 7's invoice.
+  // this message sits right next to the pay button so that's disclosed up
+  // front (on top of the discount breakdown Checkout already shows for the
+  // coupon below), not discovered as a surprise on month 7's invoice.
   const foundingNotice =
-    'Precio de lanzamiento: 350€/mes durante los primeros 6 meses. A partir del 7º mes, la cuota pasa a 600€/mes automáticamente (precio habitual de Kratos). Puedes cancelar la suscripción cuando quieras.'
+    'Precio de lanzamiento: 350€/mes durante los primeros 6 meses (250€ de descuento). A partir del 7º mes, la cuota vuelve a 600€/mes automáticamente. Puedes cancelar la suscripción cuando quieras.'
 
   let session
   try {
     session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       customer: customerId,
-      line_items: [{ price: founding ? foundingPriceId : standardPriceId, quantity: 1 }],
+      // Always the single 600€ price — the founding discount is a coupon
+      // layered on top (see src/lib/billing.ts), not a second Price, so
+      // Checkout renders the "600,00€ struck through → 350,00€" breakdown
+      // natively instead of just a flat 350€ line with no context.
+      line_items: [{ price: standardPriceId, quantity: 1 }],
       success_url: `${origin}/admin/platform?billing=success`,
       cancel_url: `${origin}/admin/platform?billing=cancelled`,
       client_reference_id: restaurant.id,
@@ -83,6 +86,7 @@ export async function startRestaurantSubscription(
         metadata: { restaurant_id: restaurant.id, founding_era: founding ? 'true' : 'false' },
       },
       ...(founding && {
+        discounts: [{ coupon: await getFoundingCouponId() }],
         custom_text: {
           submit: { message: foundingNotice },
         },
