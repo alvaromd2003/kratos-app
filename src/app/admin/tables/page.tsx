@@ -69,7 +69,19 @@ export default async function TablesPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <h1 className="text-2xl font-display text-ink">{interpolate(t['tables.title'], { name: restaurant.name })}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-display text-ink">{interpolate(t['tables.title'], { name: restaurant.name })}</h1>
+        {tableList.length > 0 && (
+          <a
+            href="/admin/tables/print"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-lg border border-marble-3 px-3 py-1.5 text-sm text-bronze underline"
+          >
+            {t['tables.printAll']}
+          </a>
+        )}
+      </div>
 
       <AddTableForm />
 

@@ -40,11 +40,12 @@ export default async function AdminLayout({
   // that job actually does. Owner/admin see everything.
   const homeHref = role === 'kitchen_staff' ? '/admin/kitchen' : role === 'waiter' ? '/admin/floor' : '/admin'
   const dict = staffDict[locale]
+  const isPlatformAdmin = Boolean(process.env.PLATFORM_ADMIN_EMAIL) && user.email === process.env.PLATFORM_ADMIN_EMAIL
 
   return (
     <div dir={dirFor(locale)} lang={locale} className="min-h-screen bg-marble">
       <LocaleProvider locale={locale} dict={dict}>
-        <header className="bg-gradient-to-b from-ink to-ink-2">
+        <header className="bg-gradient-to-b from-ink to-ink-2 print:hidden">
           <div className="flex items-center justify-between gap-4 px-6 py-3">
             <Link href={homeHref} className="flex items-center">
               <Image
@@ -57,6 +58,13 @@ export default async function AdminLayout({
               />
             </Link>
             <div className="flex items-center gap-4">
+              <a
+                href="mailto:hola@kratosystems.com"
+                className="hidden text-sm text-cream-dim underline hover:text-marble-2 sm:inline"
+                title={dict['nav.support']}
+              >
+                {dict['nav.support']}
+              </a>
               <StaffLanguageSwitcher />
               <form action={logout}>
                 <button type="submit" className="text-sm text-cream-dim underline hover:text-marble-2">
@@ -65,9 +73,9 @@ export default async function AdminLayout({
               </form>
             </div>
           </div>
-          <AdminNav role={role} />
+          <AdminNav role={role} isPlatformAdmin={isPlatformAdmin} />
         </header>
-        <main className="p-6">{children}</main>
+        <main className="p-6 print:p-0">{children}</main>
       </LocaleProvider>
     </div>
   )

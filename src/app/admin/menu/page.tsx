@@ -5,6 +5,7 @@ import { interpolate } from '@/lib/i18n/config'
 import { staffDict } from '@/lib/i18n/dictionaries/staff'
 import { AddCategoryForm } from './add-category-form'
 import { AddItemForm } from './add-item-form'
+import { ImportMenuForm } from './import-menu-form'
 import { CategoryRow } from './category-row'
 import { ItemRow } from './item-row'
 
@@ -78,6 +79,7 @@ export default async function MenuPage() {
           existingItems={itemList}
           enabledTags={restaurant.enabled_dietary_tags}
         />
+        <ImportMenuForm />
       </section>
     </div>
   )

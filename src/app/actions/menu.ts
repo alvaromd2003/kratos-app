@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentRestaurant } from '@/lib/restaurant'
 import { DIETARY_TAGS } from '@/lib/dietary-tags'
+import { parseCsv } from '@/lib/csv'
 
 const VALID_DIETARY_TAGS = new Set<string>(DIETARY_TAGS.map((t) => t.value))
 
@@ -397,4 +398,146 @@ export async function toggleMenuItemAvailability(formData: FormData) {
     .eq('restaurant_id', restaurant.id)
 
   revalidatePath('/admin/menu')
+}
+
+export type BulkImportState = { errorCode?: string; created?: number; skipped?: number } | undefined
+
+// Accent-insensitive so "Descripción" in the header row (likely, since
+// most owners will type it with the accent) still matches "descripcion".
+function normalizeHeader(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .trim()
+    .toLowerCase()
+}
+
+const TIME_PATTERN = /^\d{1,2}:\d{2}$/
+
+export async function bulkImportMenu(
+  _prevState: BulkImportState,
+  formData: FormData
+): Promise<BulkImportState> {
+  const { restaurant } = await getCurrentRestaurant()
+  const file = formData.get('file')
+
+  if (!(file instanceof File) || file.size === 0) {
+    return { errorCode: 'EMPTY_CSV_FILE' }
+  }
+
+  const text = await file.text()
+  const rows = parseCsv(text)
+  if (rows.length < 2) {
+    return { errorCode: 'INVALID_CSV_FORMAT' }
+  }
+
+  const header = rows[0].map(normalizeHeader)
+  const colIndex = {
+    name: header.indexOf('nombre'),
+    description: header.indexOf('descripcion'),
+    price: header.indexOf('precio'),
+    category: header.indexOf('categoria'),
+    station: header.indexOf('estacion'),
+    tags: header.indexOf('alergenos'),
+    from: header.indexOf('disponible_desde'),
+    until: header.indexOf('disponible_hasta'),
+  }
+  if (colIndex.name === -1 || colIndex.price === -1) {
+    return { errorCode: 'INVALID_CSV_FORMAT' }
+  }
+
+  const supabase = await createClient()
+
+  const { data: existingCategories } = await supabase
+    .from('menu_categories')
+    .select('id, name')
+    .eq('restaurant_id', restaurant.id)
+  const categoryIdByName = new Map(
+    (existingCategories ?? []).map((c) => [c.name.trim().toLowerCase(), c.id])
+  )
+  let nextCategorySortOrder = await getNextSortOrder(supabase, 'menu_categories', restaurant.id)
+
+  type NewItem = {
+    restaurant_id: string
+    category_id: string | null
+    name: string
+    description: string | null
+    price_cents: number
+    sort_order: number
+    dietary_tags: string[]
+    available_from: string | null
+    available_until: string | null
+  }
+  const newItems: NewItem[] = []
+  let skipped = 0
+  let nextItemSortOrder = await getNextSortOrder(supabase, 'menu_items', restaurant.id)
+
+  for (const row of rows.slice(1)) {
+    const name = (row[colIndex.name] ?? '').trim()
+    const priceRaw = (row[colIndex.price] ?? '').trim().replace(',', '.')
+    const priceNumber = Number(priceRaw)
+
+    if (!name || !priceRaw || Number.isNaN(priceNumber) || priceNumber < 0) {
+      skipped++
+      continue
+    }
+
+    let categoryId: string | null = null
+    const categoryName = colIndex.category !== -1 ? (row[colIndex.category] ?? '').trim() : ''
+    if (categoryName) {
+      const key = categoryName.toLowerCase()
+      const existing = categoryIdByName.get(key)
+      if (existing) {
+        categoryId = existing
+      } else {
+        const stationRaw = (colIndex.station !== -1 ? row[colIndex.station] : '')?.trim().toLowerCase() ?? ''
+        const station = stationRaw.includes('bar') ? 'bar' : 'kitchen'
+        const { data: created } = await supabase
+          .from('menu_categories')
+          .insert({
+            restaurant_id: restaurant.id,
+            name: categoryName,
+            station,
+            sort_order: nextCategorySortOrder++,
+          })
+          .select('id')
+          .single()
+        if (created) {
+          categoryId = created.id
+          categoryIdByName.set(key, created.id)
+        }
+      }
+    }
+
+    const tagsRaw = colIndex.tags !== -1 ? (row[colIndex.tags] ?? '') : ''
+    const dietaryTags = tagsRaw
+      .split(/[,;]/)
+      .map((t) => t.trim())
+      .filter((t) => VALID_DIETARY_TAGS.has(t))
+
+    const fromRaw = colIndex.from !== -1 ? (row[colIndex.from] ?? '').trim() : ''
+    const untilRaw = colIndex.until !== -1 ? (row[colIndex.until] ?? '').trim() : ''
+
+    newItems.push({
+      restaurant_id: restaurant.id,
+      category_id: categoryId,
+      name,
+      description: colIndex.description !== -1 ? (row[colIndex.description] ?? '').trim() || null : null,
+      price_cents: Math.round(priceNumber * 100),
+      sort_order: nextItemSortOrder++,
+      dietary_tags: dietaryTags,
+      available_from: TIME_PATTERN.test(fromRaw) ? fromRaw : null,
+      available_until: TIME_PATTERN.test(untilRaw) ? untilRaw : null,
+    })
+  }
+
+  if (newItems.length > 0) {
+    const { error } = await supabase.from('menu_items').insert(newItems)
+    if (error) {
+      return { errorCode: 'COULD_NOT_CREATE_ITEM' }
+    }
+  }
+
+  revalidatePath('/admin/menu')
+  return { created: newItems.length, skipped }
 }

@@ -20,7 +20,13 @@ function NavLink({ href, children }: { href: string; children: React.ReactNode }
   )
 }
 
-export function AdminNav({ role }: { role: string | undefined }) {
+export function AdminNav({
+  role,
+  isPlatformAdmin,
+}: {
+  role: string | undefined
+  isPlatformAdmin?: boolean
+}) {
   const { t } = useLocale()
 
   if (role === 'kitchen_staff') {
@@ -51,6 +57,7 @@ export function AdminNav({ role }: { role: string | undefined }) {
       <NavLink href="/admin/staff">{t('nav.staff')}</NavLink>
       <NavLink href="/admin/settings">{t('nav.settings')}</NavLink>
       <NavLink href="/admin/help">{t('nav.help')}</NavLink>
+      {isPlatformAdmin && <NavLink href="/admin/platform">Restaurantes</NavLink>}
     </nav>
   )
 }

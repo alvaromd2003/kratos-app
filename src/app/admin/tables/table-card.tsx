@@ -1,7 +1,13 @@
 'use client'
 
 import { useActionState } from 'react'
-import { updateTable, deleteTable, closeTableSession, toggleTableActive } from '@/app/actions/tables'
+import {
+  updateTable,
+  deleteTable,
+  closeTableSession,
+  toggleTableActive,
+  regenerateTableQr,
+} from '@/app/actions/tables'
 import { recordManualPayment } from '@/app/actions/kitchen'
 import { formatPrice } from '@/lib/format'
 import { useLocale } from '@/lib/i18n/provider'
@@ -36,6 +42,7 @@ export function TableCard({
   const { t } = useLocale()
   const [state, action, pending] = useActionState(updateTable, undefined)
   const [deleteState, deleteAction] = useActionState(deleteTable, undefined)
+  const [regenState, regenAction, regenPending] = useActionState(regenerateTableQr, undefined)
 
   return (
     <li className="flex w-56 flex-col items-center gap-2.5 rounded-xl border border-marble-3 bg-white p-4 text-center">
@@ -89,6 +96,20 @@ export function TableCard({
       >
         {t('tables.downloadQr')}
       </a>
+      <form
+        action={regenAction}
+        onSubmit={(e) => {
+          if (!confirm(t('tables.regenerateQrConfirm', { label }))) {
+            e.preventDefault()
+          }
+        }}
+      >
+        <input type="hidden" name="id" value={id} />
+        <button disabled={regenPending} type="submit" className="text-xs text-bronze underline disabled:opacity-50">
+          {t('tables.regenerateQr')}
+        </button>
+      </form>
+      {regenState?.errorCode && <p className="text-xs text-rust">{t(`error.${regenState.errorCode}`)}</p>}
       <p className="break-all text-xs text-bronze">{url}</p>
 
       {!active && (
