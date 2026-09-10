@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { signup } from '@/app/actions/auth'
 import { AuthHeader } from '@/app/auth-header'
 import { useLocale } from '@/lib/i18n/provider'
@@ -10,6 +11,7 @@ import { StaffLanguageSwitcher } from '@/app/admin/staff-language-switcher'
 export function SignupForm() {
   const { t } = useLocale()
   const [state, action, pending] = useActionState(signup, undefined)
+  const prefilledCode = useSearchParams().get('code') ?? ''
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-ink to-ink-2">
@@ -56,6 +58,7 @@ export function SignupForm() {
             name="access_code"
             type="text"
             required
+            defaultValue={prefilledCode}
             className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-white focus:border-ember focus:outline-none"
           />
           <span className="text-xs text-cream-dim">
