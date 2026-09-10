@@ -61,6 +61,14 @@ export async function startRestaurantSubscription(
   const { foundingPriceId, standardPriceId } = await getBillingPrices()
   const origin = await getRequestOrigin()
 
+  // The founding price is a time-limited deal, not the permanent price —
+  // Checkout only ever shows the raw "350,00 € / mes" line otherwise, with
+  // nothing telling the restaurant it steps up later. This message sits
+  // right next to the pay button so that's disclosed up front, not
+  // discovered as a surprise on month 7's invoice.
+  const foundingNotice =
+    'Precio de lanzamiento: 350€/mes durante los primeros 6 meses. A partir del 7º mes, la cuota pasa a 600€/mes automáticamente (precio habitual de Kratos). Puedes cancelar la suscripción cuando quieras.'
+
   let session
   try {
     session = await stripe.checkout.sessions.create({
@@ -74,6 +82,11 @@ export async function startRestaurantSubscription(
       subscription_data: {
         metadata: { restaurant_id: restaurant.id, founding_era: founding ? 'true' : 'false' },
       },
+      ...(founding && {
+        custom_text: {
+          submit: { message: foundingNotice },
+        },
+      }),
     })
   } catch {
     return { errorCode: 'STRIPE_CHECKOUT_FAILED' }
