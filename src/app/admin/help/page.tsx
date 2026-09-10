@@ -41,6 +41,13 @@ export default async function HelpPage() {
         <p dangerouslySetInnerHTML={{ __html: t['help.section5P2'] }} />
       </Section>
 
+      <Section title={t['help.section6Title']}>
+        <p dangerouslySetInnerHTML={{ __html: t['help.section6P1'] }} />
+        <p dangerouslySetInnerHTML={{ __html: t['help.section6P2'] }} />
+        <p dangerouslySetInnerHTML={{ __html: t['help.section6P3'] }} />
+        <p dangerouslySetInnerHTML={{ __html: t['help.section6P4'] }} />
+      </Section>
+
       <Section title={t['help.faqTitle']}>
         <p dangerouslySetInnerHTML={{ __html: t['help.faqQ1'] }} />
         <p dangerouslySetInnerHTML={{ __html: t['help.faqQ2'] }} />
