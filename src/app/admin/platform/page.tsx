@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { formatDateTime } from '@/lib/format'
+import { isPlatformAdminEmail } from '@/lib/platform-admin'
 import { StartSubscriptionButton } from './start-subscription-button'
 
 const BILLING_STATUS_LABEL: Record<string, { label: string; className: string }> = {
@@ -39,8 +40,7 @@ export default async function PlatformOverviewPage() {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const platformAdminEmail = process.env.PLATFORM_ADMIN_EMAIL
-  if (!user || !platformAdminEmail || user.email !== platformAdminEmail) {
+  if (!isPlatformAdminEmail(user?.email)) {
     redirect('/admin')
   }
 

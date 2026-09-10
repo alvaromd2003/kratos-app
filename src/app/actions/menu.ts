@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentRestaurant } from '@/lib/restaurant'
 import { DIETARY_TAGS } from '@/lib/dietary-tags'
-import { parseCsv } from '@/lib/csv'
+import { parseCsv, UnterminatedQuoteError } from '@/lib/csv'
 
 const VALID_DIETARY_TAGS = new Set<string>(DIETARY_TAGS.map((t) => t.value))
 
@@ -438,7 +438,15 @@ export async function bulkImportMenu(
   }
 
   const text = await file.text()
-  const rows = parseCsv(text)
+  let rows: string[][]
+  try {
+    rows = parseCsv(text)
+  } catch (e) {
+    if (e instanceof UnterminatedQuoteError) {
+      return { errorCode: 'CSV_UNTERMINATED_QUOTE' }
+    }
+    throw e
+  }
   if (rows.length < 2) {
     return { errorCode: 'INVALID_CSV_FORMAT' }
   }
@@ -468,6 +476,18 @@ export async function bulkImportMenu(
     (existingCategories ?? []).map((c) => [c.name.trim().toLowerCase(), c.id])
   )
   let nextCategorySortOrder = await getNextSortOrder(supabase, 'menu_categories', restaurant.id)
+  // Tracked so a failed items insert can clean up after itself — without
+  // this, categories created earlier in the same run stayed committed even
+  // though zero items ended up existing in them.
+  const newlyCreatedCategoryIds: string[] = []
+
+  // Re-uploading the same file (or one that overlaps an existing menu)
+  // otherwise silently duplicated every matching dish with no warning.
+  const { data: existingItems } = await supabase
+    .from('menu_items')
+    .select('name')
+    .eq('restaurant_id', restaurant.id)
+  const existingItemNames = new Set((existingItems ?? []).map((i) => i.name.trim().toLowerCase()))
 
   type NewItem = {
     restaurant_id: string
@@ -493,6 +513,11 @@ export async function bulkImportMenu(
       skipped++
       continue
     }
+    if (existingItemNames.has(name.toLowerCase())) {
+      skipped++
+      continue
+    }
+    existingItemNames.add(name.toLowerCase())
 
     let categoryId: string | null = null
     const categoryName = colIndex.category !== -1 ? (row[colIndex.category] ?? '').trim() : ''
@@ -517,6 +542,13 @@ export async function bulkImportMenu(
         if (created) {
           categoryId = created.id
           categoryIdByName.set(key, created.id)
+          newlyCreatedCategoryIds.push(created.id)
+        } else {
+          // The category this row asked for couldn't be created — count it
+          // as skipped rather than silently importing the dish into "no
+          // category" with no signal that something went wrong.
+          skipped++
+          continue
         }
       }
     }
@@ -546,6 +578,9 @@ export async function bulkImportMenu(
   if (newItems.length > 0) {
     const { error } = await supabase.from('menu_items').insert(newItems)
     if (error) {
+      if (newlyCreatedCategoryIds.length > 0) {
+        await supabase.from('menu_categories').delete().in('id', newlyCreatedCategoryIds)
+      }
       return { errorCode: 'COULD_NOT_CREATE_ITEM' }
     }
   }

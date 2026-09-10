@@ -109,7 +109,18 @@ export function TableCard({
           {t('tables.regenerateQr')}
         </button>
       </form>
-      {regenState?.errorCode && <p className="text-xs text-rust">{t(`error.${regenState.errorCode}`)}</p>}
+      {regenState?.errorCode && (
+        <p className="text-xs text-rust">{t(`error.${regenState.errorCode}`)}</p>
+      )}
+      {regenState?.errorCode === 'TABLE_HAS_ACTIVE_SESSION' && (
+        <form action={regenAction}>
+          <input type="hidden" name="id" value={id} />
+          <input type="hidden" name="force" value="true" />
+          <button disabled={regenPending} type="submit" className="text-xs text-rust underline disabled:opacity-50">
+            {t('tables.regenerateQrAnyway')}
+          </button>
+        </form>
+      )}
       <p className="break-all text-xs text-bronze">{url}</p>
 
       {!active && (

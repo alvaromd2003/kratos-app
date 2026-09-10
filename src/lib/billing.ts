@@ -19,17 +19,36 @@ const FOUNDING_COUPON_ID = 'kratos-founding-6mo'
 let standardPriceIdPromise: Promise<string> | null = null
 
 async function loadStandardPriceId(): Promise<string> {
-  const prices = await stripe.prices.list({ product: KRATOS_BILLING_PRODUCT_ID, active: true, limit: 10 })
-  const standard = prices.data.find((p) => p.unit_amount === STANDARD_PRICE_CENTS && p.currency === 'eur')
-  if (!standard) {
-    throw new Error('No se encontró el precio de 600€ en el producto de Stripe.')
+  // limit: 100 (Stripe's max) rather than 10 — this product should only
+  // ever have a couple of prices, but a stray one left over from earlier
+  // test-mode fiddling must still be seen, not silently missed past page 1.
+  const prices = await stripe.prices.list({ product: KRATOS_BILLING_PRODUCT_ID, active: true, limit: 100 })
+  const matches = prices.data.filter(
+    (p) => p.unit_amount === STANDARD_PRICE_CENTS && p.currency === 'eur' && p.recurring?.interval === 'month'
+  )
+  if (matches.length === 0) {
+    throw new Error('No se encontró el precio mensual de 600€ en el producto de Stripe.')
   }
-  return standard.id
+  if (matches.length > 1) {
+    // Silently picking Stripe's list order here risks quietly using a
+    // stray duplicate price instead of the intended one — fail loudly
+    // instead so this gets resolved by hand in the Stripe dashboard.
+    throw new Error(
+      `Hay ${matches.length} precios de 600€/mes activos en el producto de Stripe — archiva el que sobre antes de continuar.`
+    )
+  }
+  return matches[0].id
 }
 
 export function getStandardPriceId(): Promise<string> {
   if (!standardPriceIdPromise) {
-    standardPriceIdPromise = loadStandardPriceId()
+    // Reset on failure so a transient Stripe error doesn't permanently
+    // poison this warm serverless instance — the next call gets a fresh
+    // attempt instead of re-awaiting the same rejected promise forever.
+    standardPriceIdPromise = loadStandardPriceId().catch((err) => {
+      standardPriceIdPromise = null
+      throw err
+    })
   }
   return standardPriceIdPromise
 }
@@ -47,20 +66,31 @@ async function loadOrCreateFoundingCoupon(): Promise<string> {
     // Doesn't exist yet — fall through and create it.
   }
 
-  const coupon = await stripe.coupons.create({
-    id: FOUNDING_COUPON_ID,
-    amount_off: FOUNDING_DISCOUNT_CENTS,
-    currency: 'eur',
-    duration: 'repeating',
-    duration_in_months: 6,
-    name: 'Precio de fundador (6 meses)',
-  })
-  return coupon.id
+  try {
+    const coupon = await stripe.coupons.create({
+      id: FOUNDING_COUPON_ID,
+      amount_off: FOUNDING_DISCOUNT_CENTS,
+      currency: 'eur',
+      duration: 'repeating',
+      duration_in_months: 6,
+      name: 'Precio de fundador (6 meses)',
+    })
+    return coupon.id
+  } catch {
+    // Two concurrent first-ever calls (on different serverless instances)
+    // can both reach here; whichever loses the create race just re-fetches
+    // the one the winner just made, instead of surfacing a hard failure.
+    const existing = await stripe.coupons.retrieve(FOUNDING_COUPON_ID)
+    return existing.id
+  }
 }
 
 export function getFoundingCouponId(): Promise<string> {
   if (!foundingCouponIdPromise) {
-    foundingCouponIdPromise = loadOrCreateFoundingCoupon()
+    foundingCouponIdPromise = loadOrCreateFoundingCoupon().catch((err) => {
+      foundingCouponIdPromise = null
+      throw err
+    })
   }
   return foundingCouponIdPromise
 }
@@ -71,5 +101,5 @@ export function getFoundingCouponId(): Promise<string> {
 // real case studies to point to, and every restaurant that starts billing
 // after that pays the standard 600€ price from day one, no discount.
 export function isFoundingEraActive(): boolean {
-  return process.env.FOUNDING_ERA_ACTIVE !== 'false'
+  return process.env.FOUNDING_ERA_ACTIVE?.trim().toLowerCase() !== 'false'
 }

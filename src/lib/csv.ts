@@ -1,3 +1,9 @@
+// Thrown instead of silently merging the rest of the file into one giant
+// field — a single stray `"` (e.g. an unescaped inch-mark like `12" pizza`)
+// used to make everything after it fail validation with no indication that
+// a quoting typo, not bad data, was the actual cause.
+export class UnterminatedQuoteError extends Error {}
+
 // Minimal RFC 4180-ish CSV parser — handles quoted fields (with embedded
 // commas/newlines) and "" as an escaped quote. No external dependency
 // needed for the menu-import feature's fairly small, simple files.
@@ -41,6 +47,10 @@ export function parseCsv(text: string): string[][] {
     } else {
       field += char
     }
+  }
+
+  if (inQuotes) {
+    throw new UnterminatedQuoteError('CSV file has an unterminated quote')
   }
 
   // Trailing field/row not yet flushed by a final newline.

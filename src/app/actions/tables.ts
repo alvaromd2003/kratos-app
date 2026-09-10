@@ -211,8 +211,30 @@ export async function regenerateTableQr(
 ): Promise<TableFormState> {
   const { restaurant } = await getCurrentRestaurant()
   const id = String(formData.get('id') ?? '')
+  const force = formData.get('force') === 'true'
 
   const supabase = await createClient()
+
+  // The diner's whole session is keyed off the qr_token in the URL — the
+  // moment it changes, anyone with that table's page already open gets
+  // disconnected from their live cart/bill (a 404 on reload, and every
+  // further action failing). Confirming this is safe (checkbox/dialog on
+  // the client) isn't real access control, so re-check it here too: refuse
+  // a silent regeneration while a diner could actually be mid-session,
+  // unless staff explicitly says to do it anyway.
+  if (!force) {
+    const { data: openSession } = await supabase
+      .from('table_sessions')
+      .select('id')
+      .eq('table_id', id)
+      .eq('restaurant_id', restaurant.id)
+      .eq('status', 'open')
+      .maybeSingle()
+    if (openSession) {
+      return { errorCode: 'TABLE_HAS_ACTIVE_SESSION' }
+    }
+  }
+
   const { error } = await supabase
     .from('tables')
     .update({ qr_token: randomUUID() })

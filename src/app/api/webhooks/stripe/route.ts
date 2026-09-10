@@ -97,10 +97,30 @@ export async function POST(request: Request) {
   // checkout completing.
   if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
     const subscription = event.data.object as Stripe.Subscription
-    await admin
+    const eventCreatedAt = new Date(event.created * 1000).toISOString()
+
+    const { data: existing } = await admin
       .from('restaurants')
-      .update({ billing_status: subscription.status })
+      .select('id, billing_last_event_at')
       .eq('billing_subscription_id', subscription.id)
+      .maybeSingle()
+
+    // Stripe does not guarantee delivery order across different events — a
+    // stale event redelivered/arriving after a newer one must not revert
+    // billing_status back to an old value.
+    if (existing && (!existing.billing_last_event_at || existing.billing_last_event_at < eventCreatedAt)) {
+      await admin
+        .from('restaurants')
+        .update({
+          billing_status: subscription.status,
+          billing_last_event_at: eventCreatedAt,
+          // Lets a churned restaurant be re-subscribed through the admin
+          // flow again — ALREADY_SUBSCRIBED there only checks whether this
+          // id is set, which otherwise stayed set forever after a cancel.
+          ...(event.type === 'customer.subscription.deleted' ? { billing_subscription_id: null } : {}),
+        })
+        .eq('id', existing.id)
+    }
   }
 
   if (event.type === 'checkout.session.async_payment_failed') {

@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getRequestOrigin } from '@/lib/payments'
 import { stripe } from '@/lib/stripe'
 import { getStandardPriceId, getFoundingCouponId, isFoundingEraActive } from '@/lib/billing'
+import { isPlatformAdminEmail } from '@/lib/platform-admin'
 
 export type BillingFormState = { errorCode?: string; checkoutUrl?: string } | undefined
 
@@ -14,8 +15,7 @@ async function requirePlatformAdmin() {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const platformAdminEmail = process.env.PLATFORM_ADMIN_EMAIL
-  if (!user || !platformAdminEmail || user.email !== platformAdminEmail) {
+  if (!isPlatformAdminEmail(user?.email)) {
     throw new Error('No autorizado')
   }
 }

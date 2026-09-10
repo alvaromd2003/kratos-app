@@ -7,6 +7,7 @@ import { getStaffLocale } from '@/lib/i18n/server'
 import { dirFor } from '@/lib/i18n/config'
 import { staffDict } from '@/lib/i18n/dictionaries/staff'
 import { LocaleProvider } from '@/lib/i18n/provider'
+import { isPlatformAdminEmail } from '@/lib/platform-admin'
 import { AdminNav } from './admin-nav'
 import { StaffLanguageSwitcher } from './staff-language-switcher'
 
@@ -40,7 +41,7 @@ export default async function AdminLayout({
   // that job actually does. Owner/admin see everything.
   const homeHref = role === 'kitchen_staff' ? '/admin/kitchen' : role === 'waiter' ? '/admin/floor' : '/admin'
   const dict = staffDict[locale]
-  const isPlatformAdmin = Boolean(process.env.PLATFORM_ADMIN_EMAIL) && user.email === process.env.PLATFORM_ADMIN_EMAIL
+  const isPlatformAdmin = isPlatformAdminEmail(user.email)
 
   return (
     <div dir={dirFor(locale)} lang={locale} className="min-h-screen bg-marble">
