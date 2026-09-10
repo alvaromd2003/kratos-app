@@ -48,6 +48,24 @@ export async function signup(
     return { errorCode: 'ACCESS_CODE_USED' }
   }
 
+  // Claimed atomically now (the `is('used_at', null)` makes this a single
+  // conditional UPDATE, not a separate check-then-write) rather than after
+  // signUp() — two people submitting the same shareable code+link at once
+  // previously both had a window to pass the check above before either
+  // committed the update. Only one concurrent request can win this claim.
+  if (!codeRow.is_generic) {
+    const { data: claimed } = await admin
+      .from('access_codes')
+      .update({ used_at: new Date().toISOString() })
+      .eq('id', codeRow.id)
+      .is('used_at', null)
+      .select('id')
+      .maybeSingle()
+    if (!claimed) {
+      return { errorCode: 'ACCESS_CODE_USED' }
+    }
+  }
+
   const supabase = await createClient()
   // Carried in the auth user's own metadata so createRestaurant (a
   // separate step, once they confirm their email and log back in) can
@@ -67,18 +85,7 @@ export async function signup(
   })
 
   if (error) {
-    return { errorCode: 'SIGNUP_FAILED', errorMessage: error.message }
-  }
-
-  // Single-use codes are consumed now, not when onboarding finishes —
-  // simpler than tracking a half-finished signup, at the cost of a code
-  // being "spent" if someone abandons right after this step (generating
-  // another one is cheap, so this trade-off is fine).
-  if (!codeRow.is_generic) {
-    await admin
-      .from('access_codes')
-      .update({ used_at: new Date().toISOString() })
-      .eq('id', codeRow.id)
+    return { errorCode: 'SIGNUP_FAILED' }
   }
 
   redirect('/signup/check-email')

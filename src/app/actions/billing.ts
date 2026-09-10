@@ -55,6 +55,19 @@ export async function startRestaurantSubscription(
     })
     customerId = customer.id
     await admin.from('restaurants').update({ billing_customer_id: customerId }).eq('id', restaurant.id)
+  } else {
+    // Closes a double-billing race: the ALREADY_SUBSCRIBED check above only
+    // catches a restaurant that has already completed checkout (the webhook
+    // hasn't fired yet for one still sitting unpaid). Clicking "Iniciar
+    // suscripción" again before that happens would otherwise create a
+    // second, independent Checkout Session — if both later get paid, the
+    // restaurant ends up with two live subscriptions. Reuse the still-open
+    // one instead of creating another.
+    const existingSessions = await stripe.checkout.sessions.list({ customer: customerId, limit: 5 })
+    const pending = existingSessions.data.find((s) => s.status === 'open' && s.mode === 'subscription')
+    if (pending?.url) {
+      return { checkoutUrl: pending.url }
+    }
   }
 
   const founding = isFoundingEraActive()

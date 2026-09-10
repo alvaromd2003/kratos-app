@@ -414,15 +414,27 @@ function normalizeHeader(value: string): string {
 
 const TIME_PATTERN = /^\d{1,2}:\d{2}$/
 
+const MAX_CSV_BYTES = 2 * 1024 * 1024 // 2 MB — generous for a menu, keeps a bad upload cheap to reject
+
 export async function bulkImportMenu(
   _prevState: BulkImportState,
   formData: FormData
 ): Promise<BulkImportState> {
-  const { restaurant } = await getCurrentRestaurant()
+  const { restaurant, role } = await getCurrentRestaurant()
+  // A bulk import can mass-create rows across the whole menu — bigger blast
+  // radius than any single create/edit action, so unlike the rest of this
+  // file it's worth restricting to the roles that manage the menu at all.
+  if (role === 'kitchen_staff' || role === 'waiter') {
+    return { errorCode: 'NOT_AUTHORIZED' }
+  }
+
   const file = formData.get('file')
 
   if (!(file instanceof File) || file.size === 0) {
     return { errorCode: 'EMPTY_CSV_FILE' }
+  }
+  if (file.size > MAX_CSV_BYTES) {
+    return { errorCode: 'CSV_FILE_TOO_LARGE' }
   }
 
   const text = await file.text()

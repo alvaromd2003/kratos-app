@@ -39,6 +39,20 @@ export async function createRestaurant(
     redirect('/login')
   }
 
+  // The onboarding page already redirects a user with a restaurant back to
+  // /admin, but that's only a UI-routing guard — it doesn't stop this action
+  // itself being called again directly (browser back button, or replaying
+  // the request). Without this check, one access code could be used to
+  // create unlimited free-trial restaurants under the same account.
+  const { data: existingMembership } = await supabase
+    .from('restaurant_users')
+    .select('restaurant_id')
+    .eq('user_id', user.id)
+    .maybeSingle()
+  if (existingMembership) {
+    redirect('/admin')
+  }
+
   const baseSlug = slugify(name) || 'restaurante'
   const slug = `${baseSlug}-${Math.random().toString(36).slice(2, 7)}`
   // Generated here (not read back from the insert) because RLS won't let
