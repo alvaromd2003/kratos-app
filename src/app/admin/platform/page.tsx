@@ -2,6 +2,14 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { formatDateTime } from '@/lib/format'
+import { StartSubscriptionButton } from './start-subscription-button'
+
+const BILLING_STATUS_LABEL: Record<string, { label: string; className: string }> = {
+  active: { label: 'Activa', className: 'text-sage font-semibold' },
+  past_due: { label: 'Pago atrasado', className: 'text-rust font-semibold' },
+  canceled: { label: 'Cancelada', className: 'text-bronze' },
+  unpaid: { label: 'Impagada', className: 'text-rust font-semibold' },
+}
 
 // Kept outside the page component itself — the react-hooks/purity rule
 // flags any Date.now()/new Date() call made directly inside a component
@@ -40,7 +48,9 @@ export default async function PlatformOverviewPage() {
 
   const { data: restaurants } = await admin
     .from('restaurants')
-    .select('id, name, created_at, trial_ends_at, stripe_onboarding_complete')
+    .select(
+      'id, name, created_at, trial_ends_at, stripe_onboarding_complete, billing_status, billing_is_founding_era'
+    )
     .order('created_at', { ascending: false })
 
   const restaurantList = restaurants ?? []
@@ -77,6 +87,8 @@ export default async function PlatformOverviewPage() {
         stripeConnected: r.stripe_onboarding_complete,
         tableCount: tableCount ?? 0,
         itemCount: itemCount ?? 0,
+        billingStatus: r.billing_status,
+        billingIsFoundingEra: r.billing_is_founding_era,
       }
     })
   )
@@ -96,26 +108,42 @@ export default async function PlatformOverviewPage() {
               <th className="px-4 py-3">Dueño</th>
               <th className="px-4 py-3">Mesas</th>
               <th className="px-4 py-3">Platos</th>
+              <th className="px-4 py-3">Suscripción</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
-              <tr key={r.id} className="border-b border-marble-3 last:border-0">
-                <td className="px-4 py-3 font-medium text-ink">{r.name}</td>
-                <td className="px-4 py-3 font-mono text-xs text-bronze">{formatDateTime(r.createdAt)}</td>
-                <td className={`px-4 py-3 ${r.trialClass}`}>{r.trialLabel}</td>
-                <td className="px-4 py-3">
-                  {r.stripeConnected ? (
-                    <span className="text-sage">Conectado</span>
-                  ) : (
-                    <span className="text-bronze">No conectado</span>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-bronze">{r.ownerEmail}</td>
-                <td className="px-4 py-3 font-mono text-ink">{r.tableCount}</td>
-                <td className="px-4 py-3 font-mono text-ink">{r.itemCount}</td>
-              </tr>
-            ))}
+            {rows.map((r) => {
+              const billing = r.billingStatus ? BILLING_STATUS_LABEL[r.billingStatus] : null
+              return (
+                <tr key={r.id} className="border-b border-marble-3 last:border-0">
+                  <td className="px-4 py-3 font-medium text-ink">{r.name}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-bronze">{formatDateTime(r.createdAt)}</td>
+                  <td className={`px-4 py-3 ${r.trialClass}`}>{r.trialLabel}</td>
+                  <td className="px-4 py-3">
+                    {r.stripeConnected ? (
+                      <span className="text-sage">Conectado</span>
+                    ) : (
+                      <span className="text-bronze">No conectado</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-bronze">{r.ownerEmail}</td>
+                  <td className="px-4 py-3 font-mono text-ink">{r.tableCount}</td>
+                  <td className="px-4 py-3 font-mono text-ink">{r.itemCount}</td>
+                  <td className="px-4 py-3">
+                    {billing ? (
+                      <span className={billing.className}>
+                        {billing.label}
+                        {r.billingIsFoundingEra && billing.label === 'Activa' && (
+                          <span className="ml-1 text-xs text-bronze">(350€→600€)</span>
+                        )}
+                      </span>
+                    ) : (
+                      <StartSubscriptionButton restaurantId={r.id} />
+                    )}
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
         {rows.length === 0 && <p className="p-4 text-sm text-bronze">Todavía no hay restaurantes.</p>}

@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/subscription-stepup",
+      "schedule": "0 6 * * *"
+    }
+  ]
+}

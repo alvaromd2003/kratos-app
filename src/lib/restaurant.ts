@@ -13,6 +13,7 @@ type RestaurantRow = {
   enabled_payment_methods: string[]
   google_review_url: string | null
   trial_ends_at: string | null
+  billing_status: string | null
 }
 type MembershipRow = {
   restaurant_id: string
@@ -41,7 +42,7 @@ export async function getCurrentRestaurant() {
   const { data: membership, error } = await supabase
     .from('restaurant_users')
     .select(
-      'restaurant_id, role, restaurants(id, name, slug, currency, enabled_dietary_tags, stripe_account_id, stripe_onboarding_complete, enabled_payment_methods, google_review_url, trial_ends_at)'
+      'restaurant_id, role, restaurants(id, name, slug, currency, enabled_dietary_tags, stripe_account_id, stripe_onboarding_complete, enabled_payment_methods, google_review_url, trial_ends_at, billing_status)'
     )
     .eq('user_id', user.id)
     .limit(1)
@@ -64,8 +65,16 @@ export async function getCurrentRestaurant() {
 
   // Null (every restaurant created before this existed) means no
   // restriction — only restaurants signed up after the trial system
-  // shipped ever get sent here.
-  if (restaurant.trial_ends_at && new Date(restaurant.trial_ends_at) < new Date()) {
+  // shipped ever get sent here. A restaurant that's since started an
+  // active paid subscription (Fase 5) is exempt regardless of how long
+  // ago its trial technically ended — the trial gate's whole purpose was
+  // to stop free, indefinite use, which no longer applies once they're
+  // actually paying.
+  if (
+    restaurant.billing_status !== 'active' &&
+    restaurant.trial_ends_at &&
+    new Date(restaurant.trial_ends_at) < new Date()
+  ) {
     redirect('/admin/trial-expired')
   }
 

@@ -69,6 +69,38 @@ export async function POST(request: Request) {
     if (paymentShareId && session.payment_status === 'paid') {
       await markSucceeded(admin, paymentShareId, paymentIntentId)
     }
+
+    // Fase 5: Kratos's OWN subscription from a restaurant, not a diner
+    // payment — distinguished by mode + its own restaurant_id metadata
+    // (set in startRestaurantSubscription), so this never collides with
+    // the diner-facing branch above.
+    if (session.mode === 'subscription' && session.metadata?.restaurant_id) {
+      const subscriptionId =
+        typeof session.subscription === 'string' ? session.subscription : session.subscription?.id
+      if (subscriptionId) {
+        await admin
+          .from('restaurants')
+          .update({
+            billing_subscription_id: subscriptionId,
+            billing_status: 'active',
+            billing_started_at: new Date().toISOString(),
+            billing_is_founding_era: session.metadata.founding_era === 'true',
+          })
+          .eq('id', session.metadata.restaurant_id)
+      }
+    }
+  }
+
+  // Keeps billing_status in sync with the subscription's real state — a
+  // failed renewal (past_due) or an owner cancelling from the Stripe
+  // customer portal both need to show up here, not just the initial
+  // checkout completing.
+  if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
+    const subscription = event.data.object as Stripe.Subscription
+    await admin
+      .from('restaurants')
+      .update({ billing_status: subscription.status })
+      .eq('billing_subscription_id', subscription.id)
   }
 
   if (event.type === 'checkout.session.async_payment_failed') {
