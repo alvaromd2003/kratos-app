@@ -85,6 +85,18 @@ export async function signup(
   })
 
   if (error) {
+    // No account was actually created — give the code back rather than
+    // leaving it permanently burned on a failed attempt (a bad password,
+    // an email already registered, a transient error). Safe to reset
+    // unconditionally: while this code stays claimed, the atomic UPDATE
+    // above guarantees no other request could have claimed and used it
+    // in between, so there's nothing else's success to accidentally undo.
+    if (!codeRow.is_generic) {
+      await admin
+        .from('access_codes')
+        .update({ used_at: null })
+        .eq('id', codeRow.id)
+    }
     return { errorCode: 'SIGNUP_FAILED' }
   }
 

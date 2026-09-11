@@ -65,6 +65,7 @@ export async function createRestaurant(
   const admin = createAdminClient()
   const signupCode = user.user_metadata?.signup_access_code as string | undefined
   let isGenericCode = false
+  let claimedCodeId: string | null = null
 
   if (signupCode) {
     // Already validated and consumed back at signup — just look up
@@ -97,10 +98,30 @@ export async function createRestaurant(
     }
     isGenericCode = codeRow.is_generic
     if (!codeRow.is_generic) {
-      await admin
+      // Claimed atomically (the `is('used_at', null)` makes this one
+      // conditional UPDATE, not a separate check-then-write) so two
+      // people submitting the same code at once can't both get through.
+      const { data: claimed } = await admin
         .from('access_codes')
         .update({ used_at: new Date().toISOString() })
         .eq('id', codeRow.id)
+        .is('used_at', null)
+        .select('id')
+        .maybeSingle()
+      if (!claimed) {
+        return { errorCode: 'ACCESS_CODE_USED' }
+      }
+      claimedCodeId = codeRow.id
+    }
+  }
+
+  // If anything below fails, no restaurant actually gets created for this
+  // code — give it back instead of leaving it permanently burned. Safe to
+  // reset unconditionally: while held claimed, the atomic UPDATE above
+  // guarantees nobody else could have claimed and used it in between.
+  async function releaseClaimedCodeOnFailure() {
+    if (claimedCodeId) {
+      await admin.from('access_codes').update({ used_at: null }).eq('id', claimedCodeId)
     }
   }
 
@@ -113,6 +134,7 @@ export async function createRestaurant(
     .insert({ id: restaurantId, name, slug, trial_ends_at: trialEndsAt })
 
   if (restaurantError) {
+    await releaseClaimedCodeOnFailure()
     return { errorCode: 'COULD_NOT_CREATE_RESTAURANT' }
   }
 
@@ -121,6 +143,7 @@ export async function createRestaurant(
     .insert({ restaurant_id: restaurantId, user_id: user.id, role: 'owner' })
 
   if (membershipError) {
+    await releaseClaimedCodeOnFailure()
     return { errorCode: 'COULD_NOT_ASSIGN_OWNER' }
   }
 
