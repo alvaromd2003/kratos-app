@@ -46,6 +46,12 @@ export async function inviteStaffMember(
   })
 
   if (membershipError) {
+    // The invite already created a real auth user and sent a real email
+    // before this step — left as-is, that person would click the link,
+    // set a password, and land with no restaurant membership at all (and
+    // no access code either, so onboarding would be a dead end for them).
+    // Delete the orphaned account so the invite can just be retried clean.
+    await admin.auth.admin.deleteUser(data.user.id)
     return { errorCode: 'INVITED_NOT_ASSIGNED' }
   }
 
